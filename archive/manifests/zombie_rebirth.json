@@ -1,0 +1,245 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "zombie_rebirth",
+  "title": "REBIRTH",
+  "source": "custom",
+  "author": "qwerty195",
+  "released": "2016-09-19",
+  "fs_game": "mods/zombie_rebirth",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@zombie_rebirth.iwd": "2a605b0a61e50c79596deb8006e46c4e4865d170e5f828bcf358534a65df1cfb"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "boss_fight_trigger",
+        "boss_room_trigger_spawner",
+        "boss_room_zombies"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "boss_fight_trigger, boss_room_trigger_spawner, boss_room_zombies look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 127,
+    "script_count": 127,
+    "entities": 2512,
+    "ee_candidates": [
+      "boss_fight_trigger",
+      "boss_room_trigger_spawner",
+      "boss_room_zombies"
+    ],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "pf2249_auto1",
+        "?"
+      ],
+      [
+        3000,
+        "pf2628_auto1",
+        "?"
+      ],
+      [
+        2500,
+        "pf1766_auto1",
+        "?"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "door5"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "door16"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "2a605b0a61e50c79596deb8006e46c4e4865d170e5f828bcf358534a65df1cfb",
+    "map_specific_triggers": [
+      "boss_fight_trigger",
+      "boss_room_trigger_spawner",
+      "challenge_room_trigger",
+      "chest_excluder",
+      "door_trig",
+      "fight_door_2",
+      "fight_door_3",
+      "harrybo21_perk_trigger",
+      "jukebox",
+      "kino_mainframe_trigger",
+      "kino_teleporter_trigger",
+      "place_weap_an94",
+      "place_weap_executioner",
+      "place_weap_lsat",
+      "place_weap_svu",
+      "place_weap_tac45",
+      "place_weap_uzi",
+      "secret_trigger",
+      "secret_trigger2",
+      "secret_trigger3",
+      "secret_trigger4",
+      "soul_chest_area",
+      "warning_an94",
+      "weap_chalk_an94",
+      "weap_chalk_executioner",
+      "weap_chalk_lsat",
+      "weap_chalk_svu",
+      "weap_chalk_tac45",
+      "weap_chalk_uzi"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:21:30Z"
+    }
+  },
+  "archive": {
+    "original": "zombie_rebirth_v1.1.exe",
+    "original_sha256": "ba54a5d4ff25c7b73ce1316cd864f5f1bbaf67fb8df54801de4e52936259e1f1",
+    "original_size": 639276753,
+    "source_url": "https://www.mediafire.com/file/fv96fogdjgd88y5/zombie_rebirth_v1.1.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T02:19:40Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "easter_egg",
+      "buyable_ending",
+      "top100",
+      "t4m_req",
+      "top_100"
+    ],
+    "catalogue_description": "REBIRTH REBIRTH is an arcade-style map, based off the top-down game \u201cThe Binding of Isaac Rebirth\u201d See just how strange it is when you combine elements from two VERY different games. WARNING: READ BEFORE DOWNLOADING THIS MAP REQUIRES T4M TO RUN! DOWNLOAD IT HERE: https://mega.nz/#!00NEnRSR!AwlTFqSig7-B7NgYY-RhnRsPfZQNlFxysmGWforXREY USING THE RESTART LEVEL BUTTON CAUSES PROBLEMS! JUST EXIT OUT TO MENU! THIS MAP HAS ALSO NOT BEEN CO-OP TESTED! please report any co-op problems. WARNING: READ BEFORE DOWNLOADING FEATURES Black Ops 1,2, and 3 perks Black Ops 3 Double Pack-a-Punching 3 Hit Downs COD Ghosts Sliding Soul Chests Chalk Weapons (scripted them myself, so you know who to blame) Black Ops 2 Multiplayer Weapons The Atomic Levitator Banana Colada (if you can find it) Secret Rooms LOCKDOWNS! Choosing The Fate Of Your Very Soul Buyable Ending Fund FEATURES CREDITS HarryBo21 NSZ Scobalula Bluntstuffy death_reaper0 Dust Naviigate espi_thekiller SeriusZ JerriGaming CREDITS SONGS The Binding of Isaac \u2013 Souldran Ascend to Madness \u2013 Larrynachos Zombeat \u2013 Bobox",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [
+        "Banana_Colada_v1.0.2.iwd:images/p7_zm_vending_ads_logo_col.iwi",
+        "Banana_Colada_v1.0.2.iwd:images/specialty_fastreload_zombies.iwi",
+        "Banana_Colada_v1.0.2.iwd:images/~p7_zm_vending_ads_logo_spc-r~301c48c1.iwi",
+        "zombie_rebirth.iwd:images/custom_zombies_menu.iwi",
+        "zombie_rebirth.iwd:images/custom_zombies_menu2.iwi",
+        "zombie_rebirth.iwd:images/custom_zombies_menu3.iwi",
+        "zombie_rebirth.iwd:images/dukip_menu.iwi",
+        "zombie_rebirth.iwd:images/dukip_menu2.iwi",
+        "zombie_rebirth.iwd:images/isaac_menu.iwi",
+        "zombie_rebirth.iwd:images/menu_map_custom_zombies_menu.iwi",
+        "zombie_rebirth.iwd:images/p6_zm_al_vending_ads_logo_m.iwi",
+        "zombie_rebirth.iwd:images/p6_zm_al_vending_three_gun_logo_m.iwi",
+        "zombie_rebirth.iwd:images/p6_zm_al_vending_three_gun_logo_n.iwi",
+        "zombie_rebirth.iwd:images/p7_zm_vending_ads_logo_col.iwi",
+        "zombie_rebirth.iwd:images/specialty_fastreload_zombies.iwi",
+        "zombie_rebirth.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "zombie_rebirth.iwd:images/ugx_mod_menu_template.iwi",
+        "zombie_rebirth.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "zombie_rebirth.iwd:images/_-gp6_zm_al_vending_ads_logo_c.iwi",
+        "zombie_rebirth.iwd:images/_-gzombie_vending_ads_logo_c.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 75.5,
+    "addon_iwds": [
+      {
+        "file": "Banana_Colada_v1.0.2.iwd",
+        "entries": 352,
+        "scripts": 0,
+        "bytes": 75945739
+      },
+      {
+        "file": "DLC3_Weapons.iwd",
+        "entries": 67,
+        "scripts": 0,
+        "bytes": 176320
+      },
+      {
+        "file": "NSZ_BO2_Weapons_v1.3.4.iwd",
+        "entries": 335,
+        "scripts": 0,
+        "bytes": 90621242
+      }
+    ],
+    "flags": [],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "zombie_rebirth.ff",
+      "zombie_rebirth_patch.ff"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "zombie_rebirth.iwd:maps/ugx_jukebox.gsc",
+        "menus": [],
+        "responses": [],
+        "note": "in game: the jukebox"
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

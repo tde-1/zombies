@@ -1,0 +1,178 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_crash",
+  "title": "Nazi Zombie Crash",
+  "source": "custom",
+  "author": "Unknown",
+  "released": "2016-02-20",
+  "fs_game": "mods/nazi_zombie_crash",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_crash.iwd": "0cc78f8e3a3f940381bf7b82c4452c5e3b6098863a43396c76d18f91f14f30f4"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "harrybo21_craftable_part"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "harrybo21_craftable_part look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 134,
+    "script_count": 134,
+    "entities": 476,
+    "ee_candidates": [
+      "harrybo21_craftable_part"
+    ],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game",
+      "harrybo21_buyable_ending"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "pf566_auto2",
+        "?"
+      ],
+      [
+        4000,
+        "pf64_auto1",
+        "?"
+      ],
+      [
+        3000,
+        "pf52_auto1",
+        "?"
+      ],
+      [
+        2500,
+        "pf61_auto1",
+        "?"
+      ],
+      [
+        2500,
+        "pf49_auto1",
+        "?"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "0cc78f8e3a3f940381bf7b82c4452c5e3b6098863a43396c76d18f91f14f30f4",
+    "map_specific_triggers": [
+      "harrybo21_buyable_ending",
+      "harrybo21_chest_ignore_area",
+      "harrybo21_perk_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:39:39Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_crash.exe",
+    "original_sha256": "ec6687b5b491d8c52d0a8783b755fe15acff936bc11aa4b96df3bfbe0e545225",
+    "original_size": 347357501,
+    "source_url": "https://www.mediafire.com/file/87cfwemqjjli7ka/nazi_zombie_crash.exe/file",
+    "source_page": "https://callofdutyrepo.com/2016/02/20/nazi-zombie-crash-2/",
+    "fetched": "2026-09-26T14:34:25Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [
+        "harrybo21_bo2_mod v0.5.0.iwd:images/menu_mp_weapons_m32gl.iwi",
+        "harrybo21_bo2_mod v0.5.0.iwd:images/p6_zm_al_vending_ads_logo_m.iwi",
+        "harrybo21_bo2_mod v0.5.0.iwd:images/p6_zm_al_vending_three_gun_logo_m.iwi",
+        "harrybo21_bo2_mod v0.5.0.iwd:images/p6_zm_al_vending_three_gun_logo_n.iwi",
+        "harrybo21_bo2_mod v0.5.0.iwd:images/specialty_fastreload_zombies.iwi",
+        "harrybo21_bo2_mod v0.5.0.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "harrybo21_bo2_mod v0.5.0.iwd:images/ugx_mod_menu_template.iwi",
+        "harrybo21_bo2_mod v0.5.0.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "harrybo21_bo2_mod v0.5.0.iwd:images/_-gp6_zm_al_vending_ads_logo_c.iwi",
+        "harrybo21_bo2_mod v0.5.0.iwd:images/_-gzombie_vending_sleight_logo_c.iwi",
+        "harrybo21_bo2_mod v0.5.0.iwd:images/~__-gzombie_vending_ads_logo_~7aa94a54.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 51.8,
+    "addon_iwds": [
+      {
+        "file": "harrybo21_bo2_mod v0.5.0.iwd",
+        "entries": 897,
+        "scripts": 0,
+        "bytes": 198526049
+      }
+    ],
+    "flags": [],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_crash_patch.ff",
+      "nazi_zombie_crash.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

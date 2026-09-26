@@ -1,0 +1,210 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "zm_theonewindow",
+  "title": "THE ONE WINDOW",
+  "source": "custom",
+  "author": "cristian_morales",
+  "released": "2018-05-18",
+  "fs_game": "mods/zm_theonewindow",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@zm_theonewindow.iwd": "44eb88bb85e9b15b5a43732ff8d8efaf9013474aab48353ef3d9d8776c8734aa"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "black_egg_door",
+        "black_egg_trigger",
+        "ee_floating_lantern",
+        "ee_floating_lantern_trigger",
+        "ee_power_switch",
+        "ee_power_switch_trigger",
+        "ee_teleport_player",
+        "sq_ritual_be"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "black_egg_door, black_egg_trigger, ee_floating_lantern, ee_floating_lantern_trigger, ee_power_switch, ee_power_switch_trigger look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 141,
+    "script_count": 141,
+    "entities": 1852,
+    "ee_candidates": [
+      "black_egg_door",
+      "black_egg_trigger",
+      "ee_floating_lantern",
+      "ee_floating_lantern_trigger",
+      "ee_power_switch",
+      "ee_power_switch_trigger",
+      "ee_teleport_player",
+      "sq_ritual_be"
+    ],
+    "ending_words": [
+      "crawler_round_ending",
+      "ee_teleport_player",
+      "end_game",
+      "moon_teleport_player0",
+      "moon_teleport_player1",
+      "moon_teleport_player2",
+      "moon_teleport_player3",
+      "nuked_round_ending",
+      "projroom_teleport_player0",
+      "projroom_teleport_player1",
+      "projroom_teleport_player2",
+      "projroom_teleport_player3",
+      "sam_escape",
+      "theater_teleport_player0",
+      "theater_teleport_player1",
+      "theater_teleport_player2",
+      "theater_teleport_player3"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        6500,
+        "zombie_door",
+        "auto5"
+      ],
+      [
+        5750,
+        "zombie_door",
+        "auto4"
+      ],
+      [
+        5000,
+        "pf752_auto1",
+        "?"
+      ],
+      [
+        4750,
+        "zombie_door",
+        "auto3"
+      ],
+      [
+        4000,
+        "zombie_door",
+        "auto7785"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "44eb88bb85e9b15b5a43732ff8d8efaf9013474aab48353ef3d9d8776c8734aa",
+    "map_specific_triggers": [
+      "be_sacrifice_trigger",
+      "black_egg_trigger",
+      "brick_trig",
+      "dlc3_electric_trap",
+      "ee_floating_lantern_trigger",
+      "ee_power_switch_trigger",
+      "end_game_trigger",
+      "fire_trap",
+      "kino_mainframe_trigger",
+      "kino_teleporter_trigger",
+      "moon",
+      "moon_vril_trigger",
+      "pap_pyramid_trigger",
+      "scarecrow_trigger",
+      "soul_collecter",
+      "sound_mult",
+      "space_suit_trigger",
+      "sq_be_trig",
+      "t_spear_trig",
+      "tele_points",
+      "zombie_ammo_buy_trig"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:29:10Z"
+    }
+  },
+  "archive": {
+    "original": "zm_theonewindow.exe",
+    "original_sha256": "b8e066347349b06e54203d66ae4394eb57ee54d5c26de262625011ad531f6aa4",
+    "original_size": 388903628,
+    "source_url": "https://www.mediafire.com/file/mklowwchwogstdt/zm_theonewindow.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T02:17:36Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "easter_egg",
+      "t4m_req"
+    ],
+    "catalogue_description": "Old map i made, has fun easteregg You teleported into a strange universe, you wonder room to room to last long on hordes of the undead coming out a single window. Description: \u2013 Original World At War weapons \u2013 No perk limit \u2013 has a Main easteregg \u2013 Additional Nova crawlers and hell hounds \u2013 Space + gold Suit easteregg Notes: Before playing you need to install t4m on to your cod waw root folder due to fx/sound limit precache. If the solo button doesn\u2019t work, type \u201c/map OneWindowChallenge\u201d on console. To acess console use the \u2018~\u2019 key. Check settings to turn on console option if not working. Credits: Harrybo21 & his team \u2013 HaryBo21 Perks v5.0 OnlineX420 \u2013 Map testing Fusorf \u2013 BO3 Perk shaders Cristian Morales \u2013 Creator of the map. My YouTube Channel: https://www.youtube.com/channel/UCEO9AlCarXEAAPNHsaci_sA",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [
+        "zm_theonewindow.iwd:images/p7_zm_vending_ads_logo_col.iwi",
+        "zm_theonewindow.iwd:images/specialty_fastreload_zombies.iwi",
+        "zm_theonewindow.iwd:images/~p7_zm_vending_ads_logo_spc-r~301c48c1.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 97.8,
+    "addon_iwds": [],
+    "flags": [],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "zm_theonewindow.ff",
+      "zm_theonewindow_patch.ff",
+      "zm_theonewindow.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

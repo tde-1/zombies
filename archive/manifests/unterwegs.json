@@ -1,0 +1,245 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "unterwegs",
+  "title": "Unterwegs",
+  "source": "custom",
+  "author": "oshawat750 Version: 1.0.1",
+  "released": "2016-06-06",
+  "fs_game": "mods/unterwegs",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@unterwegs.iwd": "5e6551621ed52af0adba123908de0faacc89dc1fc47802ca4b0e2c8ca9152d96"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        3000,
+        35000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 35000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 116,
+    "script_count": 116,
+    "entities": 775,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      35000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "pf938_auto1",
+        "?"
+      ],
+      [
+        4000,
+        "auto2112",
+        "?"
+      ],
+      [
+        3000,
+        "pf831_auto1",
+        "?"
+      ],
+      [
+        2500,
+        "pf614_auto1",
+        "?"
+      ],
+      [
+        2500,
+        "pf550_auto1",
+        "?"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "5e6551621ed52af0adba123908de0faacc89dc1fc47802ca4b0e2c8ca9152d96",
+    "map_specific_triggers": [
+      "buy_slot_trigger",
+      "end_game",
+      "harrybo21_perk_trigger",
+      "level_01_door_light_build_trig",
+      "level_01_door_light_pick_trig",
+      "level_01_door_panel_build_trig",
+      "level_01_door_panel_pick_trig",
+      "level_01_door_switch_build_trig",
+      "level_01_door_switch_pick_trig",
+      "level_01_door_switch_use_trig",
+      "soul_chest_area",
+      "soul_chest_reward",
+      "start_rounds"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:41:52Z"
+    }
+  },
+  "archive": {
+    "original": "Unterwegs.exe",
+    "original_sha256": "dcea3b99e52f164c4a4f242f61a06cb26eadc455cfbe3bc43fbf004e6679cebd",
+    "original_size": 408987040,
+    "source_url": "https://www.mediafire.com/file/iis014vhhtw34a3/Unterwegs.exe/file",
+    "source_page": "https://callofdutyrepo.com/2016/06/06/unterwegs/",
+    "fetched": "2026-09-26T14:40:47Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending",
+      "challenge",
+      "t4m_req"
+    ],
+    "catalogue_description": "Welcome to the Unterwegs! An underground prison, built for a small group of people. It is also abandoned, as you have been unconscious for quite a while. You need to call for help, so you can get saved! {This is my first custom zombie map, so I hope you enjoy! This was super fun making!} NOTICE: REQUIRES T4M! (I need to reduce the assets XD) UPDATED: I think it\u2019s playable in co-op and the file size is WAY smaller! FEATURES WaW, Black Ops 1, Black Ops 2, and Black Ops 3 Perks (12 Perks) BO2 Weapons, 1 WaW Weapon, 1 BO1 Weapon Avagadro Boss Zombie Tranzit Zombies Small-Medium Sized Map Close Corners 1 Barrier and TONS of risers! 3-Hit Down Buildable Switch Dolphin Diving (THIS IS YOUR FRIEND TO FIND A SECRET!) Soul Boxes (OPTIONAL! Only if you want an OP weapon) Der Eisendrache Mystery Box Buyable Ending",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_unterwegs",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/p6_zm_al_vending_ads_logo_m.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/p6_zm_al_vending_three_gun_logo_m.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/p6_zm_al_vending_three_gun_logo_n.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/specialty_fastreload_zombies.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/ugx_mod_menu_template.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/_-gp6_zm_al_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/_-gzombie_vending_sleight_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/~-gp6_zm_al_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/~-gp6_zm_al_vending_three_gun_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/~__-gzombie_vending_ads_logo_~7aa94a54.iwi",
+        "harrybo21_bo1_2_3_perks_v4.0.3.iwd:images/~~~-gzombie_vending_ads_logo_~54fdbc62.iwi",
+        "harrybo21_perks.iwd:images/p6_zm_al_vending_ads_logo_m.iwi",
+        "harrybo21_perks.iwd:images/p6_zm_al_vending_three_gun_logo_m.iwi",
+        "harrybo21_perks.iwd:images/p6_zm_al_vending_three_gun_logo_n.iwi",
+        "harrybo21_perks.iwd:images/specialty_fastreload_zombies.iwi",
+        "harrybo21_perks.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "harrybo21_perks.iwd:images/ugx_mod_menu_template.iwi"
+      ],
+      "loadscreen": "loadscreen_unterwegs"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 84.8,
+    "addon_iwds": [
+      {
+        "file": "harrybo21_bo1_2_3_perks_v4.0.3.iwd",
+        "entries": 474,
+        "scripts": 0,
+        "bytes": 99456265
+      },
+      {
+        "file": "harrybo21_perks.iwd",
+        "entries": 279,
+        "scripts": 1,
+        "bytes": 45673802
+      },
+      {
+        "file": "nsz_bo2_weapons_v1.3.2.iwd",
+        "entries": 328,
+        "scripts": 12,
+        "bytes": 87119536
+      },
+      {
+        "file": "origins_hud v1.0.0.iwd",
+        "entries": 5,
+        "scripts": 0,
+        "bytes": 11839
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_mapname_patch.ff",
+      "unterwegs.ff",
+      "unterwegs_patch.ff",
+      "nsz_bo2_weapons_v1.3.2.iwd:maps/_loadout.gsc",
+      "unterwegs.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "unterwegs.iwd:maps/ugx_jukebox.gsc",
+        "menus": [],
+        "responses": [],
+        "note": "in game: the jukebox"
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

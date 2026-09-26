@@ -1,0 +1,193 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_gun",
+  "title": "Perk or Weapon",
+  "source": "custom",
+  "author": "Crepp115#8456",
+  "released": "2021-08-23",
+  "fs_game": "mods/nazi_zombie_gun",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_gun.iwd": "568d32503f4842e49280f65228f7c6cb8dff5db008ace4d8ac11fdbdb4acd01e"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        3000,
+        5000,
+        37115
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 37115",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 116,
+    "script_count": 116,
+    "entities": 301,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      5000,
+      37115
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        3000,
+        "zombie_debris",
+        "door10"
+      ],
+      [
+        2500,
+        "zombie_debris",
+        "door9"
+      ],
+      [
+        2500,
+        "zombie_debris",
+        "door8"
+      ],
+      [
+        2500,
+        "zombie_debris",
+        "door7"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door6"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "568d32503f4842e49280f65228f7c6cb8dff5db008ace4d8ac11fdbdb4acd01e",
+    "map_specific_triggers": [
+      "end_game",
+      "secret_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:17:52Z"
+    }
+  },
+  "archive": {
+    "original": "_1Perk_2or_3Weapon.exe",
+    "original_sha256": "c3d3235b5429aaae8afb17cdf23235670e0355168f8e710e0c8fb62f67e8b5d7",
+    "original_size": 475423690,
+    "source_url": "https://www.mediafire.com/file/kn16z0q0gxz1wp8/%255E1Perk_%255E2or_%255E3Weapon.exe/file",
+    "source_page": "https://callofdutyrepo.com/2021/08/23/perk-or-weapon/",
+    "fetched": "2026-09-26T02:49:13Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "challenge"
+    ],
+    "catalogue_description": "this is a challenge choosing between a perk or weapon without seeing what it is weapon left doors perks right doors in case they get confused xd I said I was not going to bring any more map but I already had the idea in mind and I was able to do it so I think this will be the last in a while my map contains weapons of infinit, bo2 and bo3 2 special bosses brutus and napal 3 hit system like bo3 5 special weapons power up from pack to ponch A trigger egg that is out of the playable zone zombies run from round 1 and an affordable finish Thanks to these people for the tutorials and tools that my map has Credits: Gogeta DTZxPorter Sanchez78 ElTitoPricus Ricko0z Sidzzz Shippuden1592 TaXi Thunderfrost ShadowDCU Espi_thekiller SpyroScope",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [
+        "gympie6_perks.iwd:images/~p7_zm_vending_ads_logo_spc-r~301c48c1.iwi",
+        "gympie6_perks.iwd:images/p7_zm_vending_ads_logo_col.iwi",
+        "gympie6_perks.iwd:images/specialty_fastreload_zombies.iwi",
+        "nazi_zombie_gun.iwd:images/mc_customcodlogo.iwi",
+        "nazi_zombie_gun.iwd:images/mc_zmlogo.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 187.0,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 67,
+        "scripts": 0,
+        "bytes": 176320
+      },
+      {
+        "file": "gympie6_perks.iwd",
+        "entries": 235,
+        "scripts": 7,
+        "bytes": 46705256
+      }
+    ],
+    "flags": [
+      "client_memory_risk",
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_gun.ff",
+      "nazi_zombie_gun_patch.ff",
+      "gympie6_perks.iwd:maps/_loadout.gsc",
+      "nazi_zombie_gun.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

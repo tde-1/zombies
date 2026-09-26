@@ -1,0 +1,197 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_yt",
+  "title": "Cage Christmas (Christmas House)",
+  "source": "custom",
+  "author": "kielrgz",
+  "released": "2022-11-05",
+  "fs_game": "mods/nazi_zombie_yt",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_yt.iwd": "f8a6da0183a05b85070795d02d7af3c0613e898d6778eb55bd9b29e303a7b41b"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000,
+        100000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 100000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 101,
+    "script_count": 101,
+    "entities": 170,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      100000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        20000,
+        "weapon_upgrade",
+        "?"
+      ],
+      [
+        10000,
+        "zombie_debris",
+        "pt2"
+      ],
+      [
+        10000,
+        "weapon_upgrade",
+        "?"
+      ],
+      [
+        5000,
+        "zombie_debris",
+        "pt4"
+      ],
+      [
+        5000,
+        "?",
+        "?"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "f8a6da0183a05b85070795d02d7af3c0613e898d6778eb55bd9b29e303a7b41b",
+    "map_specific_triggers": [
+      "end_game",
+      "magic_wheel_use"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:45:04Z"
+    }
+  },
+  "archive": {
+    "original": "_1C_2h_1r_2i_1s_2t_1m_2a_1s_2H_1o_2u_1s_2e.exe",
+    "original_sha256": "0fe986ac22c13e2b452d20ce72e81f9c91d76b1aab9b6ee82ff76ddf8a6fe4c8",
+    "original_size": 440543474,
+    "source_url": "https://www.mediafire.com/file/gexa7zeovtjdt92/%255E1C%255E2h%255E1r%255E2i%255E1s%255E2t%255E1m%255E2a%255E1s_%255E2H%255E1o%255E2u%255E1s%255E2e.exe/file",
+    "source_page": "https://callofdutyrepo.com/2022/11/05/cage-christmas/",
+    "fetched": "2026-09-26T14:42:31Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Hello everyone, I have a quick map that I made, I wanted to bring it in December, but I am very busy and I doubt that I will be able to upload it on time, so just in case I wanted to bring it now.",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_yt",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "gympie6_perks.iwd:images/~p7_zm_vending_ads_logo_spc-r~301c48c1.iwi",
+        "gympie6_perks.iwd:images/p7_zm_vending_ads_logo_col.iwi",
+        "gympie6_perks.iwd:images/specialty_fastreload_zombies.iwi",
+        "nazi_zombie_yt.iwd:images/loadscreen_nazi_zombie_yt.iwi",
+        "nazi_zombie_yt.iwd:images/specialty_fastreload_zombies.iwi",
+        "nazi_zombie_yt.iwd:images/weapon_red_cross_background.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_yt"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 79.7,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 67,
+        "scripts": 0,
+        "bytes": 176320
+      },
+      {
+        "file": "gympie6_perks.iwd",
+        "entries": 285,
+        "scripts": 7,
+        "bytes": 100360819
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_yt.ff",
+      "nazi_zombie_yt_patch.ff",
+      "nazi_zombie_yt.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

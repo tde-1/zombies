@@ -1,0 +1,230 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "itesi",
+  "title": "Xmas Itesi",
+  "source": "custom",
+  "author": "shippuden1592",
+  "released": "2021-01-04",
+  "fs_game": "mods/itesi",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@itesi.iwd": "4635636bfcf52ce82ece11d044ae6079e3b74c3ef36f565dfa6a5d108d976325"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "boss_jump",
+        "ee_spaceships",
+        "simon_boss"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "boss_jump, ee_spaceships, simon_boss look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 121,
+    "script_count": 121,
+    "entities": 3196,
+    "ee_candidates": [
+      "boss_jump",
+      "ee_spaceships",
+      "simon_boss"
+    ],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game",
+      "mech_escape_trigger",
+      "struct_black_hole_teleport",
+      "teleport_fx",
+      "teleport_spawn"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "door4"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "door7"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "door20"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "door20"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "door2"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "4635636bfcf52ce82ece11d044ae6079e3b74c3ef36f565dfa6a5d108d976325",
+    "map_specific_triggers": [
+      "activate_mg",
+      "crystal_blue_model_trig",
+      "crystal_blue_pick_trig",
+      "crystal_green_model_trig",
+      "crystal_green_pick_trig",
+      "crystal_red_model_trig",
+      "crystal_red_pick_trig",
+      "crystal_yellow_model_trig",
+      "crystal_yellow_pick_trig",
+      "dischord_area",
+      "discoball_pick_trig",
+      "ee_spaceships",
+      "facemelter_area",
+      "hat_snowman",
+      "headcutter_area",
+      "laser_control",
+      "laser_hurt",
+      "magic_wheel_use",
+      "mech_escape_trigger",
+      "open_door_battle",
+      "paproom_trigger",
+      "paproom_volume",
+      "shredder_area",
+      "simon_dice_active",
+      "space_mainframe_trigger",
+      "space_teleporter_trigger",
+      "spaceshuttle_pick_trig",
+      "stick_trap",
+      "ufo_simon_trigg",
+      "zipline_trig"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:34:03Z"
+    }
+  },
+  "archive": {
+    "original": "Xmas_Itesi.exe",
+    "original_sha256": "115b299e72ff4d4c57e84dee81b9b5a9dc123b44348c556e15ff1d7b92b9fa9f",
+    "original_size": 420443177,
+    "source_url": "https://www.mediafire.com/file/iwpuby9n6pc4qhn/Xmas_Itesi.exe/file",
+    "source_page": "https://callofdutyrepo.com/2021/01/04/xmas-itesi/",
+    "fetched": "2026-09-26T02:46:52Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "easter_egg",
+      "top100",
+      "bossfight_ending",
+      "leaderboard",
+      "top_100"
+    ],
+    "catalogue_description": "A little Christmas variant of my last map, with some new additions. I hope you enjoy it. Features Weapons (Bo, Bo2) Candy Perks 4 Wonder Weapons ( Bo, Bo2, Bo3 ) 4 Bosses Teleporter Style Spaceland EE (hard difficulty) Final battle Special thanks Sidzzz DTZxPorter Dr.Squidbot Harry Bo21 GunofTZ JBird632 ricko0z Gogeta Jerri13hdez Deper espi_thekiller jerri13 ElTitoPricus johndoe jei9363 YaPh1l DamianoTBM XSanchez RDV ProRevenge BluntStuffy PROxFTW Rollonmath42 CFGFACTORY",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_itesi",
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_cobos",
+        "loadscreen_xmas_cobos",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "itesi.iwd:images/itesi_menu.iwi",
+        "itesi.iwd:images/loadscreen_itesi.iwi",
+        "itesi.iwd:images/weapon_red_cross_background.iwi",
+        "itesi.iwd:images/zom_marines_loadout_b_col.iwi",
+        "itesi.iwd:images/zom_marines_loadout_b_light.iwi",
+        "itesi.iwd:images/zom_marines_loadout_b_nml.iwi",
+        "itesi.iwd:images/~~zom_marines_loadout_b_spc-r~1ddd887b.iwi",
+        "itesi_images.iwd:images/mtl_standee_logos.iwi",
+        "itesi_images.iwd:images/specialty_fastreload_zombies.iwi",
+        "itesi_images.iwd:images/~~zom_marines_loadout_b_spc-r~1ddd887b.iwi",
+        "itesi_images.iwd:images/dukip_menu.iwi",
+        "itesi_images.iwd:images/dukip_menu2.iwi"
+      ],
+      "loadscreen": "loadscreen_itesi"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 104.6,
+    "addon_iwds": [
+      {
+        "file": "blst_panzersoldat.iwd",
+        "entries": 15,
+        "scripts": 2,
+        "bytes": 4281450
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "itesi_patch.ff",
+      "mod.ff",
+      "itesi.iwd:animscripts/death.gsc",
+      "itesi.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

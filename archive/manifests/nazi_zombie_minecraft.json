@@ -1,0 +1,208 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_minecraft",
+  "title": "Desert Tower Minecraft",
+  "source": "custom",
+  "author": "kielrgz",
+  "released": "2022-10-01",
+  "fs_game": "mods/nazi_zombie_minecraft",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_minecraft.iwd": "d22608bf4c85d4985784ebfd208403d3b36edaa51adc7c3bc487eda37d78cf09"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_trigger"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game",
+        "end_trigger",
+        "mech_escape_trigger"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        3000,
+        5000,
+        45000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game, end_trigger, mech_escape_trigger name an ending and are this map's own; script hardcodes cost 45000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 89,
+    "script_count": 89,
+    "entities": 844,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game",
+      "end_trigger",
+      "mech_escape_trigger"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      5000,
+      45000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        10000,
+        "zombie_debris",
+        "zona9"
+      ],
+      [
+        9000,
+        "zombie_debris",
+        "zona8"
+      ],
+      [
+        8000,
+        "zombie_debris",
+        "zona7"
+      ],
+      [
+        7500,
+        "weapon_upgrade",
+        "servant"
+      ],
+      [
+        7000,
+        "zombie_debris",
+        "zona6"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "d22608bf4c85d4985784ebfd208403d3b36edaa51adc7c3bc487eda37d78cf09",
+    "map_specific_triggers": [
+      "end_trigger",
+      "lava_damage",
+      "mech_escape_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:45:05Z"
+    }
+  },
+  "archive": {
+    "original": "Desert_Tower_Minecraft_V1.1.exe",
+    "original_sha256": "5e3aeeaa576f576ae65e2791c389f66e1c887d57e9b98a396faccbb753fcd0a7",
+    "original_size": 307851716,
+    "source_url": "https://www.mediafire.com/file/27qmaoirsuie26f/Desert_Tower_Minecraft_V1.1.exe/file",
+    "source_page": "https://callofdutyrepo.com/2022/10/01/desert-tower-minecraft/",
+    "fetched": "2026-09-26T14:42:47Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Very good everyone, I bring you a quick custom express that I made from Minecraft. I hope you like it as much as I do. I wanted to tell you that this little map brings several things so you will surely see those details on the map. Without more to say I leave you a video and images\u2026 below the download of the map. my map does not require t4m, it is already something that I solved so good enjoy! What does this mod include?: Weapons BO2,MW2 Special Weapon Apoticon Servant Purchasable End Zombies Desert Minecraft Skin Lava damage Sound Ambiance Hitmaker Zombie Counter Perks BO1,BO2,BO3 Wunderwizz Minecraft Textures Panzer Soldat Boss Half Life 2 ViewHands Half Life 2 Player Model Credits: Shippuden Lion Klaudeh Thunderfrost Gympie5 Creep115 Coca 3 Litros",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_minecraft",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "gympie6_perks.iwd:images/~p7_zm_vending_ads_logo_spc-r~301c48c1.iwi",
+        "gympie6_perks.iwd:images/p7_zm_vending_ads_logo_col.iwi",
+        "gympie6_perks.iwd:images/specialty_fastreload_zombies.iwi",
+        "nazi_zombie_minecraft.iwd:images/loadscreen_nazi_zombie_minecraft.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_minecraft"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 74.9,
+    "addon_iwds": [
+      {
+        "file": "blst_panzersoldat.iwd",
+        "entries": 15,
+        "scripts": 2,
+        "bytes": 4281386
+      },
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 123,
+        "scripts": 0,
+        "bytes": 333477
+      },
+      {
+        "file": "gympie6_perks.iwd",
+        "entries": 286,
+        "scripts": 7,
+        "bytes": 100674998
+      },
+      {
+        "file": "gympie6_wunderfizz.iwd",
+        "entries": 31,
+        "scripts": 0,
+        "bytes": 5479386
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_minecraft.ff",
+      "nazi_zombie_minecraft_patch.ff",
+      "nazi_zombie_minecraft.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

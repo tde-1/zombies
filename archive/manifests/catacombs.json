@@ -1,0 +1,269 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "catacombs",
+  "title": "Catacombs",
+  "source": "custom",
+  "author": "Tetration",
+  "released": "2022-08-12",
+  "fs_game": "mods/catacombs",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@catacombs.iwd": "f8bffeea393668ede902b704452bc426efccf4f7fcfe9243fe2937d756712d34"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "easter_skull_0",
+        "easter_skull_1",
+        "easter_skull_2",
+        "easter_skull_3",
+        "easter_skull_4",
+        "easter_trigger"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "easter_skull_0, easter_skull_1, easter_skull_2, easter_skull_3, easter_skull_4, easter_trigger look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 115,
+    "script_count": 115,
+    "entities": 1713,
+    "ee_candidates": [
+      "easter_skull_0",
+      "easter_skull_1",
+      "easter_skull_2",
+      "easter_skull_3",
+      "easter_skull_4",
+      "easter_trigger"
+    ],
+    "ending_words": [
+      "church_teleport_fxspot",
+      "church_teleport_spawn",
+      "church_teleport_trigger",
+      "crawler_round_ending",
+      "end_game",
+      "end_teleport_fxspot",
+      "end_teleport_spawn",
+      "end_teleport_trigger",
+      "ending_soul_area",
+      "ending_soul_complete",
+      "ending_soul_spot",
+      "lne_teleport_fxspot",
+      "lne_teleport_spawn",
+      "lne_teleport_trigger",
+      "lnw_teleport_fxspot",
+      "lnw_teleport_spawn",
+      "lnw_teleport_trigger",
+      "lse_teleport_fxspot",
+      "lse_teleport_spawn",
+      "lse_teleport_trigger",
+      "lsw_teleport_fxspot",
+      "lsw_teleport_spawn",
+      "lsw_teleport_trigger",
+      "mech_escape_trigger",
+      "une_teleport_fxspot",
+      "une_teleport_spawn",
+      "une_teleport_trigger",
+      "unw_teleport_fxspot",
+      "unw_teleport_spawn",
+      "unw_teleport_trigger",
+      "use_teleport_fxspot",
+      "use_teleport_spawn",
+      "use_teleport_trigger",
+      "usw_teleport_fxspot",
+      "usw_teleport_spawn",
+      "usw_teleport_trigger"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      5000,
+      300000
+    ],
+    "orphan_end_triggers": [
+      "lne_teleport_trigger",
+      "lnw_teleport_trigger",
+      "lse_teleport_trigger",
+      "lsw_teleport_trigger",
+      "une_teleport_trigger",
+      "unw_teleport_trigger",
+      "use_teleport_trigger",
+      "usw_teleport_trigger"
+    ],
+    "top_costs": [
+      [
+        10000,
+        "zombie_debris",
+        "debris36"
+      ],
+      [
+        10000,
+        "zombie_debris",
+        "debris35"
+      ],
+      [
+        10000,
+        "zombie_debris",
+        "debris34"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "debris38"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "debris37"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "f8bffeea393668ede902b704452bc426efccf4f7fcfe9243fe2937d756712d34",
+    "map_specific_triggers": [
+      "church_teleport_trigger",
+      "easter_trigger",
+      "end_game",
+      "end_teleport_trigger",
+      "ending_soul_area",
+      "lne_teleport_trigger",
+      "lnw_teleport_trigger",
+      "lse_teleport_trigger",
+      "lsw_teleport_trigger",
+      "mech_escape_trigger",
+      "ne_soul_area",
+      "nw_soul_area",
+      "nw_soul_area2",
+      "piano_trigger",
+      "podium_trigger",
+      "se_soul_area",
+      "sw_soul_area",
+      "sw_soul_area2",
+      "une_teleport_trigger",
+      "unw_teleport_trigger",
+      "use_teleport_trigger",
+      "usw_teleport_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:50:27Z"
+    }
+  },
+  "archive": {
+    "original": "catacombs_v1.1.exe",
+    "original_sha256": "0b0dfbdcb31e6e4e6c55908b8b8722edabd6eb9b2950ebf3b3e3872c84122c3e",
+    "original_size": 441044541,
+    "source_url": "https://www.mediafire.com/file/z4bwcydtuehdoxh/catacombs_v1.1.exe/file",
+    "source_page": "https://callofdutyrepo.com/2022/08/12/catacombs/",
+    "fetched": "2026-09-26T14:47:26Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "This is my first map, so please be kind with your feedback. The goal I had for this map was to make a map that is confusing to navigate and requires a bit of strategizing and optimization to complete. The theme of exploring a maze of tunnels was conducive to accomplishing this goal. To escape, you must move through the maze, collecting weapons and perks as you fight through waves of the undead. Once you free yourself from the constrictive passageways, you\u2019ll discover a quaint church which presents a daunting final challenge. This map is not intended to be a re-creation of the Paris catacombs, its just a series of tunnels with a few bones in it. (I didn\u2019t even know about the cancelled nazi_zombie_paris map until I started scripting.) I didn\u2019t intend for this map to be extremely challenging since it takes quite a long time to complete and I don\u2019t like restarting a map after failing an hour into it. Most of the difficulty is baked into the early game to avoid massive losses of progress. This also has the effect of making your power growth more tangible as you collect the perks and upgrade your weapons. I didn\u2019t test 3-4 player coop, so feel free to voice any balance complaints you may have. There were a few issues that I did my best to eliminate. Sometimes the zombies\u2019 pathing breaks. To solve this, I simply respawn zombies if their pathing is broken for a few seconds. Rarely the mauser\u2019s model is messed up on load. I don\u2019t think I can fix this, but it only happens at the beginn",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_catacombs",
+        "loadscreen_mak"
+      ],
+      "iwd_images": [
+        "catacombs.iwd:images/menu_map_catacombs.iwi",
+        "catacombs.iwd:images/weapon_red_cross_background.iwi",
+        "gympie6_perks.iwd:images/~p7_zm_vending_ads_logo_spc-r~301c48c1.iwi",
+        "gympie6_perks.iwd:images/p7_zm_vending_ads_logo_col.iwi",
+        "gympie6_perks.iwd:images/specialty_fastreload_zombies.iwi"
+      ],
+      "loadscreen": "loadscreen_catacombs"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 113.2,
+    "addon_iwds": [
+      {
+        "file": "blst_panzersoldat.iwd",
+        "entries": 15,
+        "scripts": 2,
+        "bytes": 4281482
+      },
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 67,
+        "scripts": 0,
+        "bytes": 176290
+      },
+      {
+        "file": "gympie6_perks.iwd",
+        "entries": 285,
+        "scripts": 7,
+        "bytes": 100287270
+      },
+      {
+        "file": "trem_hintstrings.iwd",
+        "entries": 1,
+        "scripts": 1,
+        "bytes": 1108
+      }
+    ],
+    "flags": [
+      "client_memory_risk",
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "catacombs.ff",
+      "catacombs_patch.ff",
+      "mod.ff",
+      "catacombs.iwd:animscripts/death.gsc",
+      "catacombs.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

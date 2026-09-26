@@ -1,0 +1,238 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nz_sdt2",
+  "title": "SCHLOSS DER TOTEN",
+  "source": "custom",
+  "author": "Sylvacre",
+  "released": "2016-08-26",
+  "fs_game": "mods/nz_sdt2",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nz_sdt2.iwd": "ee8b3b72fd8c5d76d953fa44e219ef37e2487e20b483b50eeacd3aeab6d41895"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        3000,
+        50000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 50000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 149,
+    "script_count": 149,
+    "entities": 1293,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      50000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "pf1974_auto1",
+        "?"
+      ],
+      [
+        4000,
+        "pf2083_auto1",
+        "?"
+      ],
+      [
+        3000,
+        "pf2118_auto1",
+        "?"
+      ],
+      [
+        3000,
+        "pf2066_auto1",
+        "?"
+      ],
+      [
+        2500,
+        "pf2003_auto1",
+        "?"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "ee8b3b72fd8c5d76d953fa44e219ef37e2487e20b483b50eeacd3aeab6d41895",
+    "map_specific_triggers": [
+      "activate_by_touch",
+      "claymore_purchase",
+      "end_game",
+      "harrybo21_perk_trigger",
+      "soul_chest_area",
+      "soul_chest_reward"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:23:23Z"
+    }
+  },
+  "archive": {
+    "original": "nz_sdt2.exe",
+    "original_sha256": "f815fc08ce639c5f8d2aa4fe649d797412607e91a842e2861a1254da4bbc89dc",
+    "original_size": 873715292,
+    "source_url": "https://www.mediafire.com/file/ycssbgudpyz8te0/nz_sdt2.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T02:16:08Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "easter_egg",
+      "buyable_ending",
+      "t4m_req"
+    ],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak",
+        "loadscreen_nz_sdt2"
+      ],
+      "iwd_images": [
+        "banana_colada_v1.0.2.iwd:images/p7_zm_vending_ads_logo_col.iwi",
+        "banana_colada_v1.0.2.iwd:images/specialty_fastreload_zombies.iwi",
+        "banana_colada_v1.0.2.iwd:images/~p7_zm_vending_ads_logo_spc-r~301c48c1.iwi",
+        "nz_sdt2.iwd:images/custom_zombies_menu.iwi",
+        "nz_sdt2.iwd:images/custom_zombies_menu2.iwi",
+        "nz_sdt2.iwd:images/custom_zombies_menu3.iwi",
+        "nz_sdt2.iwd:images/loadscreen_nz_sdt2.iwi",
+        "nz_sdt2.iwd:images/menu_map_custom_zombies_menu.iwi",
+        "nz_sdt2.iwd:images/p7_zm_vending_ads_logo_col.iwi",
+        "nz_sdt2.iwd:images/specialty_fastreload_zombies.iwi",
+        "nz_sdt2.iwd:images/~p7_zm_vending_ads_logo_spc-r~301c48c1.iwi"
+      ],
+      "loadscreen": "loadscreen_nz_sdt2"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 85.5,
+    "addon_iwds": [
+      {
+        "file": "banana_colada_v1.0.2.iwd",
+        "entries": 352,
+        "scripts": 0,
+        "bytes": 75945392
+      },
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 67,
+        "scripts": 0,
+        "bytes": 176320
+      },
+      {
+        "file": "harrybos mysterybox pack v1..0.0.iwd",
+        "entries": 27,
+        "scripts": 0,
+        "bytes": 6305476
+      },
+      {
+        "file": "motd_zombie_images.iwd",
+        "entries": 30,
+        "scripts": 0,
+        "bytes": 8573564
+      },
+      {
+        "file": "nazi_zombie_asylum.iwd",
+        "entries": 6,
+        "scripts": 6,
+        "bytes": 2722
+      },
+      {
+        "file": "nsz_bo2_weapons_v1.3.5.iwd",
+        "entries": 337,
+        "scripts": 0,
+        "bytes": 90627254
+      },
+      {
+        "file": "nsz_denizens_v1.0.0.iwd",
+        "entries": 16,
+        "scripts": 0,
+        "bytes": 6108942
+      },
+      {
+        "file": "nsz_hb21_motd_wolves_v1.0.0.iwd",
+        "entries": 40,
+        "scripts": 0,
+        "bytes": 4939411
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nz_sdt2.ff",
+      "nz_sdt2_patch.ff",
+      "nz_sdt2.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

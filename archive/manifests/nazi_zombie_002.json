@@ -1,0 +1,189 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_002",
+  "title": "Nazi Zombie 002 - Anstalt Der Untoten",
+  "source": "custom",
+  "author": "YaPh1l",
+  "released": "2013-03-31",
+  "fs_game": "mods/nazi_zombie_002",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@_phil_mod.iwd": "ba39fb3d4d27b89f0fd327168d7f7e00253d0ac46358ee6c041d5dd7f062ab55"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "buy_game_won"
+        }
+      },
+      "candidates": [
+        "buy_game_won",
+        "crawler_round_ending",
+        "end_game",
+        "ending_allowed"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        3000,
+        5000,
+        7500,
+        17500
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "buy_game_won, crawler_round_ending, end_game, ending_allowed name an ending and are this map's own; script hardcodes cost 17500",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 151,
+    "script_count": 151,
+    "entities": 1,
+    "ee_candidates": [],
+    "ending_words": [
+      "buy_game_won",
+      "crawler_round_ending",
+      "end_game",
+      "ending_allowed"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      5000,
+      7500,
+      17500
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "common_scripts/utility.gsc",
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "ba39fb3d4d27b89f0fd327168d7f7e00253d0ac46358ee6c041d5dd7f062ab55",
+    "map_specific_triggers": [],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:40:18Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_002_v1.1.exe",
+    "original_sha256": "14b847311f8d9aad120804f4ec09ae7f70562411f4447fdfb57fd0a44560a056",
+    "original_size": 194871544,
+    "source_url": "http://www.mediafire.com/file/87gjdd1d826267s/nazi_zombie_002_v1.1.exe/file",
+    "source_page": "https://callofdutyrepo.com/2013/03/31/nazi-zombie-002-anstalt-der-untoten/",
+    "fetched": "2026-09-26T14:37:32Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Trailer: Nazi Zombie 002 \u2013 Anstalt der Untoten \u2013 Trailer Changelog v1.1: \u2013 Fixed several places where players could glitch out of the map \u2013 Changed objective system to use CoD\u2019s system, you can now always view the objectives by pressing Tab in solo / Esc in coop (We left the objective button in the map, but it is useless now, it\u2019ll just tell you which button to press in order to show the objectives) Download v1.1: MediaFire GameFront Mega Story-Timeline: 1942, during WWII. The U.S. government got information about Germany\u2019s experiments with element 115. They launch their own program at the Eastern State Penitentiary, Philadelphia. They use the prisoners as test subjects. Early 1944 More and more prisoners die. The researchers suspect element 115 to be the cause. Early 1945 Almost all prisoners are dead because of the experiments. The prison is now a graveyard. March 1945, 2 months before end of WWII. The program is suddenly stopped by the government. The researchers leave the Eastern State. 1947, about one year after the events of \u201cDer Riese\u201d. Dr. Richtofen was finally able to find out where the USA experimented with element 115, as there are more and more reports about suspicious events. The team of four travels to the Eastern State, trying to prevent the inevitable. A letter from Dr. Gordon A. Rand: Features: * It is a replica of the famous place \u201cEastern State Prison\u201d in Philadelphia * Extremly huge map with over 200 different cells * Weather ambient: rain * 10 Powerups (s",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_002"
+      ],
+      "iwd_images": [
+        "_phil_data.iwd:images/zombie_perkbottle_deadshot_logo.iwi",
+        "_phil_data.iwd:images/zombie_perkbottle_mulekick_logo.iwi",
+        "_phil_data.iwd:images/zombie_perkbottle_pointwhore_logo.iwi",
+        "_phil_data.iwd:images/zombie_perkbottle_staminup_logo.iwi",
+        "_phil_data.iwd:images/zombie_perkbottle_tufbrew_logo.iwi",
+        "_phil_data.iwd:images/zombie_vending_three_gun_logo_c.iwi",
+        "_phil_data.iwd:images/zombie_vending_three_gun_logo_normal.iwi",
+        "_phil_data.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "_phil_data.iwd:images/_-gzombie_vending_ads_logo_normal.iwi",
+        "nazi_zombie_002.iwd:images/anstalt_logo_black.iwi",
+        "nazi_zombie_002.iwd:images/loadscreen_nazi_zombie_002.iwi",
+        "nazi_zombie_002.iwd:images/menu_background.iwi",
+        "nazi_zombie_002.iwd:images/menu_map_nazi_zombie_002.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_002"
+    }
+  },
+  "notes": "Replaces common scripts (common_scripts/utility.gsc, maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 126.6,
+    "addon_iwds": [
+      {
+        "file": "_phil_data.iwd",
+        "entries": 358,
+        "scripts": 0,
+        "bytes": 41511821
+      },
+      {
+        "file": "_phil_mod.iwd",
+        "entries": 80,
+        "scripts": 75,
+        "bytes": 321635
+      }
+    ],
+    "flags": [
+      "client_memory_risk",
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_002.ff",
+      "_phil_mod.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "_phil_mod.iwd:maps/tom_music_player_unl.gsc",
+        "menus": [],
+        "responses": [
+          "9"
+        ],
+        "note": "in game: a music player"
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

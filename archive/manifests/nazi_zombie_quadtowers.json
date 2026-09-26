@@ -1,0 +1,198 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_quadtowers",
+  "title": "QUAD TOWERS",
+  "source": "custom",
+  "author": "StyledSnail",
+  "released": "2017-01-02",
+  "fs_game": "mods/nazi_zombie_quadtowers",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@QuadTowers.iwd": "5ce8e341684bf4a72e1b8278a1e6206da4a56c3d1cac8ef57b16d6af9e3cb47c"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "crawler_round_ending"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        3000,
+        4000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 4000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 110,
+    "script_count": 110,
+    "entities": 2865,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      3000,
+      4000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        8000,
+        "zombie_door",
+        "auto254"
+      ],
+      [
+        8000,
+        "zombie_door",
+        "auto254"
+      ],
+      [
+        8000,
+        "zombie_door",
+        "auto215"
+      ],
+      [
+        8000,
+        "zombie_door",
+        "auto215"
+      ],
+      [
+        8000,
+        "zombie_door",
+        "auto176"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "5ce8e341684bf4a72e1b8278a1e6206da4a56c3d1cac8ef57b16d6af9e3cb47c",
+    "map_specific_triggers": [
+      "harrybo21_perk_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:18:10Z"
+    }
+  },
+  "archive": {
+    "original": "QuadTowers_v1.0_UGX.exe",
+    "original_sha256": "116ab1ae4a80b0b1ac82f146aab85c092a25f381f0e7ce8e4b164fa3040320ab",
+    "original_size": 300406444,
+    "source_url": "https://mega.nz/file/qw5XCT6J#gB6uM8eKowJKCCffEYbupoKvu7uVqghjUdN5UyYon_A",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T02:18:32Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "This is the first release of my new map Quad Towers. It consists of 4 equal towers that only meet at the bottom and the top. This is a decently difficult map. I recommend playing coop. There aren\u2019t many camping spots so have fun training! WARNING!!!!! If you need to restart the map, you need to reload the map instead. If you restart level, it will break the map. It will give you an infinite loop error when you get hurt and will mess with the loadouts and not let you get guns, but will still take your points. Information: The little dog/gargoyle statues on the corners outside are the source of the lights. There are 2-3 riser spawns on each level of each building. There are no dogs. When I brought all of the files to replace from Harrybo21\u2019s perks, it messed up a lot of stuff so I had to make do with what I could. Fixes will be released when I get the stuff working. I set solo quick revive count to 5 so it is easier to continue. There are no power switches. 2 buildings have a box at the bottom floor, the other 2 don\u2019t. If a box is there, but also has a teddy, then it doesn\u2019t count as a working box. The box is not actually there. (will be shown in one of the pictures below) The zombie counter sometimes will have a few extra, use the time before the round ends to get around the map. You will only get a few seconds. This map includes all perks up to BO2, with the BO3 Models for the perks. There is also Widow\u2019s Wine from BO3. There are wall-buy weapons on most of the floors of the ",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [
+        "Harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/p6_zm_al_vending_ads_logo_m.iwi",
+        "Harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/p6_zm_al_vending_three_gun_logo_m.iwi",
+        "Harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/p6_zm_al_vending_three_gun_logo_n.iwi",
+        "Harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/p7_zm_vending_ads_logo_col.iwi",
+        "Harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/specialty_fastreload_zombies.iwi",
+        "Harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "Harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/ugx_mod_menu_template.iwi",
+        "Harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "Harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/_-gp6_zm_al_vending_ads_logo_c.iwi",
+        "Harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "Harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/_-gzombie_vending_sleight_logo_c.iwi",
+        "Harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~-gp6_zm_al_vending_ads_logo_c.iwi",
+        "Harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~-gp6_zm_al_vending_three_gun_logo_c.iwi",
+        "Harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~p7_zm_vending_ads_logo_spc-r~301c48c1.iwi",
+        "Harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~__-gzombie_vending_ads_logo_~7aa94a54.iwi",
+        "Harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~~~-gzombie_vending_ads_logo_~54fdbc62.iwi",
+        "QuadTowers.iwd:images/specialty_fastreload_zombies.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 88.5,
+    "addon_iwds": [
+      {
+        "file": "Harrybo21_bo1_2_3_perks_v5.0.0.iwd",
+        "entries": 609,
+        "scripts": 0,
+        "bytes": 132191594
+      },
+      {
+        "file": "QuadTowers.iwd",
+        "entries": 117,
+        "scripts": 25,
+        "bytes": 814439
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_quadtowers.ff",
+      "nazi_zombie_quadtowers_patch.ff",
+      "QuadTowers.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

@@ -1,0 +1,205 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "pizza_spyral",
+  "title": "Pizza Spyral Challenge",
+  "source": "custom",
+  "author": "Klaudeh",
+  "released": "2023-08-02",
+  "fs_game": "mods/pizza_spyral",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@pizza_spyral.iwd": "577202f83dffeb93ae17f537f62fddb59c10718176682e3dc988b6d520c82ee0"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        3000,
+        5000,
+        50000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 50000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 116,
+    "script_count": 116,
+    "entities": 561,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      5000,
+      50000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "zombie_door",
+        "auto23"
+      ],
+      [
+        5000,
+        "zombie_door",
+        "auto22"
+      ],
+      [
+        5000,
+        "zombie_door",
+        "auto21"
+      ],
+      [
+        5000,
+        "zombie_door",
+        "auto20"
+      ],
+      [
+        5000,
+        "zombie_door",
+        "auto19"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "577202f83dffeb93ae17f537f62fddb59c10718176682e3dc988b6d520c82ee0",
+    "map_specific_triggers": [
+      "damage",
+      "end_game",
+      "pizza_target1",
+      "pizza_target2",
+      "pizza_target3",
+      "pizza_target4",
+      "pizza_target5",
+      "pizza_target6"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:41:30Z"
+    }
+  },
+  "archive": {
+    "original": "Pizza_Spyral.exe",
+    "original_sha256": "57c0588eb16e6a0ff38430eb518b2e582c0c8acea8fc07aad5e72b79ea6f8659",
+    "original_size": 261225917,
+    "source_url": "https://www.mediafire.com/file_premium/o29jfplal6oduce/Pizza_Spyral.exe/file",
+    "source_page": "https://callofdutyrepo.com/2023/08/02/pizza-spyral-challenge/",
+    "fetched": "2026-09-26T14:40:38Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Just a simple \u201cChallenge\u201d map in collab with Crepp115 , we thought of making a Pizza Tower map inspired by others food related maps like the \u201cCube\u201d series or others towers (Cheese Cube U/Enclosed/Pickles Tower/Etc). So why not a Pizza map haha. Nothing too special this time, just another Tower with some Parkour and a lot of Zombies, but ALOT. So with nothing more to say, i hope you enjoy the map and try the challenge with some friends to have fun with! This map features: \u2013 Custom Weapons from BO1, BO2, MW3 and BO3. \u2013 Bo1, Bo2 and Bo3 Perks \u2013 BO2 Nuke \u2013 3 hits system \u2013 Mob of the Dead Zombies \u2013 Bo3 HUD (kinda) \u2013 Power up customs (Random Perk Power Up, Pack and Punch Power Up, Money Power Up) \u2013 Sprinters \u2013 Hug Fix and Bo1 knife \u2013 Buyable ending \u2013 Custom Camo \u2013 Hitmarkers \u2013 Added recoil and balance to weapon movement \u2013 Shootable Easter Egg \u2013 Brutus from MOTD \u2013 Moving Platforms \u2013 Rising Water Credits: \u2013 Shippuden1592 (Power up Money, Brutus Scripts and Models, Elemental Staff, some weapons from Bo3 and Bo1, BO2 Nuke) \u2013 Ricko0z (Bo3 Weapons, Bo2 Weapons and Bo1 Weapons) \u2013 BluntStuffy (PanzerSoldat) \u2013 Gympie6 (Perks of Bo1, Bo2 and Bo3) \u2013 TaXi (3 hits system) \u2013 ThunderFrosty (Customizable Bo2 HUD, Diferent tutorials, Script References) \u2013 Steviewonder87 (Zombie Hug fix and bo1 knife) \u2013 SajeOne (Buyable Ending) \u2013 Kielrgz (Ideas for the map) \u2013 Tim / M0xf / GeekComm (Custom box from bo3, Bo3 power up models and teddy) \u2013 BaD BoY 17 Aka \u201cTim Smith\u201d (Some bo3 weapons) \u2013 PROxFTW / MZslayer",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [
+        "gympie6_perks.iwd:images/p7_zm_vending_ads_logo_col.iwi",
+        "gympie6_perks.iwd:images/specialty_fastreload_zombies.iwi",
+        "gympie6_perks.iwd:images/~p7_zm_vending_ads_logo_spc-r~301c48c1.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 60.4,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 67,
+        "scripts": 0,
+        "bytes": 176320
+      },
+      {
+        "file": "gympie6_perks.iwd",
+        "entries": 237,
+        "scripts": 7,
+        "bytes": 46717928
+      },
+      {
+        "file": "motd_zombie_images.iwd",
+        "entries": 30,
+        "scripts": 0,
+        "bytes": 8573564
+      },
+      {
+        "file": "nazi_zombie_asylum.iwd",
+        "entries": 6,
+        "scripts": 6,
+        "bytes": 2722
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "pizza_spyral.ff",
+      "pizza_spyral_patch.ff",
+      "gympie6_perks.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

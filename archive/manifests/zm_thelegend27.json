@@ -1,0 +1,169 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "zm_thelegend27",
+  "title": "THE LEGEND 27",
+  "source": "custom",
+  "author": "cristian_morales",
+  "released": "September 04, 2019, 07:44:13 pm",
+  "fs_game": "mods/zm_thelegend27",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@zm_thelegend27.iwd": "1dd80b1b7afe5061f9cedd041fde8e4d097479e4ea02b16de292bfea9c62ebeb"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "crawler_round_ending"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game",
+        "projroom_teleport_player0",
+        "projroom_teleport_player1",
+        "projroom_teleport_player2",
+        "projroom_teleport_player3",
+        "theater_teleport_player0",
+        "theater_teleport_player1",
+        "theater_teleport_player2",
+        "theater_teleport_player3"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        5000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game, projroom_teleport_player0, projroom_teleport_player1, projroom_teleport_player2, projroom_teleport_player3 name an ending and are this map's own; script hardcodes cost 5000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 113,
+    "script_count": 113,
+    "entities": 2004,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game",
+      "projroom_teleport_player0",
+      "projroom_teleport_player1",
+      "projroom_teleport_player2",
+      "projroom_teleport_player3",
+      "theater_teleport_player0",
+      "theater_teleport_player1",
+      "theater_teleport_player2",
+      "theater_teleport_player3"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        950,
+        "treasure_chest_use",
+        "pf1964_auto192"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "1dd80b1b7afe5061f9cedd041fde8e4d097479e4ea02b16de292bfea9c62ebeb",
+    "map_specific_triggers": [
+      "end_game_trigger",
+      "kino_teleporter_trigger",
+      "truck_dmg"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:27:35Z"
+    }
+  },
+  "archive": {
+    "original": "zm_thelegend27.zip",
+    "original_sha256": "b39a5c1e99b6910d74c4f5f3a3f2a5239c8309240a5263c6c7e914e854cd617d",
+    "original_size": 131558952,
+    "source_url": "http://www.mediafire.com/file/6o8f3xuu9b95pyd/zm_thelegend27.zip/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T02:20:43Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "zip",
+    "shipped_executables": [
+      "_inner/$PLUGINSDIR/System.dll",
+      "_inner/$PLUGINSDIR/nsDialogs.dll",
+      "zm_thelegend27.exe"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [
+        "zm_thelegend27.iwd:images/zombie_vending_ads_logo_c.iwi",
+        "zm_thelegend27.iwd:images/zombie_vending_three_gun_logo_c.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 3 executable(s): _inner/$PLUGINSDIR/System.dll, _inner/$PLUGINSDIR/nsDialogs.dll, zm_thelegend27.exe. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 84.9,
+    "addon_iwds": [],
+    "flags": [],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "zm_thelegend27_patch.ff",
+      "zm_thelegend27.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

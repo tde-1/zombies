@@ -1,0 +1,285 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_tomb",
+  "title": "Tomb UGX Edition",
+  "source": "custom",
+  "author": "hexzombies",
+  "released": "2014-06-17",
+  "fs_game": "mods/nazi_zombie_tomb",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@ugx_mod.iwd": "e9ac10bb4ac1589bb2bbea732cbab19482279159bbd39c20f82b902d52a8e1c8"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000,
+        50000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 50000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 144,
+    "script_count": 144,
+    "entities": 1425,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      50000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_door",
+        "auto57"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto56"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto55"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto54"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto100"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc",
+      "maps/_utility.gsc"
+    ],
+    "zombiemode_sha256": "e9ac10bb4ac1589bb2bbea732cbab19482279159bbd39c20f82b902d52a8e1c8",
+    "map_specific_triggers": [
+      "buy_powerup",
+      "end_game",
+      "hankey_slidedoor",
+      "shoot_me",
+      "shoot_me1",
+      "shoot_me2",
+      "shoot_me3"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:34:35Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_tomb_ugx.exe",
+    "original_sha256": "bb76cb601ac2deec0c97a74f1810ab88a242bc9ac5ecc3f54721a7eb14c4b356",
+    "original_size": 239191125,
+    "source_url": "http://www.mediafire.com/file/9ovpbrjnj86t65t/nazi_zombie_tomb_ugx.exe/file",
+    "source_page": "https://callofdutyrepo.com/2014/06/17/tomb-ugx-edition/",
+    "fetched": "2026-09-26T14:30:32Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "This map features UGX Mod v1.0.3! Description: Zombie infested graveyard. Dark and mysterious tombs. thousands of undead monsters. Choose to fight or die and escape from The Tomb!\u201d Features: UGX MOD Kino style box light indicators. Unique Design. Skeleton Crew Zombies \u2013 the bad guys from karate kid lol. Cool Loading Screen. Graveyard and Mausoleum. Gun Game, Sharpshooter etc 4 Perk Pumps. Small Easter Egg to unlock PAP. UGX Easy Fx. And More. Credits. Treminaor and UGX Team (UGX MOD) ZK (Tutorials) YaPh1l (Box Location Indicator & Typewriter Intro Text) Tom-BMX (End Game) If I have forgotten to credit you \u2013 please message me and I will add you right away, my apologies.",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_template",
+        "loadscreen_user",
+        "loadscreen_zombie_house"
+      ],
+      "iwd_images": [
+        "nazi_zombie_tomb.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "nazi_zombie_tomb.iwd:images/ugx_mod_menu_template.iwi",
+        "ugx_mod.iwd:images/menu_button_backing_highlight.iwi",
+        "ugx_mod.iwd:images/ugx_camp_beta_menu.iwi",
+        "ugx_mod.iwd:images/ugx_mod_pregamemenu.iwi",
+        "ugx_mod.iwd:images/zombie_house_menu_bg.iwi",
+        "ugxm_guns.iwd:images/weapon_red_cross_background.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc, maps/_utility.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 83.4,
+    "addon_iwds": [
+      {
+        "file": "ugx_mod.iwd",
+        "entries": 116,
+        "scripts": 29,
+        "bytes": 30476097
+      },
+      {
+        "file": "ugxm_guns.iwd",
+        "entries": 393,
+        "scripts": 10,
+        "bytes": 78820629
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "localized_common.ff",
+      "localized_nazi_zombie_tomb.ff",
+      "mod.ff",
+      "nazi_zombie_tomb.ff",
+      "nazi_zombie_tomb_patch.ff",
+      "ugxm_customize_room_patch.ff",
+      "nazi_zombie_tomb.iwd:maps/_loadout.gsc",
+      "ugx_mod.iwd:maps/_zombiemode_spawner.gsc",
+      "ugx_mod.iwd:maps/_zombiemode_weapons.gsc",
+      "ugxm_guns.iwd:maps/ugx_pap_handle.gsc",
+      "ugxm_guns.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "modes": {
+    "ugx": {
+      "mechanism": "ugx_vote_1",
+      "calls_vote": true,
+      "default": "classic",
+      "modes": [
+        {
+          "id": "classic",
+          "label": "Classic",
+          "response": "cl",
+          "note": "Stock zombies with the UGX weapons and perks."
+        },
+        {
+          "id": "gungame",
+          "label": "Gun Game",
+          "response": "gg",
+          "note": "Every kill moves you to the next gun; no wall guns, box, perks cabinet or Pack-a-Punch."
+        },
+        {
+          "id": "arcademode",
+          "label": "Arcade Mode",
+          "response": "ar",
+          "note": "Classic plus UGX power-ups and boss rounds."
+        },
+        {
+          "id": "sharpshooter",
+          "label": "Sharpshooter",
+          "response": "ss",
+          "note": "Everyone's gun changes on a timer; 15-minute game; no buying."
+        },
+        {
+          "id": "bountyhunter",
+          "label": "Bounty Hunter",
+          "response": "bh",
+          "note": "Points race with a 15-minute limit."
+        }
+      ],
+      "options_off": [
+        "objectives"
+      ],
+      "source": {
+        "init": "ugx_mod.iwd:maps/ugxm_init.gsc",
+        "settings": "ugx_mod.iwd:maps/ugxm_user_settings.gsc",
+        "zombiemode": "ugx_mod.iwd:maps/_zombiemode.gsc"
+      }
+    },
+    "other": [
+      {
+        "script": "ugx_mod.iwd:maps/ugxm_character.gsc",
+        "menus": [],
+        "responses": [],
+        "note": "only in UGX's separate customize-room map (no custom_character entity elsewhere)"
+      },
+      {
+        "script": "ugxm_customize_room.ff:maps/ugxm_customize_room.gsc",
+        "menus": [
+          "ugxm_customize_char"
+        ],
+        "responses": [
+          "CLOSE",
+          "CUSTOM_CHAR_CAT1",
+          "CUSTOM_CHAR_CAT2",
+          "CUSTOM_CHAR_CAT3",
+          "CUSTOM_CHAR_CAT4",
+          "NONE_ACCESSORY",
+          "NONE_BODY",
+          "NONE_HAT",
+          "NONE_HEAD",
+          "RESET",
+          "THIRDPERSON"
+        ],
+        "note": "only in UGX's separate customize-room map"
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

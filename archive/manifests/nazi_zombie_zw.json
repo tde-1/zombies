@@ -1,0 +1,198 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_zw",
+  "title": "Warfare Garage ESCAPE",
+  "source": "custom",
+  "author": "Laderdiyar",
+  "released": "2023-09-16",
+  "fs_game": "mods/nazi_zombie_zw",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@zombie_warfare_garage.iwd": "9e900a6f64f8e921c0f16526bb57fe0c28f49cf6834b3298824a2912b711dc2a"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "ee_bowie_bear",
+        "ee_exp_monkey",
+        "ee_perk_bear"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "ee_bowie_bear, ee_exp_monkey, ee_perk_bear look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 128,
+    "script_count": 128,
+    "entities": 1157,
+    "ee_candidates": [
+      "ee_bowie_bear",
+      "ee_exp_monkey",
+      "ee_perk_bear"
+    ],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game",
+      "teleport_pad",
+      "teleport_zone"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      4500,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        1500,
+        "zombie_door",
+        "outside_gate_player8"
+      ],
+      [
+        1500,
+        "zombie_door",
+        "outside_gate_player7"
+      ],
+      [
+        1500,
+        "zombie_door",
+        "outside_gate_player6"
+      ],
+      [
+        1500,
+        "zombie_door",
+        "outside_gate_player5"
+      ],
+      [
+        1500,
+        "zombie_door",
+        "outside_gate_player4"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "9e900a6f64f8e921c0f16526bb57fe0c28f49cf6834b3298824a2912b711dc2a",
+    "map_specific_triggers": [
+      "catacombs_personality",
+      "pack_lever_triggers",
+      "teleport_zone",
+      "zw_perk_door"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:46:52Z"
+    }
+  },
+  "archive": {
+    "original": "Zombie_Warfare_Garage_survive4.1_.exe",
+    "original_sha256": "ab704d6c1e780ff3dfdf0546e29cbe5c6c9f7396da5a958ea91a47f75a390649",
+    "original_size": 94211873,
+    "source_url": "https://www.mediafire.com/file_premium/wsbwluehfg9hd5u/Zombie_Warfare_Garage_survive4.1%2528%25E5%258F%25B2%25E4%25B8%258A%25E6%259C%2580%25E9%259A%25BE%25E9%2580%2583%25E7%2594%259F%25E5%259B%25BE%2529.exe/file",
+    "source_page": "https://callofdutyrepo.com/2023/09/16/warfare-garage-escape/",
+    "fetched": "2026-09-26T14:45:21Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "This is an edited version of the original map \u2018Warfare Garage 3.0\u2019. It\u2019s a classic ZCT style map and the standalone is based on DER RISE ( waw version 1.7 )with classic waw weapons. The original version is not able to be survived but I edited the code to make it doable. End Game Step: 1.Open all barriers. 2.Find three switches and hold on by correct steps. 3.Auto end game. I think \u2018Warfare Garage Escape 4.1\u2019 is the most difficult custom map in history ! Thanks the author Rampage_619 and Tom_BMX etc.",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_zw",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "zombie_warfare.iwd:images/loadscreen_nazi_zombie_zw.iwi",
+        "zombie_warfare.iwd:images/menu_map_nazi_zombie_zw.iwi",
+        "zombie_warfare_garage.iwd:images/loadscreen_nazi_zombie_zw.iwi",
+        "zombie_warfare_garage.iwd:images/menu_background_coop.iwi",
+        "zombie_warfare_garage.iwd:images/menu_map_nazi_zombie_zw.iwi",
+        "zombie_warfare_garage.iwd:images/pepsi20logo.iwi",
+        "zombie_warfare_garage.iwd:images/zw_menubackground.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_zw"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 103.8,
+    "addon_iwds": [
+      {
+        "file": "zombie_warfare.iwd",
+        "entries": 89,
+        "scripts": 14,
+        "bytes": 1620251
+      },
+      {
+        "file": "zombie_warfare_garage.iwd",
+        "entries": 486,
+        "scripts": 24,
+        "bytes": 19359555
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_zw.ff",
+      "nazi_zombie_zw_patch.ff",
+      "zombie_warfare.iwd:maps/_loadout.gsc",
+      "zombie_warfare_garage.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

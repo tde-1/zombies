@@ -1,0 +1,175 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_trench",
+  "title": "Minecraft Island Challenge Map",
+  "source": "custom",
+  "author": "Klaudeh",
+  "released": "2022-05-30",
+  "fs_game": "mods/nazi_zombie_trench",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_trench.iwd": "31c7f8083409ed5528d3a1b3b89211956aa1f076a9d6a8f60898b37a2dcb5e32"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game",
+        "mech_escape_trigger"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        3000,
+        5000,
+        50000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game, mech_escape_trigger name an ending and are this map's own; script hardcodes cost 50000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 99,
+    "script_count": 99,
+    "entities": 151,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game",
+      "mech_escape_trigger"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      5000,
+      50000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "31c7f8083409ed5528d3a1b3b89211956aa1f076a9d6a8f60898b37a2dcb5e32",
+    "map_specific_triggers": [
+      "end_game",
+      "mech_escape_trigger",
+      "player_fall",
+      "soul_triggers",
+      "soulboxes_reward_door_trigger",
+      "soulboxes_reward_weapon_point"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:44:02Z"
+    }
+  },
+  "archive": {
+    "original": "Minecraft_Island.exe",
+    "original_sha256": "3978dcbc35e5bb755f3c14442136e186f6b50773a87f9ae95d75cf0204fc358d",
+    "original_size": 236750493,
+    "source_url": "https://www.mediafire.com/file/fupakqk7xvj9fw8/Minecraft_Island.exe/file",
+    "source_page": "https://callofdutyrepo.com/2022/05/30/minecraft-island-challenge-map/",
+    "fetched": "2026-09-26T14:42:20Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Hellooo everybody im glad to present another custom map for cod world at war, this time i help my friend Crepp to make a Minecraft theme map, sadly this maybe will be the last time we see a map from our friend Crepp who in the past make a lot of fun and harder maps for us to enjoy, with nothing else to say i present you Minecraft Island! This map was fun to test and make with some direction of Crepp and the prefab map make from him, and me putting all together with glue and tape hahaha. Like a said before this is a Minecraft Themed map, you have to survive in a tiny island surrounded by zombies, you have 7 perks to choose from and you must jump to grab one, also you need to fill the souldboxes present in the map in order to escape from it, buy the ending and take the special gun. Tips: Try get PHD before you take another perk Stay with the RK5 from the start Just run! Features: Bo1, Bo2 and Bo3 perks (Thanks to Gympie) Timed gameplay (Thanks to Tom) 4 normal weapons and 1 wonder weapon (Thanks to Shippuden and Ricko0z) 2 Bosses (Thanks to Shippuden y BluntStuffy) 2 Powerups customs (Thanks to Shippuden y Gogeta) Buyable ending (Thanks to Zomb1e-Kllr) Soulboxes system (Gracias Shippuden) Minecraft Zombies (Thanks to Thunderfrost) Typewriter intro text (Thanks to YaPh1L) (If there something of your work on my map just message me and i\u2019ll add you to the credits)",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [
+        "gympie6_perks.iwd:images/~p7_zm_vending_ads_logo_spc-r~301c48c1.iwi",
+        "gympie6_perks.iwd:images/p7_zm_vending_ads_logo_col.iwi",
+        "gympie6_perks.iwd:images/specialty_fastreload_zombies.iwi",
+        "nazi_zombie_trench.iwd:images/weapon_red_cross_background.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 48.6,
+    "addon_iwds": [
+      {
+        "file": "BlSt_PanzerSoldat.iwd",
+        "entries": 15,
+        "scripts": 2,
+        "bytes": 4281195
+      },
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 67,
+        "scripts": 0,
+        "bytes": 176320
+      },
+      {
+        "file": "gympie6_perks.iwd",
+        "entries": 285,
+        "scripts": 7,
+        "bytes": 100286832
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_trench.ff",
+      "nazi_zombie_trench_patch.ff",
+      "nazi_zombie_trench.iwd:animscripts/death.gsc",
+      "nazi_zombie_trench.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

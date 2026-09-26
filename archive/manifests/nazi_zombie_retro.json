@@ -1,0 +1,201 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_retro",
+  "title": "Retrograde",
+  "source": "custom",
+  "author": "JayJiveCertified",
+  "released": "2022-12-28",
+  "fs_game": "mods/nazi_zombie_retro",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_retro.iwd": "c5b251dd2a72b29bf99f469af44a95f4e32a1c416e7116308b32c6275993d8da"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "crawler_round_ending"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        3000,
+        4000,
+        5000,
+        6000,
+        10000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 10000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 120,
+    "script_count": 120,
+    "entities": 2537,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      4000,
+      5000,
+      6000,
+      10000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "zombie_door",
+        "auto39"
+      ],
+      [
+        5000,
+        "zombie_door",
+        "auto38"
+      ],
+      [
+        5000,
+        "zombie_door",
+        "auto37"
+      ],
+      [
+        5000,
+        "zombie_door",
+        "auto36"
+      ],
+      [
+        5000,
+        "zombie_door",
+        "auto35"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "c5b251dd2a72b29bf99f469af44a95f4e32a1c416e7116308b32c6275993d8da",
+    "map_specific_triggers": [
+      "end_game_switch",
+      "give_ammo",
+      "secret_shoot",
+      "secret_shoot2",
+      "secret_shoot3",
+      "sniper_nest",
+      "soul_chest_area",
+      "trem_bank_trig"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:40:09Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_retro.exe",
+    "original_sha256": "dce512e6c9f085c5f23ce642a6f0af8a1656604f19e274ec50e3dfc66d0d10b2",
+    "original_size": 91605130,
+    "source_url": "https://www.mediafire.com/file/fqil3p9denjcnt5/nazi_zombie_retro.exe/file",
+    "source_page": "https://callofdutyrepo.com/2022/12/28/retrograde/",
+    "fetched": "2026-09-26T14:38:00Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "NO T4M required A map inspired by early shooter games as well as the mid-development aesthetic (purposeful unfinished feeling). Enjoy! FEATURES and CREDITS: Awesome Custom Weapons \u2013 ricko0z NDU/Verruckt Zombie Models \u2013 staticsnow22 Power Round Start \u2013 Dust BO1 Weapons (including Zap Gun) \u2013 shippuden1592 Soul Generators \u2013 Blunt Stuffy Shootable Easter Egg Format, HUD \u2013 Cristian_M Custom Perk Help, Hats Fly Off \u2013 Gympie6 (5?) BO2 Weapons \u2013 SpiralModz MW2 Weapons \u2013 Rorke CoD4 Weapons \u2013 WoLf_GoLd End Game, Insta Kill Knife Point Fix \u2013 alaurenc9 Character/Start Weapon Randomization, No Fall/Explosive Damage, Map Monitoring \u2013 MakeCents Instant Nuke \u2013 KDXDARK Typewriter Text Opening \u2013 SpyroScope Black Ops Knifing \u2013 rdv Marine Character Models \u2013 MrDunlop4 Text Font \u2013 Zoro Scrolling Camo Tutorial \u2013 HitmanVere Buyable Ammo \u2013 xxfasgxx Custom Perk Model \u2013 BrandynNew Solo Start Button \u2013 RamboBadass Bank \u2013 treminaor TESTERS: Assassinfunches \u2013 https://www.twitch.tv/assassinfunches Redryder21 \u2013 https://www.twitch.tv/redryder21 OfficialSaluc \u2013 https://www.twitch.tv/officialsaluc Yikame \u2013 https://www.twitch.tv/yikame DexholderSilver \u2013 https://www.twitch.tv/dexholdersilver zero34635 \u2013 https://www.twitch.tv/zero34635 cnnrhlly reflexxxs \u2013 https://www.twitch.tv/reflexxxs Th3Arch3Anj3L \u2013 https://www.twitch.tv/th3arch3anj3l Riku Dola Easter Egg Notes: \u2013 Shoot all the Teddies and Snoops \u2013 Snoops can only be shot by the Intervention or the FG42 \u2013 Soul boxes will only accept souls from zombies killed b",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [
+        "nazi_zombie_retro.iwd:images/specialty_fastreload_zombies.iwi",
+        "nazi_zombie_retro.iwd:images/weapon_red_cross_background.iwi",
+        "nazi_zombie_retro.iwd:images/weapon_red_cross_background_iw5.dds",
+        "nazi_zombie_retro.iwd:images/weapon_red_cross_background_iw5.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 64.6,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 67,
+        "scripts": 0,
+        "bytes": 176320
+      }
+    ],
+    "flags": [],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_retro.ff",
+      "nazi_zombie_retro_patch.ff",
+      "nazi_zombie_retro.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "nazi_zombie_retro.iwd:maps/trem_bank_2.gsc",
+        "menus": [],
+        "responses": [],
+        "note": "in game: the bank"
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

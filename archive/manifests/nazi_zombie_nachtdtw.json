@@ -1,0 +1,214 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_nachtdtw",
+  "title": "Nacht Der Toten Walder",
+  "source": "custom",
+  "author": "Weezy428",
+  "released": "2013-12-15",
+  "fs_game": "mods/nazi_zombie_nachtdtw",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_nachtdtw.iwd": "264b86eadcba6ce2a389143c88622d822e1efc4869fe88f9f224bef397672cea"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "crawler_round_ending"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game",
+        "power_win",
+        "teleport_power_up"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        5000,
+        42000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game, power_win, teleport_power_up name an ending and are this map's own; script hardcodes cost 42000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 117,
+    "script_count": 117,
+    "entities": 3053,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game",
+      "power_win",
+      "teleport_power_up"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000,
+      42000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        4000,
+        "zombie_debris",
+        "door5"
+      ],
+      [
+        4000,
+        "zombie_debris",
+        "door3"
+      ],
+      [
+        4000,
+        "zombie_debris",
+        "burnhouse"
+      ],
+      [
+        4000,
+        "zombie_debris",
+        "burn"
+      ],
+      [
+        4000,
+        "give_ammo",
+        "?"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "264b86eadcba6ce2a389143c88622d822e1efc4869fe88f9f224bef397672cea",
+    "map_specific_triggers": [
+      "give_ammo",
+      "laser_control",
+      "laser_hurt",
+      "music_box_player",
+      "purchase",
+      "secret_trigger",
+      "secret_trigger2",
+      "secret_trigger3",
+      "select",
+      "tricky_death"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:41:13Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_NachtDTW.exe",
+    "original_sha256": "6cf949f5d165d5a5456aff48370e7471d34d3f537b7f555100a5c12951d7396f",
+    "original_size": 158336643,
+    "source_url": "http://www.mediafire.com/file/nt649vjjw3jkoyy/nazi_zombie_NachtDTW.exe/file",
+    "source_page": "https://callofdutyrepo.com/2013/12/15/nacht-der-toten-walder/",
+    "fetched": "2026-09-26T14:39:31Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "OK so this is my first map and it took a little under a year, so I hope you all enjoy it. Let me know if you find any bugs and/or glitches so I can fix them. Thanks. Story: Its A dark and Stormy night, the heroes are escaping from what they thought was their worst nightmare, running through the endless woods away from the chaos of Shi No Numa they come upon a strange bar in the middle of nowhere. Soon they realize the bar is far from safe. They discover after scouting the area more puzzles seem to unfold. Now their mission is to survive this horror in the woods to reach the end of this madness. Can you make it through the night?? Can you survive, Nacht Der Toten W\u00e4lder? I especially want to thank Instakill115 for putting in the time for these bad ass trailers. What\u2019s Included: Der Riese script 1.4 (large map) Weather(Thanks to Crackshot,HOGRampage and Cinnober) Custom Power-ups Hidden PAP room Custom AASB weapon skins Custom AASB treasure box Pandora box (4 locations) Tom_Bmx Music player (5 custom songs)(Thanks to Tom_Bmx) some special FX\u2019s Custom zombie FX\u2019s (With the help from Im The Earth) No Dogs(thanks to Tome_Bmx, Cinnober) Shi No Numa and Der Riese Zombies Quizz\u2019s Impact-Nades(Thanks to Quizz) Buyable ammo(HOGRampage, Cinnober) Buyable ending(thanks DON GOONY) Flogger(A must!)(thanks Bookable) Zipline(A must!) 3 Easter eggs to hidden zones and to complete ending(thanks Activaler) Lazer trap(Thanks Bamskater33) Boss zombieHave fun!!(Fixed scripts from YaPh1l thanks alo",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_nazi_zombie_nachtdtw"
+      ],
+      "iwd_images": [
+        "nazi_zombie_nachtdtw.iwd:Images/loadscreen_nazi_zombie_nachtdtw.iwi",
+        "nazi_zombie_nachtdtw.iwd:Images/menu_map_nazi_zombie_nachtdtw.iwi",
+        "nazi_zombie_nachtdtw.iwd:Images/menu_ndtw.iwi",
+        "nazi_zombie_nachtdtw.iwd:Images/specialty_fastreload_zombies.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_nachtdtw"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 161.4,
+    "addon_iwds": [],
+    "flags": [
+      "client_memory_risk"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_nachtdtw.ff",
+      "nazi_zombie_nachtdtw_patch.ff",
+      "nazi_zombie_nachtdtw.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "nazi_zombie_nachtdtw.iwd:maps/tom_music_player_unl.gsc",
+        "menus": [],
+        "responses": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9"
+        ],
+        "note": "in game: a music player"
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

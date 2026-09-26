@@ -1,0 +1,177 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_rain",
+  "title": "RAIN",
+  "source": "custom",
+  "author": "ville88",
+  "released": "2014-10-14",
+  "fs_game": "mods/nazi_zombie_rain",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_rain.iwd": "58001c2bfca378a830d2cb9654f5b87f4ba992a3163abc8e8a677eb6e1e978a8"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "phono_egg",
+        "radio_egg"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "phono_egg, radio_egg look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 76,
+    "script_count": 76,
+    "entities": 3431,
+    "ee_candidates": [
+      "phono_egg",
+      "radio_egg"
+    ],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      40000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        1750,
+        "zombie_debris",
+        "brush16"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "brush20"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "brush15"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "brush15"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "brush14"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "58001c2bfca378a830d2cb9654f5b87f4ba992a3163abc8e8a677eb6e1e978a8",
+    "map_specific_triggers": [
+      "cabinet_trig",
+      "end_game",
+      "move_trigger1",
+      "phono_egg",
+      "phono_egg1",
+      "phono_egg2",
+      "phono_egg3",
+      "phono_trig1",
+      "phono_trig2",
+      "phono_trig3",
+      "rotating_door",
+      "teddy1",
+      "teddy2",
+      "teddy3"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:18:32Z"
+    }
+  },
+  "archive": {
+    "original": "zombie_rain.exe",
+    "original_sha256": "6eeb695b89a65a2220d8e90a823ca3701955ec56a5751420640f9d7d642371de",
+    "original_size": 122955396,
+    "source_url": "https://www.mediafire.com/file/i7yjccg1g5vedz1/zombie_rain.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T02:49:53Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Description This is a test version of my map I\u2019m trying to let in almost a year but did not bring it to mind, I decided to publish it now otherwise this may not happen))))) 1 Defend Windows 2 Find easter egg 3 Find lethal Weapons 4 Survive as long as possible Verruckt style Hardcore Easter eggs Large size map Perks 4 standart Zombie run from the start Detailing map Buyable Ending Secret Ray Gun Special thanks: zombiemodding forum , customcod wiki and cybercod Ru special thanks to members of the Forum UGX-MOD tudark (convert custom sound)",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_NAZI_ZOMBIE_RAIN",
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_rain",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "nazi_zombie_rain.iwd:images/loadscreen_nazi_zombie_rain.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_rain"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 172.9,
+    "addon_iwds": [],
+    "flags": [
+      "client_memory_risk"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "nazi_zombie_rain.ff",
+      "nazi_zombie_rain.iwd:animscripts/death.gsc",
+      "nazi_zombie_rain.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

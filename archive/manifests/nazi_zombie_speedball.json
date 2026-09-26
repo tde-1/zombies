@@ -1,0 +1,258 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_speedball",
+  "title": "Speedball De-Make",
+  "source": "custom",
+  "author": "pmr4",
+  "released": "2020-10-03",
+  "fs_game": "mods/nazi_zombie_speedball",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_speedball.iwd": "a7972cbb4bdbbfeaddc3fa854c959ed9d78064e002c25b779a637b6248d0fc6a"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_trigger"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game",
+        "end_trigger"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        3000,
+        20000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game, end_trigger name an ending and are this map's own; script hardcodes cost 20000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 134,
+    "script_count": 134,
+    "entities": 445,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game",
+      "end_trigger"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      20000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "pf1021_auto1",
+        "?"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "middlel_debris"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "back_left_debris"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "back_debris"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "back_debris"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc",
+      "maps/_utility.gsc"
+    ],
+    "zombiemode_sha256": "a7972cbb4bdbbfeaddc3fa854c959ed9d78064e002c25b779a637b6248d0fc6a",
+    "map_specific_triggers": [
+      "cd1_trigg",
+      "cd2_trigg",
+      "cd3_trigg",
+      "cd4_trigg",
+      "cd5_trigg",
+      "end_trigger",
+      "harrybo21_perk_trigger",
+      "jukebox",
+      "key_door",
+      "papo10_trigg",
+      "papo11_trigg",
+      "papo12_trigg",
+      "papo13_trigg",
+      "papo14_trigg",
+      "papo15_trigg",
+      "papo1_trigg",
+      "papo2_trigg",
+      "papo3_trigg",
+      "papo4_trigg",
+      "papo5_trigg",
+      "papo6_trigg",
+      "papo7_trigg",
+      "papo8_trigg",
+      "papo9_trigg",
+      "points1_trigg",
+      "points2_trigg",
+      "scav_build_trigger",
+      "scav_trigg",
+      "shoot_door",
+      "shoot_door2",
+      "soul_chest_area",
+      "soul_chest_reward",
+      "spap_trigg",
+      "start_trigg",
+      "tiro10_trigg",
+      "tiro11_trigg",
+      "tiro12_trigg",
+      "tiro13_trigg",
+      "tiro14_trigg",
+      "tiro15_trigg"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:25:34Z"
+    }
+  },
+  "archive": {
+    "original": "Speedball_De-make.exe",
+    "original_sha256": "12f1868933b95c8f0ea815b26d844624b91b9639bb86a7dca631efdd93e72730",
+    "original_size": 687166722,
+    "source_url": "http://www.mediafire.com/file/ltg5h3ksk1ngdh2/Speedball_De-make.exe/file",
+    "source_page": "https://callofdutyrepo.com/2020/10/03/speedball-de-make/",
+    "fetched": "2026-09-26T02:50:31Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "challenge",
+      "t4m_req"
+    ],
+    "catalogue_description": "The beautifull map of Speedball from Modern Warfare(2019) demastered with assets from WaW, WW2 and MW(2019), with zombies added to it. Survive as long as possible in this small map filled with fast zombies or try and find a way to acces the radio call for an evacuation. FEATURES Multiple Weapond from Black Ops 1, 2 and 3, Modern Warfare 2 and 3, Ghost, Infinite Warfare, Advanced Warfare, CSGO, and one weapon from FC3 and KF2. Buildable Scavenger Gun Soul Chest HarryBo21 Perks Napalm zombie Some upgraded weapons have custom ammo Ugx Jukebox Gun Game can be activated from the game options Thanks for checking out my map, this is the first map i have posted, so any feedback would be greatly apreciated and if anyone knows how to make my map playable without T4M it would be great .",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_speedball"
+      ],
+      "iwd_images": [
+        "nazi_zombie_speedball.iwd:images/dukip_menu.iwi",
+        "nazi_zombie_speedball.iwd:images/dukip_menu2.iwi",
+        "nazi_zombie_speedball.iwd:images/loadscreen_nazi_zombie_speedball.iwi",
+        "nazi_zombie_speedball.iwd:images/m1_irons_speedloader_base_col.iwi",
+        "nazi_zombie_speedball.iwd:images/m1_irons_speedloader_base_nml.iwi",
+        "nazi_zombie_speedball.iwd:images/menu_button_backing_right.iwi",
+        "nazi_zombie_speedball.iwd:images/p6_zm_al_vending_ads_logo_m.iwi",
+        "nazi_zombie_speedball.iwd:images/p6_zm_al_vending_three_gun_logo_m.iwi",
+        "nazi_zombie_speedball.iwd:images/p6_zm_al_vending_three_gun_logo_n.iwi",
+        "nazi_zombie_speedball.iwd:images/p7_zm_vending_ads_logo_col.iwi",
+        "nazi_zombie_speedball.iwd:images/specialty_fastreload_zombies.iwi",
+        "nazi_zombie_speedball.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "nazi_zombie_speedball.iwd:images/ugx_mod_menu_template.iwi",
+        "nazi_zombie_speedball.iwd:images/weapon_red_cross_background.iwi",
+        "nazi_zombie_speedball.iwd:images/weapon_red_cross_background_iw5.iwi",
+        "nazi_zombie_speedball.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "nazi_zombie_speedball.iwd:images/_-gp6_zm_al_vending_ads_logo_c.iwi",
+        "nazi_zombie_speedball.iwd:images/_-gzombie_vending_sleight_logo_c.iwi",
+        "nazi_zombie_speedball.iwd:images/~m1_irons_speedloader_base_sp~06651435.iwi",
+        "nazi_zombie_speedball.iwd:images/~p7_zm_vending_ads_logo_spc-r~301c48c1.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_speedball"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc, maps/_utility.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 102.3,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 67,
+        "scripts": 0,
+        "bytes": 176320
+      },
+      {
+        "file": "nuketown.iwd",
+        "entries": 43,
+        "scripts": 7,
+        "bytes": 9753450
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_speedball_patch.ff",
+      "nazi_zombie_speedball.iwd:animscripts/death.gsc",
+      "nazi_zombie_speedball.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "nazi_zombie_speedball.iwd:maps/ugx_jukebox.gsc",
+        "menus": [],
+        "responses": [],
+        "note": "in game: the jukebox"
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

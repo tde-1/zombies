@@ -1,0 +1,179 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_droom",
+  "title": "Death Room V2",
+  "source": "custom",
+  "author": "FireIceJet",
+  "released": "2014-05-23",
+  "fs_game": "mods/nazi_zombie_droom",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_droom.iwd": "bca6a41db16fec41634d241809152e52c4f8404b81f0ee755ad88e3be7edb68f"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000,
+        25000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 25000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 97,
+    "script_count": 97,
+    "entities": 211,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      25000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        4000,
+        "zombie_debris",
+        "debris1"
+      ],
+      [
+        4000,
+        "zombie_debris",
+        "debris1"
+      ],
+      [
+        3000,
+        "zombie_debris",
+        "door1"
+      ],
+      [
+        3000,
+        "zombie_debris",
+        "door1"
+      ],
+      [
+        3000,
+        "zombie_debris",
+        "door1"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "bca6a41db16fec41634d241809152e52c4f8404b81f0ee755ad88e3be7edb68f",
+    "map_specific_triggers": [
+      "end_game"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:47:25Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_droom.exe",
+    "original_sha256": "0ec9e632b626f73f8b90482c985867bdca99a6e804bc873d8355e86531c9fcac",
+    "original_size": 71681003,
+    "source_url": "https://www.mediafire.com/file/47y6oiltsdor2ja/nazi_zombie_droom.exe/file",
+    "source_page": "https://callofdutyrepo.com/2014/05/23/death-room/",
+    "fetched": "2026-09-26T14:46:05Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "This will be a remake of the Death Room map from the Free-to-Play Multiplayer game, Combat Arms. There isn\u2019t really any story involved, it\u2019s just a remake of that map into a zombies version. It is a very small and symmetrical map. Features: \u2013 Solo Black Ops style quick revive (if that even matters to you) \u2013 No Dogs \u2013 4 Original Perks from WaW with PaP \u2013 Buyable Ending \u2013 All zombies are risers \u2013 Custom Menu screens \u2013 All COD 4 Guns except M14, USP and Launchers (All PAP-able! ) \u2013 Removed all WaW weapons except Ray Gun, Monkey Bombs, Molotovs and Wunderwaffe \u2013 Increased no. of risers and they will either be runners or sprinters",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_droom",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "nazi_zombie_droom.iwd:images/loadscreen_nazi_zombie_droom.iwi",
+        "nazi_zombie_droom.iwd:images/menu_background_coop.iwi",
+        "nazi_zombie_droom.iwd:images/menu_map_nazi_zombie_droom.iwi",
+        "nazi_zombie_droom.iwd:images/ngt_logo.iwi",
+        "nazi_zombie_droom.iwd:images/specialty_fastreload_zombies.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_droom"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 80.7,
+    "addon_iwds": [],
+    "flags": [],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_droom.ff",
+      "nazi_zombie_droom_patch.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

@@ -1,0 +1,264 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "overflow",
+  "title": "Overflow",
+  "source": "custom",
+  "author": "pashan",
+  "released": "2014-06-19",
+  "fs_game": "mods/overflow",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@overflow.iwd": "eab63ef5ce58bac1499daf81c5931e149428763f05e8d190c640042b5693032b"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        5000,
+        50000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 50000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 131,
+    "script_count": 131,
+    "entities": 3927,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000,
+      50000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "door9"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door8"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door7"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door6"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door5"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "eab63ef5ce58bac1499daf81c5931e149428763f05e8d190c640042b5693032b",
+    "map_specific_triggers": [
+      "111",
+      "1p",
+      "1t",
+      "222",
+      "2fe",
+      "333",
+      "3h2",
+      "3h2so4",
+      "444",
+      "555",
+      "b_four",
+      "b_one",
+      "b_three",
+      "b_two",
+      "bl",
+      "end",
+      "end_game",
+      "fake_trigger",
+      "fe2so43",
+      "fuse",
+      "god",
+      "grenade",
+      "h_wall",
+      "k_four",
+      "k_one",
+      "k_three",
+      "k_two",
+      "kar",
+      "kino_mainframe_trigger",
+      "kino_teleporter_trigger",
+      "move_trigger2",
+      "number",
+      "ques",
+      "round_trigger",
+      "s_four",
+      "s_one",
+      "s_three",
+      "s_two",
+      "soul_chest_area",
+      "soul_chest_reward"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:38:27Z"
+    }
+  },
+  "archive": {
+    "original": "Overflow_V1.2.1.exe",
+    "original_sha256": "14cd802a47d58af9e5095f26b6f2ad93d1bccbfde05cb16878fdc5d103324e58",
+    "original_size": 235945916,
+    "source_url": "http://www.mediafire.com/file/1rk92833ljc7zrd/overflow_v1.2.1.exe/file",
+    "source_page": "https://callofdutyrepo.com/2014/06/19/overflow/",
+    "fetched": "2026-09-26T14:34:02Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Description Players will be challenged to face their deepest fears, trapped inside a sewer were citizens lived during the outbreak, until they were infested with swarms of the undead. Story Edward Richtofen, Takeo Masaki, Nikolai Belinski and Tank Dempsey. They unconsciously wake up in a strange place. Back Story on Sewer People lived in the sewers when the sewers seemed the only safe place from the zombies. Zombies got all of em. \u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014- Features Black Ops 2 Guns Black Ops Guns Soul Chest Easter Eggs (an attempt at a huge one) Trolls Overflow V1.2.1 New Things in V1.2 Fixed P.A.P Glitch where the round skips. Fixed an EE mistake I made (Thanks to Alerion for Pointing that out) Tweaked the starting area a bit. Added Walking animation (Ray1235\u2019s script) Changed wall texture for a better look. New Things in V1.2.1 Fixed bug where the player can get outside of the map. (Pointed out by JiffyNoodles) \u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014- Credits Rambobada555555 Provided Guns and Help with major issues HDKenny Help with Detail LDUKMusic Menu Song jei9363 Black Ops 2 Perks BluntStuffy Soul Chest jzob123 MG08 steviewonder87 P.A.P Gun name Ideas Ugx Comunity Generel Help PROxFTW Teddy Script Zombie Madness Guns PFreeCodCinematics Playable Unit If I missed anyone PM me I will add them \u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014- Testers HDKenny P0tz TheScotchGuy catchyname Sparrow123 Animallover Thompson Canadian Bacon Offic",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [
+        "_bam_bo1_perks_mod.iwd:images/specialty_fastreload_zombies.iwi",
+        "_bam_bo1_perks_mod.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "_bam_bo1_perks_mod.iwd:images/zombie_vending_three_gun_logo_c.iwi",
+        "_bam_bo1_perks_mod.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "_bam_bo1_perks_mod.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi",
+        "overflow.iwd:images/specialty_fastreload_zombies.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 123.0,
+    "addon_iwds": [
+      {
+        "file": "_bam_bo1_perks_mod.iwd",
+        "entries": 61,
+        "scripts": 3,
+        "bytes": 3273488
+      },
+      {
+        "file": "electric_cherry.iwd",
+        "entries": 10,
+        "scripts": 1,
+        "bytes": 953440
+      },
+      {
+        "file": "motd_zombie_images.iwd",
+        "entries": 30,
+        "scripts": 0,
+        "bytes": 8573564
+      },
+      {
+        "file": "nazi_zombie_asylum.iwd",
+        "entries": 6,
+        "scripts": 6,
+        "bytes": 2722
+      },
+      {
+        "file": "vulture_aid.iwd",
+        "entries": 11,
+        "scripts": 1,
+        "bytes": 557060
+      },
+      {
+        "file": "wunderfizz.iwd",
+        "entries": 8,
+        "scripts": 1,
+        "bytes": 1019293
+      },
+      {
+        "file": "z_hud.iwd",
+        "entries": 3,
+        "scripts": 0,
+        "bytes": 11770
+      }
+    ],
+    "flags": [
+      "client_memory_risk",
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "oveflow_patch.ff",
+      "overflow.ff",
+      "overflow_patch.ff",
+      "overflow.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

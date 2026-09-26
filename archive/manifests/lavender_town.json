@@ -1,0 +1,241 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "lavender_town",
+  "title": "Lavender Town",
+  "source": "custom",
+  "author": "MidgetBlaster",
+  "released": "2015-10-31",
+  "fs_game": "mods/lavender_town",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@lavender_town.iwd": "b444fac7a4a9ffc65637c7d11696e42104b4146e609335f68913b4a35e2d8950"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_trigger"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game",
+        "end_trigger"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        3000,
+        10000,
+        500000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game, end_trigger name an ending and are this map's own; script hardcodes cost 500000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 140,
+    "script_count": 140,
+    "entities": 3191,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game",
+      "end_trigger"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      3000,
+      10000,
+      500000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        10000,
+        "weapon_upgrade",
+        "thundergun"
+      ],
+      [
+        5000,
+        "weapon_upgrade",
+        "cel"
+      ],
+      [
+        5000,
+        "weapon_upgrade",
+        "cel"
+      ],
+      [
+        5000,
+        "pf4858_auto2",
+        "?"
+      ],
+      [
+        4000,
+        "pf4579_auto1",
+        "?"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc",
+      "maps/_utility.gsc"
+    ],
+    "zombiemode_sha256": "b444fac7a4a9ffc65637c7d11696e42104b4146e609335f68913b4a35e2d8950",
+    "map_specific_triggers": [
+      "buy_powerup",
+      "dubstep_trigger",
+      "elevator_antijump",
+      "end_trigger",
+      "five_tele1",
+      "five_tele2",
+      "five_tele3",
+      "five_tele4",
+      "five_tele5",
+      "harrybo21_perk_trigger",
+      "satchel_build_trig",
+      "satchel_exp_damage_trig",
+      "satchel_pick_trig",
+      "satchel_pick_trig_2",
+      "satchel_pick_trig_3",
+      "satchel_pick_trig_4",
+      "scare_him_now",
+      "soul_chest_area",
+      "soul_chest_reward",
+      "trem_bank_trig"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:12:38Z"
+    }
+  },
+  "archive": {
+    "original": "Lavender_Town.exe",
+    "original_sha256": "ec1a38fc4117ebdcbe267cdd77c0a6e75cac988d4de493b4553ad0712af24994",
+    "original_size": 836348304,
+    "source_url": "http://www.mediafire.com/file/lof24mg1k6hdo1b/Lavender_Town.exe",
+    "source_page": "https://callofdutyrepo.com/2015/10/31/lavender-town/",
+    "fetched": "2026-09-26T02:18:06Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending",
+      "top100",
+      "top_100"
+    ],
+    "catalogue_description": "Features 12 Perks Custom Voice overs Nuketown Zombies Custom Player Models Buyable Ending Buyable Max Ammo & Double Points Zombie Counter Soul Chests Verruckt Sprinters Five Style Teleporters Fan Blade Trap Flogger Trap Der Wunderfizz Weapons AW AE4 AW CEL-3 Cauterizer Ghost Ripper Ghost Magnum BO Wave Gun BO Thunder Gun BO Grim Reaper BO Mustang & Sally BO2 LSAT BO2 KSG BO2 HAMR BO2 M27 BO2 DSR BO2 B23R BO2 Chicom BO2 Remington 870 BO2 Sliquifier BO2 Raygun Mark2 MW2 Tar21 MW2 UMP45 MW2 Vector MW2 ACR MW2 M4A1 MW3 CM901 MW3 AA12 Payday 2 Glock Peacemaker T850 Raygun Halo Energy Sword Halo Battle Rifle Halo DMR Halo Dual Magnum Crysis 2 Feline Credits Bridget Lynch Bwc66930 Tomikaze777 Dr. Ludvig Maxis Harry Bo21 SCR1PTZ Tom Bmx DidUknowiPwn MrDunlop4 sevengpluke alaurenc9 HitmanVere Rorke aka Zombie Madness Rollonmath42 elfenliedtopfan5 AwesomePieMan DidUknowiPwn shippuden1592 Ege115 ZOMB1E-KLLR MakeCents JBird632 Treminaor Beta Testers Meddle2k TrillOGkush Penir42 RichGaming Tomikaze777 Tragic Ending xbeyondx This map took me 8 months to make so I hope everyone enjoys it. Thanks for all the support!",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_lavender_town"
+      ],
+      "iwd_images": [
+        "harrybo21_perks v3.0.6.iwd:images/p6_zm_al_vending_ads_logo_m.iwi",
+        "harrybo21_perks v3.0.6.iwd:images/p6_zm_al_vending_three_gun_logo_m.iwi",
+        "harrybo21_perks v3.0.6.iwd:images/p6_zm_al_vending_three_gun_logo_n.iwi",
+        "harrybo21_perks v3.0.6.iwd:images/specialty_fastreload_zombies.iwi",
+        "harrybo21_perks v3.0.6.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "harrybo21_perks v3.0.6.iwd:images/ugx_mod_menu_template.iwi",
+        "harrybo21_perks v3.0.6.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "harrybo21_perks v3.0.6.iwd:images/_-gp6_zm_al_vending_ads_logo_c.iwi",
+        "harrybo21_perks v3.0.6.iwd:images/_-gzombie_vending_sleight_logo_c.iwi",
+        "harrybo21_perks v3.0.6.iwd:images/~__-gzombie_vending_ads_logo_~7aa94a54.iwi",
+        "lavender_town.iwd:images/dukip_main_menu.iwi",
+        "lavender_town.iwd:images/dukip_menu.iwi",
+        "lavender_town.iwd:images/dukip_menu2.iwi",
+        "lavender_town.iwd:images/loadscreen_lavender_town.iwi",
+        "lavender_town.iwd:images/menu_button_backing_right.iwi",
+        "lavender_town.iwd:images/specialty_fastreload_zombies.iwi",
+        "lavender_town.iwd:images/_-gmtl_p6_haiti_loading_wall__8753a4d0.iwi"
+      ],
+      "loadscreen": "loadscreen_lavender_town"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc, maps/_utility.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 119.5,
+    "addon_iwds": [
+      {
+        "file": "harrybo21_perks v3.0.6.iwd",
+        "entries": 279,
+        "scripts": 1,
+        "bytes": 45673802
+      },
+      {
+        "file": "nuketown.iwd",
+        "entries": 43,
+        "scripts": 7,
+        "bytes": 9753450
+      }
+    ],
+    "flags": [
+      "client_memory_risk",
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "lavender_town.ff",
+      "lavender_town_patch.ff",
+      "mod.ff",
+      "lavender_town.iwd:animscripts/death.gsc",
+      "lavender_town.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "lavender_town.iwd:maps/trem_bank_2.gsc",
+        "menus": [],
+        "responses": [],
+        "note": "in game: the bank"
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

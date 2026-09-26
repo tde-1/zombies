@@ -1,0 +1,212 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_ppsh",
+  "title": "PPSH 41",
+  "source": "custom",
+  "author": "Bashmoney100",
+  "released": "2016-08-19",
+  "fs_game": "mods/nazi_zombie_ppsh",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_ppsh1.2.iwd": "be7b8b00efddd8d54117b4d483864e52f6efde463682e3eac219ad4407cc8776"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        3000,
+        75000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 75000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 124,
+    "script_count": 124,
+    "entities": 378,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      75000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "pf47_auto1",
+        "?"
+      ],
+      [
+        4000,
+        "pf27_auto1",
+        "?"
+      ],
+      [
+        3000,
+        "pf55_auto1",
+        "?"
+      ],
+      [
+        2500,
+        "pf51_auto1",
+        "?"
+      ],
+      [
+        2500,
+        "pf43_auto1",
+        "?"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "be7b8b00efddd8d54117b4d483864e52f6efde463682e3eac219ad4407cc8776",
+    "map_specific_triggers": [
+      "end_game",
+      "harrybo21_perk_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:18:56Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_ppsh1.2.exe",
+    "original_sha256": "940c7f3d17cdb3e818009d0282432bfbf6a66722f7c1341d49b04363b1d9c10d",
+    "original_size": 511392046,
+    "source_url": "https://mega.nz/file/X4tU2R4R#aK0dDdEdiqqTQ_fnlwDwlqhK-9P1TIzdWL8CBiT2rY8",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T02:17:30Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "t4m_req"
+    ],
+    "catalogue_description": "Needs T4M So this is most likely the last major update for this because I\u2019m working on PPSH World and Lab 7734 so I can\u2019t be bother to keep updating the map so unless their a co-op issue or anything that makes the map unplayable i\u2019ll fix but other then that this is the last update. Updates No Perk Limit New Updated Camo MR6 BO3 PPSH-41 Mystery Thing BTW DON\u2019T RESTART THE MAP IT MESS EVERYTHING UP",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_nazi_zombie_ppsh"
+      ],
+      "iwd_images": [
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/p6_zm_al_vending_ads_logo_m.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/p6_zm_al_vending_three_gun_logo_m.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/p6_zm_al_vending_three_gun_logo_n.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/p7_zm_vending_ads_logo_col.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/specialty_fastreload_zombies.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/ugx_mod_menu_template.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/_-gp6_zm_al_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/_-gzombie_vending_sleight_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~-gp6_zm_al_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~-gp6_zm_al_vending_three_gun_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~p7_zm_vending_ads_logo_spc-r~301c48c1.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~__-gzombie_vending_ads_logo_~7aa94a54.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~~~-gzombie_vending_ads_logo_~54fdbc62.iwi",
+        "nazi_zombie_ppsh.iwd:images/loadscreen_nazi_zombie_ppsh.iwi",
+        "nazi_zombie_ppsh.iwd:images/menu_map_nazi_zombie_ppsh.iwi",
+        "nazi_zombie_ppsh1.1.1.iwd:images/loadscreen_nazi_zombie_ppsh.iwi",
+        "nazi_zombie_ppsh1.1.1.iwd:images/menu_map_nazi_zombie_ppsh.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_ppsh"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 99.5,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 67,
+        "scripts": 0,
+        "bytes": 176257
+      },
+      {
+        "file": "harrybo21_bo1_2_3_perks_v5.0.0.iwd",
+        "entries": 609,
+        "scripts": 0,
+        "bytes": 132191594
+      },
+      {
+        "file": "nuketown_series.iwd",
+        "entries": 112,
+        "scripts": 12,
+        "bytes": 26439937
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_ppsh.ff",
+      "nazi_zombie_ppsh_patch.ff",
+      "nazi_zombie_ppsh.iwd:maps/_loadout.gsc",
+      "nazi_zombie_ppsh1.1.1.iwd:maps/_loadout.gsc",
+      "nazi_zombie_ppsh1.2.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

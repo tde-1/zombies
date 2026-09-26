@@ -1,0 +1,219 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "spongebob",
+  "title": "SPONGEBOB BATTLE FOR BIKINI BOTTOM",
+  "source": "custom",
+  "author": "vinnyz500 Fixed By: Jamalidal75",
+  "released": "2020-04-15",
+  "fs_game": "mods/spongebob",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@Spongebob.iwd": "36e5fda6fd44356172af125c5ca0bd522e3640e3849f3110bdba889ea42c4128"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "harrybo21_craftable_part",
+        "harrybo21_craftable_part_built"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "harrybo21_craftable_part, harrybo21_craftable_part_built look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 122,
+    "script_count": 122,
+    "entities": 2317,
+    "ee_candidates": [
+      "harrybo21_craftable_part",
+      "harrybo21_craftable_part_built"
+    ],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game",
+      "sweet_victory_trig",
+      "victory_pos"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      60000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "zombie_debris",
+        "taxi_booth"
+      ],
+      [
+        5000,
+        "pf3022_auto1",
+        "?"
+      ],
+      [
+        4000,
+        "pf1343_auto1",
+        "?"
+      ],
+      [
+        3000,
+        "pf1328_auto1",
+        "?"
+      ],
+      [
+        2500,
+        "pf1346_auto1",
+        "?"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "36e5fda6fd44356172af125c5ca0bd522e3640e3849f3110bdba889ea42c4128",
+    "map_specific_triggers": [
+      "campfire_song_song_trig",
+      "damage_trigger",
+      "end_game",
+      "fun_trig",
+      "goofy_goober_happy_trig",
+      "goofy_goober_rock_trig",
+      "harrybo21_perk_trigger",
+      "killer_trigger",
+      "krusty_pizza_song_trig",
+      "painting_trigger",
+      "portal",
+      "stadium_rave_trig",
+      "sweet_victory_trig",
+      "theme_song_trig",
+      "trap_krusty_trig",
+      "without_you_trig",
+      "worlds_collide_trig"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:26:23Z"
+    }
+  },
+  "archive": {
+    "original": "Spongebob_ZMv1.1.exe",
+    "original_sha256": "bcf066170d5fcdb837aaaa32fd4198b7f9fa4fd56bba647f07b7a889193bcf31",
+    "original_size": 530348631,
+    "source_url": "http://www.mediafire.com/file/i1d9tb14h6n0nh0/Spongebob_ZMv1.1.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T02:49:23Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending",
+      "top100",
+      "top_100"
+    ],
+    "catalogue_description": "Fixed: What I did is suppressing falling damages so that the parkour falling doesn\u2019t reset the game. Also, given that PHD might become less useful (unless for grenades protection), I have also added a double dew perk inside, which multiplies your killing score by 2. Enjoy ! (Jamal558) Features: Bo2 Weapons Teleporters to alternate areas 8 shootable song easter eggs *Possibly copyrighted, turn down music if recording a video* Concert area with 3D sweet victory song Zombie shield buildable buildable power buyable ending Some other stuff, cant remember The map basically has playable spongebob character houses, 2 map exports from the game Spongebob: Battle for Bikini bottom, plus a concert area. Playable areas include: Downtown Bikini Bottom Jellyfish Fields Concert Area Goofy Goober\u2019s Krusty Krab Spongebob\u2019s House Squidward\u2019s House Sandy\u2019s Treedome This map includes some intense parkour, but nothing is too difficult where you cant complete it. The best perks are behind a bit of parkour, i wont tell you which because you wouldnt like it. Falling into the pit makes you go down, so be super careful! Ill possibly be balancing this if it is too difficult for some, but its a nice challenge required to progress in the map. The 2 areas that are accessed through the toll booth in the goober basement are full map exports, clipped and slightly modified for playability from the game SB:BFBB. To use the Taxi stands, you must buy the 5,000 toll booth in the goober area then you may teleport w",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "Spongebob.iwd:images/custom_zombies_menu.iwi",
+        "Spongebob.iwd:images/custom_zombies_menu2.iwi",
+        "Spongebob.iwd:images/custom_zombies_menu3.iwi",
+        "Spongebob.iwd:images/loadscreen_spongebob.iwi",
+        "Spongebob.iwd:images/menu_map_custom_zombies_menu.iwi",
+        "Spongebob.iwd:images/specialty_fastreload_zombies.iwi",
+        "harrybo21_perks.iwd:images/p6_zm_al_vending_ads_logo_m.iwi",
+        "harrybo21_perks.iwd:images/p6_zm_al_vending_three_gun_logo_m.iwi",
+        "harrybo21_perks.iwd:images/p6_zm_al_vending_three_gun_logo_n.iwi",
+        "harrybo21_perks.iwd:images/specialty_fastreload_zombies.iwi",
+        "harrybo21_perks.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "harrybo21_perks.iwd:images/_-gp6_zm_al_vending_ads_logo_c.iwi",
+        "harrybo21_perks.iwd:images/_-gzombie_vending_sleight_logo_c.iwi",
+        "harrybo21_perks.iwd:images/~__-gzombie_vending_ads_logo_~7aa94a54.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 96.3,
+    "addon_iwds": [
+      {
+        "file": "harrybo21_craftables_pack_v1_0_0.iwd",
+        "entries": 60,
+        "scripts": 2,
+        "bytes": 9666107
+      },
+      {
+        "file": "harrybo21_perks.iwd",
+        "entries": 155,
+        "scripts": 1,
+        "bytes": 17355482
+      },
+      {
+        "file": "harrybo21_zombie_shield.iwd",
+        "entries": 27,
+        "scripts": 0,
+        "bytes": 6216042
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "spongebob_patch.ff",
+      "mod.ff",
+      "Spongebob.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

@@ -1,0 +1,246 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "hypothesis",
+  "title": "Hypothesis",
+  "source": "custom",
+  "author": "JayJiveCertified",
+  "released": "2021-11-24",
+  "fs_game": "mods/hypothesis",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@hypothesis.iwd": "55ebfb84b71af84c1da6e40f1e616fff30c3940a94b30edcbab432e5166cf3d7"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "mech_escape_trigger"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game",
+        "mech_escape_trigger"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        3000,
+        5000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game, mech_escape_trigger name an ending and are this map's own; script hardcodes cost 5000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 126,
+    "script_count": 126,
+    "entities": 1841,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game",
+      "mech_escape_trigger"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      5000
+    ],
+    "orphan_end_triggers": [
+      "trigger_teleport_pad_0",
+      "trigger_teleport_pad_1",
+      "trigger_teleport_pad_2"
+    ],
+    "top_costs": [
+      [
+        1750,
+        "zombie_door",
+        "auto7"
+      ],
+      [
+        1750,
+        "zombie_door",
+        "auto13"
+      ],
+      [
+        1500,
+        "zombie_door",
+        "auto9"
+      ],
+      [
+        1500,
+        "zombie_door",
+        "auto5"
+      ],
+      [
+        1500,
+        "zombie_door",
+        "auto12"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "55ebfb84b71af84c1da6e40f1e616fff30c3940a94b30edcbab432e5166cf3d7",
+    "map_specific_triggers": [
+      "code_doors",
+      "end_game_switch",
+      "key_door",
+      "kino_mainframe_trigger",
+      "kino_teleporter_trigger",
+      "level_01_door_light_build_trig",
+      "level_01_door_light_pick_trig",
+      "level_01_door_panel_build_trig",
+      "level_01_door_panel_pick_trig",
+      "level_01_door_switch_build_trig",
+      "level_01_door_switch_pick_trig",
+      "level_01_door_switch_use_trig",
+      "mech_escape_trigger",
+      "pap_door1_hintstring",
+      "power_door1_hintstring",
+      "radio_music_trigs",
+      "roundstarttrig",
+      "secret_shoot",
+      "secret_shoot1",
+      "shoot_door",
+      "shoot_door2",
+      "shoot_door3",
+      "shoot_door4",
+      "shoot_door5",
+      "soul_chest_area",
+      "soul_chest_reward",
+      "text_intro"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:48:14Z"
+    }
+  },
+  "archive": {
+    "original": "Hypothesis.exe",
+    "original_sha256": "1f5e20d42d5b4ecb13db39e2f64262507764702ab09a723dc5f8244a848ca163",
+    "original_size": 488667619,
+    "source_url": "https://www.mediafire.com/file/pzwymjdofmsllfa/Hypothesis.exe/file",
+    "source_page": "https://callofdutyrepo.com/2021/11/24/hypothesis/",
+    "fetched": "2026-09-26T14:45:56Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "A map inspired by dreams, friends, and colleagues. I hope you enjoy it and all of its awesome features! CREDITS: Round Starter, Zombie Counter \u2013 Dust BO1 Weapons \u2013 shippuden1592 Rai-K56 FX \u2013 HarryBO21 Hitmarkers \u2013 Mzslayer Shootable Doors, Keypads \u2013 Make Cents Soul Chests, Electric/Explosive Ammo, Achievements, Panzers \u2013 Blunt Stuffy Help With Round Change Music \u2013 DuaLVII Kino Teleporter \u2013 Aidan Teddy Bear Easter Egg \u2013 Cristian_M Pause Menu, PaP Camo \u2013 HitmanVere Perks \u2013 Gympie6 Round Change Music \u2013 Treyarch Custom Models \u2013 Salaj Buildable Door Switch \u2013 BYZMODZ BO2 Weapons \u2013 SpiralModz MW2 Weapons \u2013 Rorke CoD4 Weapons \u2013 WoLf_GoLd Bombs \u2013 buttkicker845 HUD, Character Randomization, Generators \u2013 alaurenc9 Instant Nuke, Unlimited Ammo Powerup \u2013 KDXDARK TESTERS: Assassinfunches \u2013 https://www.twitch.tv/assassinfunches Cristian_M \u2013 https://youtube.com/channel/UCEO9AlCarXEAAPNHsaci_sA ImRezQo \u2013 https://www.twitch.tv/imrezqo RadimaX \u2013 https://www.ugx-mods.com/forum/mlist/radimax_118 Reanymation \u2013 https://www.twitch.tv/reanymation Redryder21 \u2013 https://www.twitch.tv/redryder21 OfficialSaluc \u2013 https://www.twitch.tv/officialsaluc WhySoCerealMan \u2013 https://www.twitch.tv/whysocerealman Yikame \u2013 https://www.twitch.tv/yikame",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [
+        "gympie6_perks.iwd:images/~p7_zm_vending_ads_logo_spc-r~301c48c1.iwi",
+        "gympie6_perks.iwd:images/p7_zm_vending_ads_logo_col.iwi",
+        "gympie6_perks.iwd:images/specialty_fastreload_zombies.iwi",
+        "hypothesis.iwd:images/hyp_menu.iwi",
+        "hypothesis.iwd:images/keypad_menu.iwi",
+        "hypothesis.iwd:images/menu_button_backing_right.iwi",
+        "hypothesis.iwd:images/menu_mp_weapons_an94.iwi",
+        "hypothesis.iwd:images/menu_zm_weapons_rnma.iwi",
+        "hypothesis.iwd:images/minijaylogotexture.iwi",
+        "hypothesis.iwd:images/specialty_fastreload_zombies.iwi",
+        "hypothesis.iwd:images/weapon_red_cross_background.iwi",
+        "hypothesis.iwd:images/zombie_vending_sleight_logo_c.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 116.9,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 67,
+        "scripts": 0,
+        "bytes": 176320
+      },
+      {
+        "file": "gympie6_perks.iwd",
+        "entries": 236,
+        "scripts": 7,
+        "bytes": 46707355
+      }
+    ],
+    "flags": [
+      "client_memory_risk",
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "hypothesis.ff",
+      "hypothesis_patch.ff",
+      "mod.ff",
+      "gympie6_perks.iwd:maps/_loadout.gsc",
+      "hypothesis.iwd:animscripts/death.gsc",
+      "hypothesis.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "hypothesis.iwd:maps/mc_mod/dukip_door.gsc",
+        "menus": [
+          "dukip_door_code"
+        ],
+        "responses": [
+          "door",
+          "enter_passcode",
+          "passcode_quit",
+          "reset_passcode"
+        ],
+        "note": "in game: a door keypad"
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

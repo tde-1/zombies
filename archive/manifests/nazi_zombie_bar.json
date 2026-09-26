@@ -1,0 +1,194 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_bar",
+  "title": "Kneipe Der Untoten (Bar v1.1)",
+  "source": "custom",
+  "author": "W1NG3D",
+  "released": "2010-06-27",
+  "fs_game": "mods/nazi_zombie_bar",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@bar_1.1.iwd": "1c81ad4e919b38a2280338f144ca10405b2e5a87927b6f93f4754a2f788ecea4"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        20000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game name an ending and are this map's own; script hardcodes cost 20000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 60,
+    "script_count": 60,
+    "entities": 984,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      20000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "metal_door"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "trap_door"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "stairs_debris"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "stairs_debris"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "bookcase"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_laststand.gsc"
+    ],
+    "zombiemode_sha256": "1c81ad4e919b38a2280338f144ca10405b2e5a87927b6f93f4754a2f788ecea4",
+    "map_specific_triggers": [
+      "end_game",
+      "end_game_player_check",
+      "give_ammo",
+      "music_box_player"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:44:34Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_bar_1.1.exe",
+    "original_sha256": "09ad5199bd7936f98e0de876bd8be9611fdcb390461cc60afc73453e07cb260b",
+    "original_size": 90739566,
+    "source_url": "http://www.mediafire.com/file/36bbsd9ofc9c9wk/nazi_zombie_bar_1.1.exe/file",
+    "source_page": "https://callofdutyrepo.com/2010/06/27/kneipe-der-untoten/",
+    "fetched": "2026-09-26T14:42:42Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Nazi Zombie Bar is a fight for survival inside a boarded up, gloomy pub. This map is better geared towards cooperative with 3 players or above but it is still fun in solo or just with two players. It features buyable ammo in two locations, is compatible with Modern Weapons and includes other less common weapons like the DP28 and ALL the pistols which are also in the random weapons box. I have placed it in the \u201cUnfinished Maps\u201d section as this was a BETA version, and while I planned on making a full release, there are some errors which sadly I am unable to fix, so the only releasable build is this one. There are glitches in this map which I would have otherwise fixed had I not been forced to release this version, so please, if you find any bugs which ruin the game, don\u2019t share them! For Co-Operative play, the map doesn\u2019t have a loadscreen and the name doesn\u2019t appear properly in the zombies map list, but it still works as far as I can see after testing with someone else. Probably my best detailed and most enjoyable map yet, but it\u2019s a real shame I could never get around to finishing it Ah well.",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_bar",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "bar_1.1.iwd:images/loadscreen_nazi_zombie_bar.iwi",
+        "bar_1.1.iwd:images/bar_menubackground.iwi",
+        "bar_1.1.iwd:images/bar_menu_ingmae.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_bar"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_laststand.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 96.6,
+    "addon_iwds": [
+      {
+        "file": "bar_1.1.iwd",
+        "entries": 73,
+        "scripts": 19,
+        "bytes": 35597327
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "nazi_zombie_bar.ff"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "bar_1.1.iwd:maps/tom_music_player_unl.gsc",
+        "menus": [],
+        "responses": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9"
+        ],
+        "note": "in game: a music player"
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

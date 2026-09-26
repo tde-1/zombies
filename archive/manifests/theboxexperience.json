@@ -1,0 +1,208 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "theboxexperience",
+  "title": "TheBoxExperienceV1.1 [Literally a box]",
+  "source": "custom",
+  "author": "Klaudeh",
+  "released": "2022-12-09",
+  "fs_game": "mods/theboxexperience",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@theboxexperience.iwd": "9c0a351ec2d905a83c065851a8ecbdf448af90b669c09a7fe6e971fcbbe0cfd2"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game",
+        "mech_escape_trigger"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        3000,
+        5000,
+        50000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game, mech_escape_trigger name an ending and are this map's own; script hardcodes cost 50000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 104,
+    "script_count": 104,
+    "entities": 1537,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game",
+      "mech_escape_trigger"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      5000,
+      50000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "key_door",
+        "auto102"
+      ],
+      [
+        4000,
+        "zombie_door",
+        "auto79"
+      ],
+      [
+        4000,
+        "zombie_door",
+        "auto78"
+      ],
+      [
+        4000,
+        "zombie_door",
+        "auto77"
+      ],
+      [
+        4000,
+        "rotating_door",
+        "auto1"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "9c0a351ec2d905a83c065851a8ecbdf448af90b669c09a7fe6e971fcbbe0cfd2",
+    "map_specific_triggers": [
+      "end_game",
+      "key_door",
+      "mech_escape_trigger",
+      "rotating_door",
+      "soul_triggers",
+      "soulboxes_reward_weapon_point"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:48:51Z"
+    }
+  },
+  "archive": {
+    "original": "TheBoxExperience.exe",
+    "original_sha256": "1c512fabc2b1771fee6300fd9657d59e247400871a892c430dc1fdccae70ac4a",
+    "original_size": 234194789,
+    "source_url": "https://www.mediafire.com/file/isa0pc0mzxwkv9o/TheBoxExperience.exe/file",
+    "source_page": "https://callofdutyrepo.com/2022/12/09/theboxexperiencev1-1-literally-a-box/",
+    "fetched": "2026-09-26T14:46:58Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "So. . . Yeah it\u2019s just a box, nothing more. Except the fact it\u2019s a challenge map! This box has 4 different spawn for players, soulboxes, bob, and this dude run a lot. So i hope you enjoy playing this weird and fun map haha it got plenty of space to run and walk so there\u2019s no excuse to let bob kill you. Btw this map has a panzer so be careful , there\u2019s no much weapons to buy at the start but don\u2019t ya worry because when you get more far on the map there will be more wall weapons and the box to get a good weapon to defend yourself! Bugs fixes / New stuff: \u2013 Fixed text not updating when power is turned on \u2013 Fixed spawns for 3 or more players \u2013 Now you can drop at the double tap stairs in any place if you opened the last door \u2013 Deleted a couple soulboxes so there aren\u2019t to many of then \u2013 Added new wall buys in the upper zone \u2013 Added new heads locations \u2013 Added more boxes to the map! This map features: \u2013 Custom Weapons from BO1, BO2 and BO3 \u2013 Bo1, Bo2 and Bo3 Perks \u2013 3 hits system \u2013 Box zombies (Bob) \u2013 Bo2 HUD (kinda) \u2013 Power up customs (Random Perk Power Up, Random Power Up) \u2013 Custom Player Model and Hands \u2013 Sprinters \u2013 Hug Fix and Bo1 knife \u2013 Buyable ending \u2013 Custom Camo \u2013 Hitmarkers \u2013 Colored zombie counter \u2013 Added recoil and balance to weapon movement \u2013 Rotating Doors \u2013 One Especial RayGun \u2013 Collectibles for the ending door \u2013 Soul Boxes \u2013 PanzerSoldat Credits: \u2013 Shippuden1592 (Power up Money, Soul Boxes) \u2013 Ricko0z (Bo3 Weapons, Bo2 Weapons and Bo1 Weapons) \u2013 BluntStuffy (Panzer",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [
+        "gympie6_perks.iwd:images/~p7_zm_vending_ads_logo_spc-r~301c48c1.iwi",
+        "gympie6_perks.iwd:images/p7_zm_vending_ads_logo_col.iwi",
+        "gympie6_perks.iwd:images/specialty_fastreload_zombies.iwi",
+        "theboxexperience.iwd:images/box_menu.iwi",
+        "theboxexperience.iwd:images/specialty_fastreload_zombies.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 63.3,
+    "addon_iwds": [
+      {
+        "file": "BlSt_PanzerSoldat.iwd",
+        "entries": 15,
+        "scripts": 2,
+        "bytes": 4137908
+      },
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 67,
+        "scripts": 0,
+        "bytes": 176320
+      },
+      {
+        "file": "gympie6_perks.iwd",
+        "entries": 235,
+        "scripts": 7,
+        "bytes": 46704936
+      },
+      {
+        "file": "gympie6_wunderfizz.iwd",
+        "entries": 31,
+        "scripts": 0,
+        "bytes": 5479386
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "theboxexperience.ff",
+      "theboxexperience_patch.ff",
+      "gympie6_perks.iwd:maps/_loadout.gsc",
+      "theboxexperience.iwd:animscripts/death.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

@@ -1,0 +1,224 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_oil_rig",
+  "title": "Oil Rig",
+  "source": "custom",
+  "author": "steviewonder87",
+  "released": "2015-11-08",
+  "fs_game": "mods/nazi_zombie_oil_rig",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_oil_rig.iwd": "28ccd183ed246d85a8b8615fa94bf16c2095d01d67b3f8a69d31a2b8268ccfaa"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "meteor_deadshot",
+        "meteor_middle",
+        "meteor_spawn",
+        "meteor_top_deck"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "meteor_deadshot, meteor_middle, meteor_spawn, meteor_top_deck look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 176,
+    "script_count": 176,
+    "entities": 3506,
+    "ee_candidates": [
+      "meteor_deadshot",
+      "meteor_middle",
+      "meteor_spawn",
+      "meteor_top_deck"
+    ],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game",
+      "endgame_mechs_dead",
+      "gersh_teleport",
+      "mech_escape_trigger"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000,
+      6000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        1750,
+        "zombie_debris",
+        "zone10_barrels"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "zone4_door"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "top_deck_power_door"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "power_barrels"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "power_barrels"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "28ccd183ed246d85a8b8615fa94bf16c2095d01d67b3f8a69d31a2b8268ccfaa",
+    "map_specific_triggers": [
+      "GalvaHit",
+      "TrigMoney",
+      "chopper_trig",
+      "claymore_purchase",
+      "com_link_trig",
+      "galvaknuckles",
+      "keycard_trigger",
+      "lift_call_trigger",
+      "lift_inside",
+      "lift_use_trigger",
+      "mech_escape_trigger",
+      "packasplat_trigger",
+      "soul_chest_area",
+      "spawn_juggernaut",
+      "workbench"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:15:34Z"
+    }
+  },
+  "archive": {
+    "original": "Oil_Rig_T4M_V.1.exe",
+    "original_sha256": "1a16e7994e5bc004883784520f091bc86dcf0949eac20a613a3c7438a4aa9b7c",
+    "original_size": 663955729,
+    "source_url": "http://www.mediafire.com/file/lnjb7ay7ddq242t/Oil_Rig_T4M_V.1.exe",
+    "source_page": "https://callofdutyrepo.com/2015/11/08/oil-rig/",
+    "fetched": "2026-09-26T02:20:11Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "easter_egg",
+      "buyable_ending",
+      "top100",
+      "t4m_req",
+      "top_100"
+    ],
+    "catalogue_description": "This map is a re-imagining of the MW2 SP mission \u2018The Only Easy Day\u2026 Was Yesterday\u2019; can you fight off the hordes and survive the rig? Features: In depth EE Nova crawlers (teleporting, EMP, jumping, Kamikaze) Juggernaut Bosses Panzer Soldats BO1 Perks + Ammomatic + Electric Cherry + Widow\u2019s Wine Buildable Sliquifier Custom Storm PSR Wonder Weapon Galvaknuckles Point Sharing Tranzit Style Bank System Sidestepping/Barrel rolling zombies Super sprinters Zombie Cash, Zombie Blood, Death Machine and Random gun drops QEDs Gershes Venom-X BO3/BO2/BO1/AW/Ghosts/MW3/Titanfall guns Crawling when downed in co-op Trophies And much, much more\u2026 Weapons List: Pistols \u2013 MR6 RK5 (Akimbo & Single Wield) Executioner Five Seven (Akimbo) Desert Eagle (Akimbo) RE45 (Akimbo) SMGs \u2013 MP5 ASM1 PDW Skorpion EVO AK12 Vesper Weevil ARs/Rifles \u2013 AUG M16A1 SMR Scar H Galil M8A1 FN FAL AN94 MK14 G2A4 XR2 KN44 M8A7 ICR-1 Snipers \u2013 DSR Drakon LMGs \u2013 LSAT HAMR RPD M27-IAR Shotguns \u2013 Remington 870 KSG Bulldog Haymaker 12 Wunderweapons \u2013 Gershes QEDs Ray Gun Ray Gun Mark 2 Storm PSR Scavenger Thundergun Blundergat/Acid Gat Sliquifier Venom X Misc \u2013 Claymores Galvaknuckles Trophies: X-Files \u2013 Unlock the Venom X by shooting the 3 aliens T.K.O \u2013 Purchase the Galvaknuckles before round 8 Tank Soldier \u2013 Kill a Panzer Soldat without Juggernog Supernova \u2013 Kill 5 Kamikaze Novas I\u2019m the Juggernaut\u2026 \u2013 Kill a Juggernaut with a Death Machine No Escape! \u2013 Complete the main EE Credits: Bluntstuffy \u2013 massive thanks, this map w",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_oil_rig",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "nazi_zombie_oil_rig.iwd:images/ammo_background.iwi",
+        "nazi_zombie_oil_rig.iwd:images/ammo_background2.iwi",
+        "nazi_zombie_oil_rig.iwd:images/ammo_background2_new.iwi",
+        "nazi_zombie_oil_rig.iwd:images/custom_zombies_menu.iwi",
+        "nazi_zombie_oil_rig.iwd:images/gfx_loading_bar.iwi",
+        "nazi_zombie_oil_rig.iwd:images/gfx_loading_bar_static1.iwi",
+        "nazi_zombie_oil_rig.iwd:images/gfx_loading_bar_static2.iwi",
+        "nazi_zombie_oil_rig.iwd:images/gfx_loading_circle.iwi",
+        "nazi_zombie_oil_rig.iwd:images/loadscreen_nazi_zombie_oil_rig.iwi",
+        "nazi_zombie_oil_rig.iwd:images/menu_button_backing_right.iwi",
+        "nazi_zombie_oil_rig.iwd:images/menu_map_custom_zombies_menu.iwi",
+        "nazi_zombie_oil_rig.iwd:images/me_cargocontainer_decal_logo01_col.iwi",
+        "nazi_zombie_oil_rig.iwd:images/me_cargocontainer_decal_logo02_col.iwi",
+        "nazi_zombie_oil_rig.iwd:images/me_cargocontainer_decal_logo03_col.iwi",
+        "nazi_zombie_oil_rig.iwd:images/specialty_fastreload_zombies.iwi",
+        "nazi_zombie_oil_rig.iwd:images/weapon_p2011_tf_logo.iwi",
+        "nazi_zombie_oil_rig.iwd:images/weapon_red_cross_background.iwi",
+        "nazi_zombie_oil_rig.iwd:images/weapon_red_cross_background_2.iwi",
+        "nazi_zombie_oil_rig.iwd:images/weapon_red_cross_background_max.iwi",
+        "nazi_zombie_oil_rig.iwd:images/weapon_shotgun_speedloader_col.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_oil_rig"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 259.3,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 189,
+        "scripts": 0,
+        "bytes": 511231
+      }
+    ],
+    "flags": [
+      "client_memory_risk"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_oil_rig_patch.ff",
+      "nazi_zombie_oil_rig.iwd:animscripts/death.gsc",
+      "nazi_zombie_oil_rig.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

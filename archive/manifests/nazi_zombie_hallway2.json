@@ -1,0 +1,252 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_hallway2",
+  "title": "Der Flur (Hallway2)",
+  "source": "custom",
+  "author": "jeffrey",
+  "released": "2016-10-23",
+  "fs_game": "mods/nazi_zombie_hallway2",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_hallway2.iwd": "ee067eca7aac5c7dc9d188d200810330b7fe4964cba51e066284c87fe0153f9f"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        5000,
+        75000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 75000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 130,
+    "script_count": 130,
+    "entities": 1000,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000,
+      75000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_door",
+        "auto1"
+      ],
+      [
+        2000,
+        "auto1",
+        "?"
+      ],
+      [
+        1750,
+        "zombie_door",
+        "auto8"
+      ],
+      [
+        1750,
+        "zombie_door",
+        "auto8"
+      ],
+      [
+        1500,
+        "zombie_door",
+        "auto2"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "ee067eca7aac5c7dc9d188d200810330b7fe4964cba51e066284c87fe0153f9f",
+    "map_specific_triggers": [
+      "bear_1",
+      "bear_2",
+      "bear_3",
+      "button",
+      "end_game",
+      "kino_mainframe_trigger",
+      "kino_teleporter_trigger",
+      "radio_1",
+      "radio_2",
+      "radio_3",
+      "soul_chest_area",
+      "soul_chest_reward",
+      "tower",
+      "zapper1_damage",
+      "zapper1_trigger",
+      "zapper2_damage",
+      "zapper2_trigger",
+      "zapper3_damage",
+      "zapper3_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:39:05Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_hallway2.exe",
+    "original_sha256": "ac8f8bb6703475dc602f7743c01231fb534763ade9cba5673896bf8d3c768a88",
+    "original_size": 351285485,
+    "source_url": "http://www.mediafire.com/file/sulofxio70zzcog/nazi_zombie_hallway2.exe/file",
+    "source_page": "https://callofdutyrepo.com/2016/10/23/der-flur-hallway2/",
+    "fetched": "2026-09-26T14:34:57Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "easter_egg",
+      "buyable_ending",
+      "t4m_req"
+    ],
+    "catalogue_description": "Features: 9 Perks Kino style teleporter Black ops 1 weapons Solo quick revive No perk limit Soul boxes Double tap 2.0 Jug fix Buyable ending Main EE 3 music EEs And more! Updates: Update 1.1: Fixed Power ups not spawning in some areas Fixed monkeys Fixed visual bugs/changes Added all the pap world models Fixed hugging zombies (mostly) Update 1.2: Added more weapons Buffed Blundergat Removed zone text Added text after completing the soul boxes Soul box range slightly increased Fixed bugs Added MEGA link Fixed name Added kill achievements Randomized perks Raygun marks 2 rarity Update 1.3: Random characters Fixed old crew Fixed visual bugs Buffed Blundergat Fixed gun pick up icon Improved teddy locations Fixed CO-OP bug Added buyable ending button Update 1.4: Fix Cobra reload time Fix missing 1 pap weapon Fix custom pap weapon fire sounds Fix solo quick revive Fix Raygun Fix Blundergat Fixed other small bugs Traps Main EE Secret Known bugs: None Notes: 1. Yes, you need t4m. It doesnt take that much effort xD. You can download that here: http://ugx-mods.com/forum/index.php?topic=8092.0 2. You can only activate items for the music EE after the cooldown to prevent mutiple songs playing at one moment. 3. The map was actually being called hallway so that\u2019s why it says \u201cnazi_zombie_hallway2\u201d in the join list. 4. What does filling up chests do? Opens up electric cherry, gives you a free power up and you can pick up a free wonder weapon somewhere in the map Credits: Scripts and stuff: T",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [
+        "_bam_bo1_perks_mod.iwd:images/specialty_fastreload_zombies.iwi",
+        "_bam_bo1_perks_mod.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "_bam_bo1_perks_mod.iwd:images/zombie_vending_three_gun_logo_c.iwi",
+        "_bam_bo1_perks_mod.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "_bam_bo1_perks_mod.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 98.5,
+    "addon_iwds": [
+      {
+        "file": "_bam_bo1_perks_mod.iwd",
+        "entries": 58,
+        "scripts": 3,
+        "bytes": 2985211
+      },
+      {
+        "file": "bo1_pap_camo.iwd",
+        "entries": 4,
+        "scripts": 0,
+        "bytes": 484890
+      },
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 67,
+        "scripts": 0,
+        "bytes": 176320
+      },
+      {
+        "file": "electric_cherry.iwd",
+        "entries": 10,
+        "scripts": 1,
+        "bytes": 953424
+      },
+      {
+        "file": "nsz_bo2_weapons_v1.3.5.iwd",
+        "entries": 337,
+        "scripts": 0,
+        "bytes": 90627254
+      },
+      {
+        "file": "porter_punch.iwd",
+        "entries": 6,
+        "scripts": 2,
+        "bytes": 293841
+      },
+      {
+        "file": "vulture_aid.iwd",
+        "entries": 11,
+        "scripts": 1,
+        "bytes": 557060
+      },
+      {
+        "file": "wunderfizz.iwd",
+        "entries": 8,
+        "scripts": 1,
+        "bytes": 1019295
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_hallway2.ff",
+      "nazi_zombie_hallway2_patch.ff",
+      "nazi_zombie_hallway2.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

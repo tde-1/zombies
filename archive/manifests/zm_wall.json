@@ -1,0 +1,191 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "zm_wall",
+  "title": "Empty Walls",
+  "source": "custom",
+  "author": "BazookaJimmy",
+  "released": "2023-01-02",
+  "fs_game": "mods/zm_wall",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@mod.ff": "a0bbdb1c6ef9e63cb6442391839bf148bde8101e7fa241473959b072da9146f7"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "crawler_round_ending"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "dive_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        5000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, dive_ending, end_game name an ending and are this map's own; script hardcodes cost 5000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 111,
+    "script_count": 111,
+    "entities": 2961,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "dive_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "streetclothesdoor"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "streetclothesdoor"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "sheddoor"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "roofdoor"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "alleycourtdoor"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "a0bbdb1c6ef9e63cb6442391839bf148bde8101e7fa241473959b072da9146f7",
+    "map_specific_triggers": [
+      "burner",
+      "safe_area",
+      "zapper_damage_warehouse",
+      "zapper_damage_wuen"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:50:26Z"
+    }
+  },
+  "archive": {
+    "original": "Empty_Walls.exe",
+    "original_sha256": "e92d754a7b09799a50a61eded4497989eda8b7fd6647d6ec58033daeb8cae293",
+    "original_size": 133374010,
+    "source_url": "https://www.mediafire.com/file/wxz02ifm4rwxyhh/Empty_Walls.exe/file",
+    "source_page": "https://callofdutyrepo.com/2023/01/02/empty-walls/",
+    "fetched": "2026-09-26T14:47:43Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "\u200b\u200b\u200b\u200b\u200b Empty Walls is an original custom zombies map set NW of the Tiergarten in Berlin. This map provides several ways to navigate these \u201cEmpty Walls\u201d by changing up the oldschool gameplay loop with its dynamic visuals and environmental storytelling . Be sure to stay alert! This is an ACTIVE bombing zone! INCLUDES: Unique Level-wide\u200b\u200b\u200b Bombing Event \u201cDud\u201d Bombs(Shootable Traps) SP + MP WAW Weapons Sharable Mystery Box Pack-a-Punch BO1 Perks FOV Slider On Pause Menu Russian & German Zombies NO BSP LEAKS PLAYERS MUST KNOW: Requires T4M Map must be launched with textures set to \u201cHigh\u201d or lower PHD only protects you from \u201cdud\u201d bombs NOT falling bombs You can only hide under intact ceilings \u2013 Awnings, catwalks, rafter roofs do NOT count Known Bugs: Mule Kick takes a random weapon when downed, Russian zombies sometimes appear invisible and their \u200b\u200b\u200b\u200b\u200b legs spawn in the player\u2019s head when killed by electric traps \u200b\u200b\u200b\u200b\u200b\u200b NEW UPDATE THIS MAP WILL BE RECEIVING UPDATES Last Updated: 1/7/2023 12:50pm CST Changelog Under Credits CREDITS (A-Z) BazookaJimmy cpt_johnson1 Gingerboi MidgetBlaster NGcaudle RadimaX Tom_BMX Vertasea YaF3li CHANGELOG Fixed zombies getting stuck in 2 barriers (if anyone notices more lmk here) Buffed \u201cdud\u201d bombs (3x what it was before) Added more MP guns and fixed existing MP gun\u2019s PAP fx (THANK YOU Gingerboi) Balanced MP guns and buffed Bazooka by a lot (basically a wonder-weapon now) Added 2nd wall buys for Thompson, Bar, FG42, STG 44, MP40 Removed wall buy for Ty",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak",
+        "loadscreen_sp_makin",
+        "loadscreen_zm_wall"
+      ],
+      "iwd_images": [
+        "zm_wall.iwd:images/dlc4_logo.iwi",
+        "zm_wall.iwd:images/loadscreen_zm_wall.iwi",
+        "zm_wall.iwd:images/menu_zm_wall.iwi",
+        "zm_wall.iwd:images/specialty_fastreload_classic.iwi",
+        "zm_wall.iwd:images/specialty_fastreload_dlc4.iwi",
+        "zm_wall.iwd:images/zombie_vending_ads_logo_c.iwi",
+        "zm_wall.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "zm_wall.iwd:images/zombie_vending_three_gun_logo_c.iwi",
+        "zm_wall.iwd:images/~-gzombie_vending_ads_logo_c.iwi",
+        "zm_wall.iwd:images/~-gzombie_vending_three_gun_logo_c.iwi",
+        "zm_wall.iwd:images/~~~-gzombie_vending_ads_logo_~b134f8b9.iwi"
+      ],
+      "loadscreen": "loadscreen_zm_wall"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 189.3,
+    "addon_iwds": [],
+    "flags": [
+      "client_memory_risk",
+      "no_patch_ff"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": false,
+    "napalmblob": [
+      "mod.ff",
+      "zm_wall.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

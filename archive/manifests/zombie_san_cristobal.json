@@ -1,0 +1,203 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "zombie_san_cristobal",
+  "title": "Zombie San Cristobal",
+  "source": "custom",
+  "author": "KDXDARK",
+  "released": "2015-07-01",
+  "fs_game": "mods/zombie_san_cristobal",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@zombie_san_cristobal.iwd": "a8f0ee0566c3c958afa68769a673336e33eaaf0742da739ed3036a9a754d033b"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "ee_bowie_bear",
+        "ee_exp_monkey",
+        "ee_perk_bear"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "ee_bowie_bear, ee_exp_monkey, ee_perk_bear look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 119,
+    "script_count": 119,
+    "entities": 1960,
+    "ee_candidates": [
+      "ee_bowie_bear",
+      "ee_exp_monkey",
+      "ee_perk_bear"
+    ],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "zombie_debris",
+        "door_v6"
+      ],
+      [
+        5000,
+        "zombie_debris",
+        "door6"
+      ],
+      [
+        5000,
+        "pf1987_auto1",
+        "?"
+      ],
+      [
+        4000,
+        "zombie_door",
+        "doortest"
+      ],
+      [
+        4000,
+        "pf925_auto1",
+        "?"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "a8f0ee0566c3c958afa68769a673336e33eaaf0742da739ed3036a9a754d033b",
+    "map_specific_triggers": [
+      "activate_mg",
+      "apart_trigger",
+      "bat_trigger",
+      "bomb_run_trig",
+      "dark1",
+      "dt_trigger",
+      "end_game",
+      "give_ammo",
+      "harrybo21_perk_trigger",
+      "place_bat",
+      "place_sat"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:46:29Z"
+    }
+  },
+  "archive": {
+    "original": "zombie_san_cristobal.exe",
+    "original_sha256": "c63e41f54a20fbb19cf1542f3fc74a12a3f930db642bc7a9e5ec92e5a5e58ded",
+    "original_size": 494712058,
+    "source_url": "https://www.mediafire.com/file/dgl39buqqhks1eb/zombie_san_cristobal.exe/file",
+    "source_page": "https://callofdutyrepo.com/2015/07/01/zombie-san-cristobal/",
+    "fetched": "2026-09-26T14:44:36Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak",
+        "loadscreen_zombie_san_cristobal"
+      ],
+      "iwd_images": [
+        "harrybo21_perks v3.0.6.iwd:images/p6_zm_al_vending_ads_logo_m.iwi",
+        "harrybo21_perks v3.0.6.iwd:images/p6_zm_al_vending_three_gun_logo_m.iwi",
+        "harrybo21_perks v3.0.6.iwd:images/p6_zm_al_vending_three_gun_logo_n.iwi",
+        "harrybo21_perks v3.0.6.iwd:images/specialty_fastreload_zombies.iwi",
+        "harrybo21_perks v3.0.6.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "harrybo21_perks v3.0.6.iwd:images/ugx_mod_menu_template.iwi",
+        "harrybo21_perks v3.0.6.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "harrybo21_perks v3.0.6.iwd:images/_-gp6_zm_al_vending_ads_logo_c.iwi",
+        "harrybo21_perks v3.0.6.iwd:images/_-gzombie_vending_sleight_logo_c.iwi",
+        "harrybo21_perks v3.0.6.iwd:images/~__-gzombie_vending_ads_logo_~7aa94a54.iwi",
+        "zombie_san_cristobal.iwd:images/dukip_menu.iwi",
+        "zombie_san_cristobal.iwd:images/dukip_menu2.iwi",
+        "zombie_san_cristobal.iwd:images/feria_del_norte_logo.iwi",
+        "zombie_san_cristobal.iwd:images/loadscreen_zombie_san_cristobal.iwi",
+        "zombie_san_cristobal.iwd:images/marley_griffin_moving_logo_col.iwi",
+        "zombie_san_cristobal.iwd:images/menu_map_zombie_san_cristobal.iwi",
+        "zombie_san_cristobal.iwd:images/weapon_red_cross_background - Copie.iwi",
+        "zombie_san_cristobal.iwd:images/weapon_red_cross_background.iwi",
+        "zombie_san_cristobal.iwd:images/weapon_red_cross_background_2.iwi",
+        "zombie_san_cristobal.iwd:images/weapon_red_cross_background_iw5.iwi"
+      ],
+      "loadscreen": "loadscreen_zombie_san_cristobal"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 138.6,
+    "addon_iwds": [
+      {
+        "file": "harrybo21_perks v3.0.6.iwd",
+        "entries": 279,
+        "scripts": 1,
+        "bytes": 45673802
+      }
+    ],
+    "flags": [
+      "client_memory_risk",
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "zombie_san_cristobal.ff",
+      "zombie_san_cristobal_patch.ff",
+      "zombie_san_cristobal.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

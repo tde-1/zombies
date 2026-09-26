@@ -1,0 +1,279 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "ds",
+  "title": "Reapers Map Pack",
+  "source": "custom",
+  "author": "death_reaper0",
+  "released": "2018-04-25",
+  "fs_game": "mods/ds",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@cxca_patch.ff": "4aa6e610a4e3acb2e34a66427d3ba6577993d1920f8221de6502e9591343286e"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "enter_boss",
+        "enter_boss_zone"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "enter_boss, enter_boss_zone look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 211,
+    "script_count": 211,
+    "entities": 630,
+    "ee_candidates": [
+      "enter_boss",
+      "enter_boss_zone"
+    ],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000,
+      7500,
+      10000,
+      15000,
+      20000,
+      30000,
+      40000,
+      50000,
+      80000,
+      86320
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        3000,
+        "zombie_debris",
+        "auto8"
+      ],
+      [
+        1250,
+        "zombie_debris",
+        "auto9"
+      ],
+      [
+        1250,
+        "zombie_debris",
+        "auto7"
+      ],
+      [
+        1250,
+        "zombie_debris",
+        "auto4"
+      ],
+      [
+        1250,
+        "zombie_debris",
+        "auto3"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc",
+      "maps/_utility.gsc"
+    ],
+    "zombiemode_sha256": "4aa6e610a4e3acb2e34a66427d3ba6577993d1920f8221de6502e9591343286e",
+    "map_specific_triggers": [
+      "end_game",
+      "trig1",
+      "trig2",
+      "trig3",
+      "wunderfizz_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:20:30Z"
+    }
+  },
+  "archive": {
+    "original": "fortress_snn.exe",
+    "original_sha256": "9fe5f5ef020ddcfd893824c455d295887df8d60abb2a5e35a277f1da6baccb0f",
+    "original_size": 1017169898,
+    "source_url": "http://www.mediafire.com/file/q46t3gkzi4cv692/fortress_snn.exe",
+    "source_page": "https://callofdutyrepo.com/2018/04/25/reapers-map-pack/",
+    "fetched": "2026-09-26T02:48:57Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "easter_egg",
+      "buyable_ending",
+      "top100",
+      "t4m_req",
+      "top_100"
+    ],
+    "catalogue_description": "IF AN ERROR COMES UP, JUST KEEP TRYING, THE MOD WORKS ITS JUST WAW DOING ITS THING IF THE ERROR PERSISTS TYPE \u201clogfile 1\u201d INTO THE CONSOLE (WITHOUT THE \u201c) TO SHOW THE FULL ERROR IF THIS IS YOUR ERROR, REMOVE YOUR ANTI CHEAT if you get an error along the lines of \u201cServer script compile error unknown function\u201d delete the mod completely and re install it THIS MOD REQUIRES T4M, NO EXCEPTIONS. THIS MOD WAS FORMALLY KNOWN AS \u201cFORTRESS\u201d IT IS NOW CHANGED DUE TO THE FACT THAT FORTRESS IS NO LONGER THE MAIN FOCUS OF THIS MOD, THE INSTALLED MOD IN THE MODS FOLDER WILL STILL BE \u201cFORTRESS\u201d HOWEVER FAQ: Q: my game crashes when i try to play nacht, but the other maps works A: nacht requires t4m, its at the top of its section on this post Q: when i try to play i get put back at the menu with an error: maps\\_\u2026 A: only certain people seem to be getting this error, im trying to fix it, there no need to clutter this post with error messages Q: how do i save my gums? A: there is an instruction on the gumball section stating to save and quit to save them, additionally i added a trigger on the door if you cant find the \u201csave & quit\u201d button This mod will contain multiple maps, and will still be worked on over a length of time, with more features and stuff to add replay-ability these maps will all be packed into this singular mod so they can share and track certain features inside of these maps will be a divinium and gobblegum system that will be tracked and carries over between the maps, for more i",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_cxca",
+        "loadscreen_ds",
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_asylum",
+        "loadscreen_nazi_zombie_factory_mini",
+        "loadscreen_nazi_zombie_fear_mc_2",
+        "loadscreen_nazi_zombie_halloween",
+        "loadscreen_nazi_zombie_prototype",
+        "loadscreen_nazi_zombie_sumpf_mini",
+        "loadscreen_nightclub",
+        "loadscreen_saloon"
+      ],
+      "iwd_images": [
+        "fortress.iwd:images/arcade_plane_background.iwi",
+        "fortress.iwd:images/bonfire_menu.iwi",
+        "fortress.iwd:images/desert_background.iwi",
+        "fortress.iwd:images/fear_saloon_bank_logo.iwi",
+        "fortress.iwd:images/fear_saloon_generalstore_logo.iwi",
+        "fortress.iwd:images/fear_saloon_hotel_logo.iwi",
+        "fortress.iwd:images/fear_saloon_livery_logo.iwi",
+        "fortress.iwd:images/loadscreen_cxca.iwi",
+        "fortress.iwd:images/loadscreen_ds.iwi",
+        "fortress.iwd:images/loadscreen_nazi_zombie_fear_mc_2.iwi",
+        "fortress.iwd:images/loadscreen_nazi_zombie_halloween.iwi",
+        "fortress.iwd:images/loadscreen_nightclub.iwi",
+        "fortress.iwd:images/loadscreen_saloon.iwi",
+        "fortress.iwd:images/loadscreen_zombie_asylum.iwi",
+        "fortress.iwd:images/loadscreen_zombie_asylum_mini.iwi",
+        "fortress.iwd:images/loadscreen_zombie_sumpf.iwi",
+        "fortress.iwd:images/loadscreen_zombie_sumpf_mini.iwi",
+        "fortress.iwd:images/logo_intel_1k.iwi",
+        "fortress.iwd:images/logo_juggernog_1k.iwi",
+        "fortress.iwd:images/marley_griffin_moving_logo_col.iwi"
+      ],
+      "loadscreen": "loadscreen_ds"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc, maps/_utility.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 82.5,
+    "addon_iwds": [
+      {
+        "file": "fortress.iwd",
+        "entries": 1670,
+        "scripts": 7,
+        "bytes": 546765747
+      },
+      {
+        "file": "trxture_pack.iwd",
+        "entries": 64,
+        "scripts": 0,
+        "bytes": 826039
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "cxca.ff",
+      "cxca_patch.ff",
+      "ds.ff",
+      "ds_patch.ff",
+      "gumball.ff",
+      "gumball_patch.ff",
+      "nazi_zombie_fear_mc_2.ff",
+      "nazi_zombie_fear_mc_2_patch.ff",
+      "nazi_zombie_halloween.ff",
+      "nazi_zombie_halloween_patch.ff",
+      "nightclub.ff",
+      "nightclub_patch.ff",
+      "saloon2.ff",
+      "saloon2_c.ff",
+      "saloon2_c_patch.ff",
+      "saloon2_patch.ff"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "mod.ff:maps/_zombiemode_gamemode.gsc",
+        "menus": [],
+        "responses": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9",
+          "y"
+        ],
+        "note": null
+      },
+      {
+        "script": "gumball.ff:maps/gumball.gsc",
+        "menus": [],
+        "responses": [
+          "down",
+          "left",
+          "menu_left",
+          "menu_right",
+          "quit",
+          "right",
+          "select",
+          "up"
+        ],
+        "note": null
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}
