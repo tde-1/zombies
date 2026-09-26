@@ -1,0 +1,200 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "eveningofthedead",
+  "title": "EVENING OF THE DEAD",
+  "source": "custom",
+  "author": "pagotherandy",
+  "released": "2019-07-16",
+  "fs_game": "mods/eveningofthedead",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@eveningofthedead.iwd": "27d9fd914bb5f07e996ee0074f3171a5b8a0674aede0bdf9ad594621453725e8"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "crawler_round_ending"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        3000,
+        5000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 5000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 112,
+    "script_count": 112,
+    "entities": 1083,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "zombie_debris",
+        "debrissecret"
+      ],
+      [
+        5000,
+        "pf1030_auto1",
+        "?"
+      ],
+      [
+        5000,
+        "give_ammo",
+        "?"
+      ],
+      [
+        4000,
+        "pf367_auto1",
+        "?"
+      ],
+      [
+        3000,
+        "pf151_auto1",
+        "?"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "27d9fd914bb5f07e996ee0074f3171a5b8a0674aede0bdf9ad594621453725e8",
+    "map_specific_triggers": [
+      "buy_slot_trigger",
+      "give_ammo",
+      "harrybo21_perk_trigger",
+      "spinningflamesdamage",
+      "spinningflamestrig",
+      "switch"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:51:40Z"
+    }
+  },
+  "archive": {
+    "original": "EveningOfTheDead.exe",
+    "original_sha256": "e2e53b56b629e8db2267efc37634f43cc2434a8ad46d8df85493965590a92856",
+    "original_size": 354416941,
+    "source_url": "http://www.mediafire.com/file/3k6ao7so1ichwut/EveningOfTheDead.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T14:49:04Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "My first and only zombies map never finished.. made it 2 years ago and i love it, so i figured i\u2019d share here with you guys. A map meant to be based on the energy of Nacht Der Untoten, with all of the features of todays standard maps. Evening of the Dead offers some unique options for movement around the map, and an unlimited number of ways to play it. The map includes, 8 perks, double PaP, custom weapons and wonder weapons, secret buyables, and more to find (; The map is meant to be rewarding as you get to the higher rounds, you\u2019ll see why, i hope you enjoy! Known bugs: Buyable perk slot & table are broken Dog animations are stiff in co-op (lol) And please, if i used anybodys downloadables, remind me and i will definitely credit. Its been years since ive made this and i cant remember crap Credits: UGX HarryBo21",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/p6_zm_al_vending_ads_logo_m.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/p6_zm_al_vending_three_gun_logo_m.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/p6_zm_al_vending_three_gun_logo_n.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/p7_zm_vending_ads_logo_col.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/specialty_fastreload_zombies.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/ugx_mod_menu_template.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/_-gp6_zm_al_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/_-gzombie_vending_sleight_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~-gp6_zm_al_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~-gp6_zm_al_vending_three_gun_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~p7_zm_vending_ads_logo_spc-r~301c48c1.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~__-gzombie_vending_ads_logo_~7aa94a54.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~~~-gzombie_vending_ads_logo_~54fdbc62.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 81.2,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 67,
+        "scripts": 0,
+        "bytes": 176320
+      },
+      {
+        "file": "harrybo21_bo1_2_3_perks_v5.0.0.iwd",
+        "entries": 609,
+        "scripts": 0,
+        "bytes": 132191594
+      }
+    ],
+    "flags": [],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "eveningofthedead.ff",
+      "eveningofthedead_patch.ff",
+      "mod.ff",
+      "eveningofthedead.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

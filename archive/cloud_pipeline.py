@@ -244,7 +244,9 @@ def free_gb():
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--queue", required=True, help="cloud_queue.py output (one name per line)")
-    ap.add_argument("--workers", type=int, default=3)
+    ap.add_argument("--workers", type=int, default=4)
+    ap.add_argument("--fetchers", type=int, default=4,
+                    help="parallel fetches; per-host politeness is kept by the shared session")
     ap.add_argument("--min-free-gb", type=float, default=8)
     ap.add_argument("--max-file-mb", type=int, default=4000)
     ap.add_argument("--max-mirrors", type=int, default=4)
@@ -254,6 +256,11 @@ def main():
     ap.add_argument("--retry-failed", action="store_true")
     args = ap.parse_args()
 
+    # an interrupted run leaves half-built trees; they are rebuilt from the originals
+    for d in (extract.EXTRACT, extract.MODS):
+        if os.path.isdir(d):
+            for n in os.listdir(d):
+                shutil.rmtree(os.path.join(d, n), ignore_errors=True)
     extract.HARDLINK = True          # mods/<bsp>/ hard-linked into extract/: half the disk
     s3 = s3client()
     taken = bucket_bsps(s3)
@@ -304,34 +311,52 @@ def main():
     for t in threads:
         t.start()
 
+    todo = queue.Queue()
     for norm in norms:
         prev = status.get(norm)
         if prev and (prev.get("ok") or prev.get("final")) and not (args.retry_failed and not prev.get("ok")):
             continue
-        while free_gb() < args.min_free_gb:
-            log("[disk] %.1f GB free; waiting for uploads" % free_gb())
-            time.sleep(20)
-        try:
-            res = fetch.fetch_one(db, ps, norm, [1 << 50], fargs)
-        except Exception as exc:
-            res = {"norm": norm, "status": "%s: %s" % (exc.__class__.__name__, exc)}
-        if res.get("status") != "ok":
-            with STATE_LOCK:
-                status[norm] = {"norm": norm, "ok": False, "stage": "fetch", "final": True,
-                                "errors": [res.get("status")], "tried": res.get("tried"),
-                                "name": res.get("name")}
-                save_status(status)
-            log("[fetch] %-24s %s" % (norm, res.get("status")))
-            continue
-        if not os.path.exists(res.get("file", "")):
-            # reused sidecar whose original was already uploaded and freed
-            with STATE_LOCK:
-                if norm not in status:
-                    status[norm] = {"norm": norm, "ok": False, "stage": "fetch",
-                                    "errors": ["sidecar present, original gone (already processed?)"]}
+        todo.put(norm)
+    log("[start] %d maps to do, %d fetchers, %d workers" % (todo.qsize(), args.fetchers, args.workers))
+
+    def fetcher():
+        # own sqlite connection per thread; ONE shared PoliteSession, so every host still
+        # sees one request at a time with its delay -- different hosts now overlap
+        fdb = catalogue.connect()
+        while True:
+            try:
+                norm = todo.get_nowait()
+            except queue.Empty:
+                return
+            while free_gb() < args.min_free_gb:
+                log("[disk] %.1f GB free; waiting for uploads" % free_gb())
+                time.sleep(20)
+            try:
+                res = fetch.fetch_one(fdb, ps, norm, [1 << 50], fargs)
+            except Exception as exc:
+                res = {"norm": norm, "status": "%s: %s" % (exc.__class__.__name__, exc)}
+            if res.get("status") != "ok":
+                with STATE_LOCK:
+                    status[norm] = {"norm": norm, "ok": False, "stage": "fetch", "final": True,
+                                    "errors": [res.get("status")], "tried": res.get("tried"),
+                                    "name": res.get("name")}
                     save_status(status)
-            continue
-        work.put((norm, res))
+                log("[fetch] %-24s %s" % (norm, res.get("status")))
+                continue
+            if not os.path.exists(res.get("file", "")):
+                with STATE_LOCK:
+                    if norm not in status:
+                        status[norm] = {"norm": norm, "ok": False, "stage": "fetch",
+                                        "errors": ["sidecar present, original gone (already processed?)"]}
+                        save_status(status)
+                continue
+            work.put((norm, res))
+
+    fts = [threading.Thread(target=fetcher, daemon=True) for _ in range(args.fetchers)]
+    for t in fts:
+        t.start()
+    for t in fts:
+        t.join()
 
     for _ in threads:
         work.put(None)

@@ -1,0 +1,208 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "apartmenttower",
+  "title": "Apartment Tower Map",
+  "source": "custom",
+  "author": "Klaudeh",
+  "released": "2022-06-12",
+  "fs_game": "mods/apartmenttower",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@apartmenttower.iwd": "c360a71a722ec0f90081099cfb499871109a45a6d63050fb8e3206a849f84614"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game",
+        "mech_escape_trigger"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        3000,
+        5000,
+        50000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game, mech_escape_trigger name an ending and are this map's own; script hardcodes cost 50000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 134,
+    "script_count": 134,
+    "entities": 1186,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game",
+      "mech_escape_trigger"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      5000,
+      50000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        3500,
+        "zombie_door",
+        "auto124"
+      ],
+      [
+        2500,
+        "zombie_door",
+        "auto99"
+      ],
+      [
+        2500,
+        "zombie_door",
+        "auto98"
+      ],
+      [
+        2500,
+        "zombie_door",
+        "auto97"
+      ],
+      [
+        2500,
+        "zombie_door",
+        "auto96"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "c360a71a722ec0f90081099cfb499871109a45a6d63050fb8e3206a849f84614",
+    "map_specific_triggers": [
+      "end_game",
+      "key_door",
+      "mech_escape_trigger",
+      "rotating_door",
+      "soul_triggers",
+      "soulboxes_reward_door_trigger",
+      "soulboxes_reward_weapon_point"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:51:12Z"
+    }
+  },
+  "archive": {
+    "original": "ApartmentTower.exe",
+    "original_sha256": "1efa317420ade37b6a57adbed4adfff309f436b6945e42b16951bc4f252e0ea2",
+    "original_size": 254721619,
+    "source_url": "https://www.mediafire.com/file/qvoalca023d49h8/ApartmentTower.exe/file",
+    "source_page": "https://callofdutyrepo.com/2022/06/12/apartment-tower-map/",
+    "fetched": "2026-09-26T14:48:16Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Helloo, i been making this map a couple months ago and finally got it finish, it was fun to make and play it, hope you all like it and have a lot of fun trying to beat this map haha. Like the name suggest, it\u2019s a tower inspired map (i try to do something simple and ended up making all this thing), it has a lobby, 6 floors and a rooftop, there\u2019s one perk per bedroom (2 bedrooms per floor), souls to fill in the elevator zone, a couple of wonder weapons and a micro easter egg, have fun and try to survive. This map have: -Soulboxes \u2013 Custom Weapons (MW2, MW3, Bo1 y Bo2) \u2013 Wonder Weapons (Apothycon servant, Ray Gun MK3, Electric Staff) \u2013 PanzerSoldat \u2013 Rotating Doors \u2013 Bo1, Bo2 and Bo3 Perks \u2013 3 hits system \u2013 Tranzit Zombies \u2013 Origins HUD \u2013 Power ups customs (Money Power Up y Pack and Punch Power Up \u2013 Door with key \u2013 Custom Player Model and Hands \u2013 Sprinters \u2013 Hug Fix and Bo1 knife \u2013 Buyable ending Credits: \u2013 Shippuden1592 (SoulBoxes, Ballistic Knife, Electric Staff, Apothycon Servant, Ray Gun MK3, Tranzit Zombies, Power up Money, Sprinters) \u2013 Ricko0z (Custom Weapons, MW2, MW3, Bo1 y Bo2) \u2013 BluntStuffy (PanzerSoldat) \u2013 DuaLVII (Rotating Doors) \u2013 Gympie6 (Perks of Bo1, Bo2 and Bo3) \u2013 TaXi (3 hits system) \u2013 ThunderFrosty (Several Tutorials, HUD bo2, help with scripts) \u2013 Buttkicker845 (Door With key) \u2013 Gogeta (Pack and Punch Power Up) \u2013 Luis1234 con su coca de 3 litros (Custom Player Model and Hands) \u2013 Steviewonder87 (Zombie Hug fix and bo1 knife) \u2013 SajeOne (Buyable Ending)",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [
+        "gympie6_perks.iwd:images/~p7_zm_vending_ads_logo_spc-r~301c48c1.iwi",
+        "gympie6_perks.iwd:images/p7_zm_vending_ads_logo_col.iwi",
+        "gympie6_perks.iwd:images/specialty_fastreload_zombies.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 81.6,
+    "addon_iwds": [
+      {
+        "file": "BlSt_PanzerSoldat.iwd",
+        "entries": 15,
+        "scripts": 2,
+        "bytes": 4281194
+      },
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 67,
+        "scripts": 0,
+        "bytes": 176320
+      },
+      {
+        "file": "gympie6_perks.iwd",
+        "entries": 235,
+        "scripts": 7,
+        "bytes": 46705156
+      },
+      {
+        "file": "zombies_tranzit.iwd",
+        "entries": 57,
+        "scripts": 12,
+        "bytes": 15338712
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "apartmenttower.ff",
+      "apartmenttower_patch.ff",
+      "mod.ff",
+      "apartmenttower.iwd:animscripts/death.gsc",
+      "apartmenttower.iwd:maps/_loadout.gsc",
+      "gympie6_perks.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

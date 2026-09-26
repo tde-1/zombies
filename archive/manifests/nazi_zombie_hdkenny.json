@@ -1,0 +1,182 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_hdkenny",
+  "title": "HDKENNY",
+  "source": "custom",
+  "author": "HDKenny",
+  "released": "2014-04-14",
+  "fs_game": "mods/nazi_zombie_hdkenny",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_hdkenny.iwd": "2916cd881f4a2925b163c09c84e963a877b24d8835b50c9449c33836ecb90027"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "crawler_round_ending"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 5000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 98,
+    "script_count": 98,
+    "entities": 262,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_door",
+        "door1"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "debris1"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "pf34_auto1"
+      ],
+      [
+        500,
+        "betty_purchase",
+        "betty"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "2916cd881f4a2925b163c09c84e963a877b24d8835b50c9449c33836ecb90027",
+    "map_specific_triggers": [],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:51:38Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_HDKenny.exe",
+    "original_sha256": "39519cdcd098b14954c0c12d50d6175551cf58fca1c2ac1af419fe14e4c3adc0",
+    "original_size": 83912708,
+    "source_url": "https://www.mediafire.com/file/psz81wep6uaffzk/nazi_zombie_HDKenny.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T14:50:13Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "This is just my first map so I could get used to the radiant lol. Anyway, it is a pretty hard map and it is fairly small. Some Features: -No Dogs -Custom Weapon Textures -Custom Hud \u2013 By Swazzy -Small, but still fun! -Pretty Hard! Credit: Custom Hud \u2013 Swazzy Script Placer \u2013 Mr Hanky Tutorial Prefabs \u2013 Sniperbolt Wind & Zombie Counter \u2013 Tom_Bmx \u2014- Both Modified by yours truly Sorry if I missed anyone I think I got everybody but if I didn\u2019t just tell me ps: I think my next map will be done tomorrow and its pretty good for a second map, made in like a week or 2",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [
+        "nazi_zombie_hdkenny.iwd:images/menu_background_sp.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 89.8,
+    "addon_iwds": [],
+    "flags": [],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_hdkenny.ff",
+      "nazi_zombie_hdkenny_patch.ff"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "nazi_zombie_hdkenny.iwd:maps/tom_music_player_unl.gsc",
+        "menus": [],
+        "responses": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9"
+        ],
+        "note": "in game: a music player"
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

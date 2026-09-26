@@ -122,6 +122,7 @@ class PoliteSession:
         os.makedirs(LOG_ROOT, exist_ok=True)
         self.logpath = os.path.join(LOG_ROOT, log_name + ".log")
         self._loglock = threading.Lock()
+        self._hostlock = threading.Lock()
         import atexit
         atexit.register(self.release)
 
@@ -138,10 +139,15 @@ class PoliteSession:
         h = urllib.parse.urlsplit(url).netloc.lower()
         st = self.hosts.get(h)
         if st is None:
-            st = HostState(h)
-            st.delay = self.default_delay
-            self.hosts[h] = st
-            self._claim_host(st)
+            # several fetcher threads share one session (cloud_pipeline): two of them meeting a
+            # new host together must get the SAME HostState, or its lock would be doubled
+            with self._hostlock:
+                st = self.hosts.get(h)
+                if st is None:
+                    st = HostState(h)
+                    st.delay = self.default_delay
+                    self.hosts[h] = st
+                    self._claim_host(st)
         return st
 
     def _claim_host(self, st):

@@ -68,7 +68,7 @@ from lib import catalogue  # noqa: E402
 WORK = os.environ.get("ENW_ARCHIVE_WORK", r"C:\Users\b\ZombiesDev\archive")
 MODS = os.path.join(WORK, "mods")
 ORIGINALS = os.path.join(WORK, "originals")
-OUT = os.path.join(HERE, "manifests")
+OUT = os.environ.get("ENW_MANIFESTS_DIR") or os.path.join(HERE, "manifests")
 BASELINE = os.path.join(HERE, "stock-baseline.json")
 CORPUS_IGNORE = os.path.join(HERE, "corpus-ignore.json")   # written by main(), read by cloud_static.py
 

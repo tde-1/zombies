@@ -1,0 +1,252 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_subzero",
+  "title": "Subzero",
+  "source": "custom",
+  "author": "gympie6",
+  "released": "2022-07-01",
+  "fs_game": "mods/nazi_zombie_subzero",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_subzero.iwd": "012c91ae424f64395eb8e1de505f9c39547946de1e9f947cd73e59e1a70d0197"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "boss_battle_door",
+        "boss_battle_pad",
+        "boss_battle_trigger",
+        "boss_battle_zone",
+        "boss_battle_zone_spawners",
+        "boss_battle_zone_spawners_dog",
+        "boss_battle_zone_spawners_rise",
+        "boss_spawn_location",
+        "ee_landerlight",
+        "ee_landerlight_crashlocation",
+        "ee_landerlight_satellite",
+        "ee_landerlight_trigger_bottom",
+        "ee_landerlight_trigger_left_bottom",
+        "ee_landerlight_trigger_left_top",
+        "ee_landerlight_trigger_right_bottom",
+        "ee_landerlight_trigger_right_top",
+        "ee_landerlight_trigger_top",
+        "ee_snowman"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "boss_battle_door, boss_battle_pad, boss_battle_trigger, boss_battle_zone, boss_battle_zone_spawners, boss_battle_zone_spawners_dog look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 135,
+    "script_count": 135,
+    "entities": 1645,
+    "ee_candidates": [
+      "boss_battle_door",
+      "boss_battle_pad",
+      "boss_battle_trigger",
+      "boss_battle_zone",
+      "boss_battle_zone_spawners",
+      "boss_battle_zone_spawners_dog",
+      "boss_battle_zone_spawners_rise",
+      "boss_spawn_location",
+      "ee_landerlight",
+      "ee_landerlight_crashlocation",
+      "ee_landerlight_satellite",
+      "ee_landerlight_trigger_bottom",
+      "ee_landerlight_trigger_left_bottom",
+      "ee_landerlight_trigger_left_top",
+      "ee_landerlight_trigger_right_bottom",
+      "ee_landerlight_trigger_right_top",
+      "ee_landerlight_trigger_top",
+      "ee_snowman"
+    ],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2500,
+      3000,
+      4000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "debris12"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "debris11"
+      ],
+      [
+        1000,
+        "zombie_debris",
+        "debris9"
+      ],
+      [
+        1000,
+        "zombie_debris",
+        "debris9"
+      ],
+      [
+        1000,
+        "zombie_debris",
+        "debris7"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "012c91ae424f64395eb8e1de505f9c39547946de1e9f947cd73e59e1a70d0197",
+    "map_specific_triggers": [
+      "acid_build_trigger",
+      "blunder_trigg",
+      "boss_battle_trigger",
+      "bunker_enter_trigger",
+      "bunker_leave_trigger",
+      "dig_site",
+      "ee_landerlight_trigger_bottom",
+      "ee_landerlight_trigger_left_bottom",
+      "ee_landerlight_trigger_left_top",
+      "ee_landerlight_trigger_right_bottom",
+      "ee_landerlight_trigger_right_top",
+      "ee_landerlight_trigger_top",
+      "end_game",
+      "garage_satellite_trigger",
+      "give_ammo",
+      "house_satellite_trigger",
+      "install_item",
+      "pistol_auto_upgrade",
+      "powerbox",
+      "scarf",
+      "simon_says",
+      "snowball_trigger",
+      "switch_fov",
+      "winterhat",
+      "zipline_trigger",
+      "zipline_window"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:52:01Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_subzero.exe",
+    "original_sha256": "b6d8aa62a2b92d6cbe5b3a22cd4a534648ea2210d0f2c96237fe3d6898c3725a",
+    "original_size": 545359255,
+    "source_url": "https://www.mediafire.com/file/4iuvkbf29q80gz5/nazi_zombie_subzero.exe/file",
+    "source_page": "https://callofdutyrepo.com/2022/07/01/subzero/",
+    "fetched": "2026-09-26T14:50:24Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "We pretty much almost hit the limitations of the game. If you have trouble running the map with your buddies please lower your texture resolution settings. Sorry Closing down unrelated applications can also help. If you see the Hunk_AllocateTempMemoryHigh error keep retrying until the game starts up. 3 Custom Perks make their return: (Chainbind, Baron Samedi and Rewind Time Barcardi) Black Ops 1 Perks Black Ops 1 Shangri La & Black Ops 2 NukeTown & Die Rise zombies Black Ops 1 HUD Black Ops 3 Shader for perks and powerups Custom Boss Terrorist Zombies (Zombies with C4 explosives, they can plant them!) Advanced Warfare Weapons Ghost Weapons BO1 Weapons BO2 Wunder Weapons WAW Weapons 4 Wonder weapons Custom Powerup/Box Fx Unlimited Ammo Powerup (Shoot infinite ammo until time runs out) DogHunter Powerup (Dogs will hunt down zombies) Digsites/Loot Crates Soul furnaces EasterEgg EasterEgg Ending",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_subzero"
+      ],
+      "iwd_images": [
+        "gympie6_perks.iwd:images/~p7_zm_vending_ads_logo_spc-r~301c48c1.iwi",
+        "gympie6_perks.iwd:images/p7_zm_vending_ads_logo_col.iwi",
+        "gympie6_perks.iwd:images/specialty_fastreload_zombies.iwi",
+        "nazi_zombie_subzero.iwd:images/dukip_menu.iwi",
+        "nazi_zombie_subzero.iwd:images/dukip_menu2.iwi",
+        "nazi_zombie_subzero.iwd:images/loadscreen_nazi_zombie_subzero.iwi",
+        "nazi_zombie_subzero.iwd:images/menu_map_nazi_zombie_subzero.iwi",
+        "nazi_zombie_subzero.iwd:images/weapon_shotgun_speedloader_col.iwi",
+        "nazi_zombie_subzero.iwd:images/weapon_shotgun_speedloader_nml.iwi",
+        "nazi_zombie_subzero.iwd:images/~~weapon_shotgun_speedloader_~4a9289c2.iwi",
+        "nazi_zombie_subzero.iwd:images/~~weapon_shotgun_speedloader_~973fda74.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_subzero"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 106.2,
+    "addon_iwds": [
+      {
+        "file": "die_rise.iwd",
+        "entries": 31,
+        "scripts": 1,
+        "bytes": 9979764
+      },
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 13,
+        "scripts": 0,
+        "bytes": 23927
+      },
+      {
+        "file": "gympie6_perks.iwd",
+        "entries": 236,
+        "scripts": 7,
+        "bytes": 90872109
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_subzero_patch.ff",
+      "nazi_zombie_subzero.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}
