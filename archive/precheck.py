@@ -50,8 +50,10 @@ CLIENT_RISK_MB = 110
 
 def check(bsp):
     d = os.path.join(MODS, bsp)
-    ffs = {os.path.basename(p).lower(): p for p in glob.glob(os.path.join(d, "*.ff"))}
-    iwds = sorted(glob.glob(os.path.join(d, "*.iwd")))
+    # listdir + lower(), not glob("*.ff"): glob is case-sensitive off Windows (`.FF`).
+    names = sorted(os.listdir(d)) if os.path.isdir(d) else []
+    ffs = {f.lower(): os.path.join(d, f) for f in names if f.lower().endswith(".ff")}
+    iwds = [os.path.join(d, f) for f in names if f.lower().endswith(".iwd")]
     out = {"map": bsp, "has_load_ff": bsp + "_load.ff" in ffs,
            "has_patch_ff": bsp + "_patch.ff" in ffs, "addon_iwds": [], "napalmblob": [],
            "art": {"loadscreen_materials": [], "iwd_images": []}, "flags": []}

@@ -23,7 +23,7 @@ found near the handler, for a human to read -- nothing unknown is ever auto-answ
 Output: web/server/data/map-modes.json  (the site's catalogue; --out to change)
         a markdown table on stdout        (--table), for the doc
 
-Reads C:\\Users\\b\\ZombiesDev\\archive\\mods only. Extracted script text is the map author's:
+Reads $ENW_ARCHIVE_WORK/mods (default C:\\Users\\b\\ZombiesDev\\archive\\mods) only. Extracted script text is the map author's:
 it is parsed here in memory and never written anywhere.
 """
 
@@ -42,7 +42,7 @@ REPO = os.path.dirname(HERE)
 sys.path.insert(0, os.path.join(REPO, "tools", "re"))
 import ff_extract  # noqa: E402
 
-MODS = r"C:\Users\b\ZombiesDev\archive\mods"
+MODS = os.path.join(os.environ.get("ENW_ARCHIVE_WORK", r"C:\Users\b\ZombiesDev\archive"), "mods")
 DEFAULT_OUT = os.path.join(REPO, "web", "server", "data", "map-modes.json")
 
 SCRIPT_EXT = (".gsc", ".csc", ".gsh")
