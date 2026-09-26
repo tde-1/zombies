@@ -1,0 +1,222 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "undead_town",
+  "title": "Undead Town",
+  "source": "custom",
+  "author": "RamboBadass",
+  "released": "2014-03-25",
+  "fs_game": "mods/undead_town",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@undead_town.iwd": "5aae948ea2b1111210117f183e686f909d0bd3789c2860713d57bfa620ce99f3"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        3500,
+        4000,
+        5000,
+        6500,
+        30000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 30000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 114,
+    "script_count": 114,
+    "entities": 1184,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      3500,
+      4000,
+      5000,
+      6500,
+      30000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        10000,
+        "weapon_upgrade",
+        "thundergun"
+      ],
+      [
+        10000,
+        "weapon_upgrade",
+        "raygun"
+      ],
+      [
+        3000,
+        "weapon_upgrade",
+        "hk21_mp"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door4"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "auto223"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc",
+      "maps/_utility.gsc"
+    ],
+    "zombiemode_sha256": "5aae948ea2b1111210117f183e686f909d0bd3789c2860713d57bfa620ce99f3",
+    "map_specific_triggers": [
+      "buy_powerup",
+      "chest_excluder",
+      "dig_site",
+      "dvii_bench",
+      "electric_power_switch",
+      "end_game",
+      "jukebox",
+      "saw_trigger",
+      "secret_trigger1",
+      "secret_trigger2",
+      "secret_trigger3",
+      "secret_trigger4",
+      "secret_trigger5",
+      "secret_trigger6",
+      "secret_trigger7",
+      "soul_chest_area",
+      "soul_chest_reward"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T13:52:50Z"
+    }
+  },
+  "archive": {
+    "original": "undead_town_1.2.exe",
+    "original_sha256": "483e0e49676d6bea553740d8cc9bb33b4f779cb68dfd1e559135b616a4037d63",
+    "original_size": 209405665,
+    "source_url": "http://www.mediafire.com/file/td8x33sv9wzoy3z/undead_town_1.2.exe/file",
+    "source_page": "https://callofdutyrepo.com/2014/03/25/undead-town/",
+    "fetched": "2026-09-26T13:52:27Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Update Log 1.3 \u2013 Fixed a number of spots where you could get out of the map. Update is live on the Manager. Update Log 1.2 *fixed buyable ending price *added a gun\u2026.. *moved the 3 teddys for the Thompson *clipped some buyable debris *a few other things I can not remember sorry Update Log 1.1 *Pathing issues fixed (thank you Saje) *Added collison to a few items *Packaged correctly lol sorry that was a epic fail *All weapons other then WaW weapons fixed to there default ZOMBIE stats *Prices lowered on BO guns *JukeBox working *Fixed a door the was visible through a wall Special Thanks to DualVII for a major potential infinite loop fix THANK YOU Thanks to Trem map is back on track should be out soon!!!! hey guys iv been working on a new map (lost my files to the first) but here we go The setting is a small town out side of The Factory in the mountians. In 1946. You must fight your way threw the hordes to buy a ticket to leave the mountian inclosed town, with the help of the perks and PAP. The only problem is the conductor is a greedy old fool that has a high price set on his tickets. Can you survive long enough to make the money needed? Things map has * Challenging Map * buildable ending (DualVII) * multiple power switches (DualVII) * zombie counter * Custom Load Screen \u2013 Thanks to HexZombies * 10 perks with BO2 shaders \u2013 Thanks to Bamskater, JR-Imagine, ZK * Soul chest \u2013 Thank you BluntStuffy * Dig Sites \u2013 Thank you again BluntStuffy lol * UGX-jukebox \u2013 Thank you UGX * hidden g",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_origins",
+        "loadscreen_undead_town",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "undead_town.iwd:images/loadscreen_undead_town.iwi",
+        "undead_town.iwd:images/menu_map_undead_town.iwi",
+        "undead_town.iwd:images/packapunchlogo.iwi",
+        "undead_town.iwd:images/specialty_fastreload_zombies.iwi",
+        "undead_town.iwd:images/ugx_logo5.iwi",
+        "undead_town.iwd:images/weapon_red_cross_background.iwi",
+        "undead_town.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "undead_town.iwd:images/zombie_vending_three_gun_logo_c.iwi",
+        "undead_town.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "undead_town.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi"
+      ],
+      "loadscreen": "loadscreen_undead_town"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc, maps/_utility.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 114.1,
+    "addon_iwds": [],
+    "flags": [
+      "client_memory_risk"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "undead_town.ff",
+      "undead_town_patch.ff",
+      "undead_town.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "undead_town.iwd:maps/ugx_jukebox.gsc",
+        "menus": [],
+        "responses": [],
+        "note": "in game: the jukebox"
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

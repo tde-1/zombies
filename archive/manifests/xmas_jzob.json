@@ -1,0 +1,192 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "xmas_jzob",
+  "title": "Snowy Town",
+  "source": "custom",
+  "author": "Jzob123",
+  "released": "2014-12-29",
+  "fs_game": "mods/xmas_jzob",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@mod.ff": "1a29e2ef3e9a33baf48c7898db9e43f54a55609b32c3c65136ad6b426be0b81c"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "crawler_round_ending"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        5000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 5000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 105,
+    "script_count": 105,
+    "entities": 2810,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "power"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "gearsb"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "auto2"
+      ],
+      [
+        1000,
+        "zombie_debris",
+        "door1"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_5"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "1a29e2ef3e9a33baf48c7898db9e43f54a55609b32c3c65136ad6b426be0b81c",
+    "map_specific_triggers": [
+      "Presents"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T13:52:06Z"
+    }
+  },
+  "archive": {
+    "original": "Snowy_Town_UGX.exe",
+    "original_sha256": "d8620aacbdde491f4f9b593b25fb7396995a963ff497cdc5219cb6c415b724e5",
+    "original_size": 251890606,
+    "source_url": "http://www.mediafire.com/file/8cxe3bjxqqxtp6x/Snowy_Town_UGX.exe/file",
+    "source_page": "https://callofdutyrepo.com/2014/12/29/snowy-town/",
+    "fetched": "2026-09-26T13:51:44Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "christmas_map"
+    ],
+    "catalogue_description": "Hi everyone its Jzob123, i made a little xmas map for my 4th map and its done Features: Guns from All Cod\u2019s Advance warfare gun with offical anim FC3 gun BF3 gun So have fun with the map and enjoy Creds List tom-bmx P0rkRoyalz Redspace200 YaPh1l xXxCowmanxXx09 BlackJackJonnyy Nikolai Belinski PROxFTW Nukem BlackBoss42 offth ewall FreeCodCinematics elfenlied (Apex) cfgfactory Sanya Swazzy InFInIX koene007 bamskater33 quizz ASTR0 JR-Imagine http://tf3dm.com www.customcod.com zm tuts Rollonmath42 BETA TESTERS: xXxCowmanxXx09 ASTR0 Demon_Mike Nikolai Belinski Gunoftruth butterbutter Sliserblade1 legoone909 Thunder Gives Me Glee",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak",
+        "loadscreen_xmas_jzob"
+      ],
+      "iwd_images": [
+        "jzobs christmas map.iwd:images/jzobs_xmas_load.iwi",
+        "jzobs christmas map.iwd:images/jzobs_xmas_menu.iwi",
+        "jzobs christmas map.iwd:images/loadingscreen_snowytown.iwi",
+        "jzobs christmas map.iwd:images/specialty_fastreload_zombies.iwi",
+        "jzobs christmas map.iwd:images/weapon_red_cross_background.iwi",
+        "jzobs christmas map.iwd:images/zombie_vending_three_gun_logo_c.iwi",
+        "jzobs christmas map.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi"
+      ],
+      "loadscreen": "loadscreen_xmas_jzob"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 111.3,
+    "addon_iwds": [
+      {
+        "file": "jzobs christmas map.iwd",
+        "entries": 352,
+        "scripts": 13,
+        "bytes": 158199750
+      }
+    ],
+    "flags": [
+      "client_memory_risk",
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "xmas_jzob.ff",
+      "xmas_jzob_patch.ff",
+      "jzobs christmas map.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

@@ -1,0 +1,200 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_931",
+  "title": "Group 931",
+  "source": "custom",
+  "author": "EAT13",
+  "released": "2015-05-24",
+  "fs_game": "mods/nazi_zombie_931",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_931.iwd": "8ca30184b4bb7adc3391479327e052ba3f72e9ba81551ce560f2606a13239ea0"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game",
+        "teleport_room_4"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        5000,
+        30000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game, teleport_room_4 name an ending and are this map's own; script hardcodes cost 30000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 111,
+    "script_count": 111,
+    "entities": 1526,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game",
+      "teleport_room_4"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000,
+      30000
+    ],
+    "orphan_end_triggers": [
+      "trigger_teleport_pad_0",
+      "trigger_teleport_pad_2"
+    ],
+    "top_costs": [
+      [
+        2000,
+        "zombie_door",
+        "auto54"
+      ],
+      [
+        1250,
+        "zombie_door",
+        "auto60"
+      ],
+      [
+        1250,
+        "zombie_door",
+        "auto59"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_6"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_5"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "8ca30184b4bb7adc3391479327e052ba3f72e9ba81551ce560f2606a13239ea0",
+    "map_specific_triggers": [
+      "end_game",
+      "kino_mainframe_trigger",
+      "kino_teleporter_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T13:53:01Z"
+    }
+  },
+  "archive": {
+    "original": "Group_931_V1.0.6.exe",
+    "original_sha256": "66847597e9c472323b88aff264540d3b5d4e1932e5affc5b83324dcb3aae937d",
+    "original_size": 168963378,
+    "source_url": "http://www.mediafire.com/file/2tjjcxxdkaejdat/Group_931_V1.0.6.exe/file",
+    "source_page": "https://callofdutyrepo.com/2015/05/24/group-931/",
+    "fetched": "2026-09-26T13:52:40Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "You crashed in an abandoned city covered in lava this happened after the moon event \u201cThe Big Bang Theory\u201d now you 4 marines must survive in this city against the undead of group 931. Marine 1 says to his marines \u201cThe dead walk the earth , and what remains of civilization is that the mercy of forces that we barely understand\u2026 how do we get out of here ? we dont know\u2026 we must fight for our lives against these creatures \u2026. we face the future alone..\u201d features: bo , bo2 , cod4 weapons bo perks bo revive-Disabled due to errors five zombies New zombie animations Double PAP for only BO2 Guns and some secrets along the way credits: jei9363 for the five zombie models , Black Ops 1 perks , and for Electric Cherry rorke for the BO,BO2 weapons UGX Mods team for Easy fx GreenLung Custom Zombies for the script placer for this map Hitmanvere for the pap camo Mrdunlop4 for the Nuketown 2025 Character models Fixes",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_931"
+      ],
+      "iwd_images": [
+        "nazi_zombie_931.iwd:images/loadscreen_nazi_zombie_931.iwi",
+        "nazi_zombie_931.iwd:images/menu_map_nazi_zombie_931.iwi",
+        "nazi_zombie_931.iwd:images/specialty_fastreload_zombies.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_931"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 95.4,
+    "addon_iwds": [
+      {
+        "file": "bo_zombies.iwd",
+        "entries": 59,
+        "scripts": 8,
+        "bytes": 6061301
+      },
+      {
+        "file": "electric_cherry.iwd",
+        "entries": 10,
+        "scripts": 1,
+        "bytes": 953424
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_931.ff",
+      "nazi_zombie_931_patch.ff",
+      "nazi_zombie_931.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

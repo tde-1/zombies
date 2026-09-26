@@ -1,0 +1,222 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_sparta",
+  "title": "Nazi Zombie Coliseum",
+  "source": "custom",
+  "author": "pedrehitor",
+  "released": "2014-10-17",
+  "fs_game": "mods/nazi_zombie_sparta",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_sparta.iwd": "e6502e947a804cda7df82ca30138e26d6dc230e979fa08341bd56b7e3c3a5ab9"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        3500,
+        4000,
+        5000,
+        50000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 50000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 110,
+    "script_count": 110,
+    "entities": 592,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      3500,
+      4000,
+      5000,
+      50000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "zombie_debris",
+        "auto9"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "auto13"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "auto8"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "auto7"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "auto6"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "e6502e947a804cda7df82ca30138e26d6dc230e979fa08341bd56b7e3c3a5ab9",
+    "map_specific_triggers": [
+      "c4_purchase",
+      "end_game",
+      "gas_can",
+      "gas_cantrue",
+      "kino_mainframe_trigger",
+      "kino_teleporter_trigger",
+      "oil",
+      "oiltrue",
+      "secret_trigger",
+      "secret_trigger2",
+      "secret_trigger3"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T13:53:02Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_coliseum.exe",
+    "original_sha256": "7844376dd96788a4ec7892bd88d3af5241daca5d9314a77fdaccd0663a9fe559",
+    "original_size": 211384617,
+    "source_url": "http://www.mediafire.com/file/i0g4ti628dkcvhk/nazi_zombie_coliseum.exe/file",
+    "source_page": "https://callofdutyrepo.com/2014/10/17/nazi-zombie-coliseum/",
+    "fetched": "2026-09-26T13:52:48Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Hi guys, I\u2019ve just finished designing my new map called \u201cColiseum\u201d. thank you very much to give ugx-mods FEATURES: \u2013 Buyable end game \u2013 buildable power switch \u2013 7 Perks \u2013 No Dogs \u2013 Kino-Style Teleporter \u2013 Black Ops Quick Revive (solo) \u2013 Zombie counter \u2013 Custom PAP Camo \u2013 Secret shootables door \u2013 40 Weapons COD4, BO, MW2, MW3, BO2 I also want to thank: Deper shippuden1592 Gogeta22344 Javipotter Gamer9294 ZOMB1E-KLLR sajeone cfgfactory Tom-BMX Don Goony YaPh1l Rollonmath42 JR-Imagine jzob123",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_sparta",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "_bam_bo1_perks_mod.iwd:images/specialty_fastreload_zombies.iwi",
+        "_bam_bo1_perks_mod.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "_bam_bo1_perks_mod.iwd:images/zombie_vending_three_gun_logo_c.iwi",
+        "_bam_bo1_perks_mod.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "_bam_bo1_perks_mod.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi",
+        "nazi_zombie_sparta.iwd:images/coliseum_menu.iwi",
+        "nazi_zombie_sparta.iwd:images/loadscreen_nazi_zombie_sparta.iwi",
+        "nazi_zombie_sparta.iwd:images/specialty_fastreload_zombies.iwi",
+        "nazi_zombie_sparta.iwd:images/weapon_red_cross_background.iwi",
+        "nazi_zombie_sparta.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "nazi_zombie_sparta.iwd:images/zombie_vending_three_gun_logo_c.iwi",
+        "nazi_zombie_sparta.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "nazi_zombie_sparta.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_sparta"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 65.0,
+    "addon_iwds": [
+      {
+        "file": "_bam_bo1_perks_mod.iwd",
+        "entries": 58,
+        "scripts": 3,
+        "bytes": 2994597
+      },
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 123,
+        "scripts": 0,
+        "bytes": 333477
+      },
+      {
+        "file": "z_hud.iwd",
+        "entries": 3,
+        "scripts": 0,
+        "bytes": 11909
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_sparta_patch.ff",
+      "nazi_zombie_sparta.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

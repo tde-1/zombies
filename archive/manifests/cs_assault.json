@@ -1,0 +1,300 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "cs_assault",
+  "title": "Zombie Assault",
+  "source": "custom",
+  "author": "johndoe",
+  "released": "2013-12-25",
+  "fs_game": "mods/cs_assault",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@ugx_mod.iwd": "adc476156da4a2a9f520681165cf815bd8d4bfdf48036db842fe79cc9fce97fb"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "zombie_debris",
+          "zombie_cost": 15000
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000,
+        100000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 100000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 142,
+    "script_count": 142,
+    "entities": 2193,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      100000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        15000,
+        "zombie_debris",
+        "truck_door"
+      ],
+      [
+        3000,
+        "zombie_debris",
+        "power_door"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "staminup__room"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "mule_room"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "first_door"
+      ]
+    ],
+    "buyable_ending_candidate": {
+      "zombie_cost": 15000,
+      "targetname": "zombie_debris",
+      "target": "truck_door",
+      "next_highest": 3000
+    },
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc",
+      "maps/_utility.gsc"
+    ],
+    "zombiemode_sha256": "adc476156da4a2a9f520681165cf815bd8d4bfdf48036db842fe79cc9fce97fb",
+    "map_specific_triggers": [
+      "end_game",
+      "moon_teleporter_a_trigger",
+      "radio1_trigger",
+      "radio2_trigger",
+      "radio3_trigger",
+      "radio4_trigger",
+      "science_shoot1",
+      "science_shoot2",
+      "science_shoot3"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T13:53:32Z"
+    }
+  },
+  "archive": {
+    "original": "cs_assault.exe",
+    "original_sha256": "9e42f2ffb65332757ff37e249c9a2ebee5d35cb2031a037ae3adb7f6fdcd0e13",
+    "original_size": 255024458,
+    "source_url": "http://www.mediafire.com/file/45djudld1vvybpn/cs_assault.exe/file",
+    "source_page": "https://callofdutyrepo.com/2013/12/25/zombie-assault/",
+    "fetched": "2026-09-26T13:53:20Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "This map features UGX Mod v1.0.3! For a full list of features Hi everyone! I finally finished my first map and decided to release it into the wild it\u2019s simply just a remake of good old Counter-Strike map, cs_assault. It took lots of time to finish it but finally it\u2019s complete! Features: UGX Mod v1.0.3 Zombie Counter Black Ops Perks (with trem\u2019s fix) Black Ops II perk shaders Custom textures Some voice acting done by me Buyable ending (but you need to complete the easter egg before you can find it) Story: After Richtofen accidentally uses Wunderwaffe while teleporting, it teleports the team in a parallel universe. They find themselves in a warehouse which belongs to Black Mesa. The warehouse looks abandoned, but they are not alone. There is someone who works (or used to work) as a security guard at the warehouse, but actually, he is a spy who works for Aperture Science Inc. He got attacked by zombies after he and other workers got kidnapped by a group of terrorists. He\u2019s the only survivor, and you need to find before he dies to escape, and return to your own universe. I didn\u2019t want to change the original layout of the map so much since i want it to look like the original. Also, i\u2019ve just got a job so i hope there won\u2019t be any more bugs because i won\u2019t have much time to work on the map. I\u2019ll try to spend my free time on new maps. I hope you enjoy it Special thanks to: \u2013 UGX Team for this awesome mod \u2013 tom-bmx for zombie counter and buyable ending. \u2013 bamskater33 for black ops pe",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_template",
+        "loadscreen_user",
+        "loadscreen_zombie_house"
+      ],
+      "iwd_images": [
+        "cs_assault.iwd:images/specialty_fastreload_zombies.iwi",
+        "cs_assault.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "cs_assault.iwd:images/ugx_mod_menu_template.iwi",
+        "ugx_mod.iwd:images/menu_button_backing_highlight.iwi",
+        "ugx_mod.iwd:images/ugx_camp_beta_menu.iwi",
+        "ugx_mod.iwd:images/ugx_mod_pregamemenu.iwi",
+        "ugx_mod.iwd:images/zombie_house_menu_bg.iwi",
+        "ugxm_guns.iwd:images/weapon_red_cross_background.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc, maps/_utility.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 64.0,
+    "addon_iwds": [
+      {
+        "file": "ugx_mod.iwd",
+        "entries": 117,
+        "scripts": 26,
+        "bytes": 30317323
+      },
+      {
+        "file": "ugxm_guns.iwd",
+        "entries": 393,
+        "scripts": 10,
+        "bytes": 78820629
+      },
+      {
+        "file": "zzzbo1_perks_ugx_mod.iwd",
+        "entries": 5,
+        "scripts": 5,
+        "bytes": 49785
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "cs_assault.ff",
+      "cs_assault_patch.ff",
+      "localized_common.ff",
+      "localized_cs_assault.ff",
+      "mod.ff",
+      "ugxm_customize_room_patch.ff",
+      "cs_assault.iwd:maps/_loadout.gsc",
+      "ugx_mod.iwd:maps/_zombiemode_spawner.gsc",
+      "ugxm_guns.iwd:maps/ugx_pap_handle.gsc",
+      "ugxm_guns.iwd:maps/_loadout.gsc",
+      "zzzbo1_perks_ugx_mod.iwd:maps/_zombiemode_weapons.gsc"
+    ]
+  },
+  "modes": {
+    "ugx": {
+      "mechanism": "ugx_vote_1",
+      "calls_vote": true,
+      "default": "classic",
+      "modes": [
+        {
+          "id": "classic",
+          "label": "Classic",
+          "response": "cl",
+          "note": "Stock zombies with the UGX weapons and perks."
+        },
+        {
+          "id": "gungame",
+          "label": "Gun Game",
+          "response": "gg",
+          "note": "Every kill moves you to the next gun; no wall guns, box, perks cabinet or Pack-a-Punch."
+        },
+        {
+          "id": "arcademode",
+          "label": "Arcade Mode",
+          "response": "ar",
+          "note": "Classic plus UGX power-ups and boss rounds."
+        },
+        {
+          "id": "sharpshooter",
+          "label": "Sharpshooter",
+          "response": "ss",
+          "note": "Everyone's gun changes on a timer; 15-minute game; no buying."
+        },
+        {
+          "id": "bountyhunter",
+          "label": "Bounty Hunter",
+          "response": "bh",
+          "note": "Points race with a 15-minute limit."
+        }
+      ],
+      "options_off": [
+        "objectives"
+      ],
+      "source": {
+        "init": "ugx_mod.iwd:maps/ugxm_init.gsc",
+        "settings": "ugx_mod.iwd:maps/ugxm_user_settings.gsc",
+        "zombiemode": "ugx_mod.iwd:maps/_zombiemode.gsc"
+      }
+    },
+    "other": [
+      {
+        "script": "ugx_mod.iwd:maps/ugxm_character.gsc",
+        "menus": [],
+        "responses": [],
+        "note": "only in UGX's separate customize-room map (no custom_character entity elsewhere)"
+      },
+      {
+        "script": "ugxm_customize_room.ff:maps/ugxm_customize_room.gsc",
+        "menus": [
+          "ugxm_customize_char"
+        ],
+        "responses": [
+          "CLOSE",
+          "CUSTOM_CHAR_CAT1",
+          "CUSTOM_CHAR_CAT2",
+          "CUSTOM_CHAR_CAT3",
+          "CUSTOM_CHAR_CAT4",
+          "NONE_ACCESSORY",
+          "NONE_BODY",
+          "NONE_HAT",
+          "NONE_HEAD",
+          "RESET",
+          "THIRDPERSON"
+        ],
+        "note": "only in UGX's separate customize-room map"
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}
