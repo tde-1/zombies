@@ -252,6 +252,16 @@ def fetch_one(db, ps, norm, budget, args):
             res = _fetch_link(ps, norm, row, link, budget, args, out)
         except net.Dropped as exc:
             res = dict(out, status="host dropped: %s" % exc)
+        # a takedown seen at download time is as good as a link check: record it, so the
+        # next queue build does not offer this mirror again
+        if re.search(r"ENOENT|EBLOCKED|HTTP 404|HTTP 410", res["status"] or ""):
+            try:
+                db.execute("UPDATE links SET verdict='dead', error=?, checked=? WHERE url=?",
+                           (res["status"][:200], time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                            link["url"]))
+                db.commit()
+            except Exception:
+                pass
         if res["status"] == "ok" or len(seen) >= args.max_mirrors:
             if tried:
                 res["tried"] = tried
@@ -298,7 +308,9 @@ def _fetch_link(ps, norm, row, link, budget, args, out):
             break
         # One retry, and only for a transport hiccup: MediaFire's direct URLs are
         # time-limited, so a stale one has to be re-resolved rather than re-requested.
-        if attempt == 1 and ("timed out" in (err or "") or "ConnectionError" in (err or "")):
+        # A stale MediaFire key answers with an HTML page: a fresh resolve gets a new key.
+        if attempt == 1 and ("timed out" in (err or "") or "ConnectionError" in (err or "")
+                             or "stale download key" in (err or "")):
             ps.log("[fetch] %s: %s - re-resolving and retrying once" % (norm, err))
             direct, rerr, from_landing = resolve(ps, link["url"])
             if not direct:
