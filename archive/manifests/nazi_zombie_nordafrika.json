@@ -1,0 +1,131 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_nordafrika",
+  "title": "NORDAFRIKA",
+  "source": "custom",
+  "author": "Fuzzy4Peaches",
+  "released": "2010-09-06",
+  "fs_game": "mods/nazi_zombie_nordafrika",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_nordafrika.iwd": "0fe1fe5d658c2dfbf7a539172ad56ee05d75d251baf1f101b05eb22c9625b4f6"
+  },
+  "badge": {
+    "main_finish": "round",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "round",
+    "why": "no easter egg or ending found; default Round 20",
+    "verdict_stock_baseline_only": "round",
+    "scripts": 48,
+    "script_count": 48,
+    "entities": 561,
+    "ee_candidates": [],
+    "ending_words": [],
+    "hardcoded_costs": [
+      1000,
+      1500
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "door1"
+      ],
+      [
+        1750,
+        "zombie_debris",
+        "shelf1"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "gate1"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "pf489_auto1"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [],
+    "zombiemode_sha256": "0fe1fe5d658c2dfbf7a539172ad56ee05d75d251baf1f101b05eb22c9625b4f6",
+    "map_specific_triggers": [],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:06:02Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_nordafrika.exe",
+    "original_sha256": "12320d759a142da8a0944e25eff0f1fe2ea03b63a1fb6b7e182b6c81d20b600f",
+    "original_size": 42668507,
+    "source_url": "http://www.mediafire.com/file/3gzx8zbph4v30l2/nazi_zombie_nordafrika.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T16:04:23Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Description: This map has 4 main rooms, it is quite small but don\u2019t underestimate, there is lots of spots to get cornered. That is basically all I can really describe, it is sweet and simple, meaning that it is a prototype map. I recommend for you to play with 2-4 players because of that. Known Bugs \u2013 A zombie was targetting a blocked off room, you may time to time see him die in the courtyard area, this is supposed to happen. \u2013 Zombies may get stuck in wall, near the window adjacent to the stairs in the 2nd area. Credits \u2013 Fuzzy Peach Productions for mapping/creating the map \u2013 kyluin & Crackshot for BETA testing and suggestions \u2013 The author of script Placer v1.1 for scripting almost everything \u2013 Anyone I forgot to mention \u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014- Thanks For Playing and Enjoy!",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_nordafrika",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "nazi_zombie_nordafrika.iwd:images/loadscreen_nazi_zombie_nordafrika.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_nordafrika"
+    }
+  },
+  "notes": "Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 72.9,
+    "addon_iwds": [],
+    "flags": [
+      "no_patch_ff"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": false,
+    "napalmblob": [
+      "nazi_zombie_nordafrika.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

@@ -1,0 +1,166 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_big",
+  "title": "Nazi Zombie Big",
+  "source": "custom",
+  "author": "trooper",
+  "released": "2012-12-17",
+  "fs_game": "mods/nazi_zombie_big",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_big.iwd": "acb1c77d231261cd6094f078fc48f335cf65b3197bfd0dafaa150cff14857128"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": []
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "no easter-egg wording, but a numbered series book1..11 (6 members) and 1 series overall - the shape of a collect-N quest; confirm",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 100,
+    "script_count": 100,
+    "entities": 5540,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000
+    ],
+    "orphan_end_triggers": [
+      "trigger_teleport_pad_1"
+    ],
+    "top_costs": [
+      [
+        20000,
+        "zombie_debris",
+        "scrap"
+      ],
+      [
+        20000,
+        "zombie_debris",
+        "book11"
+      ],
+      [
+        10000,
+        "zombie_debris",
+        "wall"
+      ],
+      [
+        10000,
+        "zombie_debris",
+        "door57"
+      ],
+      [
+        5000,
+        "zombie_debris",
+        "truck4"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "acb1c77d231261cd6094f078fc48f335cf65b3197bfd0dafaa150cff14857128",
+    "map_specific_triggers": [
+      "use_cart"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:49:42Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_big.exe",
+    "original_sha256": "5e6f0ec6a23b3cf1c3d2ffe269befd772eae67a15110aeacee9832ec3f7767e7",
+    "original_size": 73213808,
+    "source_url": "https://www.mediafire.com/file/01vks9aiv45nuq3/nazi_zombie_big.exe/file",
+    "source_page": "https://callofdutyrepo.com/2012/12/17/nazi-zombie-big/",
+    "fetched": "2026-09-26T15:48:07Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Description This is a large der riese style map. There is no shortage of zombies or blockers. The console is active. Where you buy a trigger may open something somewhere else so always be looking and listening. This is a team effert map but can be played solo. As you try to work your way to the ending you will find yoursefl on an island. After making it to the island try to work your way back to the begining. If you can achieve this we ask that you post your scores and level in the downloads comment section. We have made it to the island and back to the begining and back to the island but we did make the map and know where everything is. Its not only a large map but its a fun map. We hope you enjoy it and look forward to your feed back. Features: Special thanks to : sniperbolt,tombmx,mr hanky,BamSKATER33. Without these guys modding would be no fun. Thanks to bowtie,rich,dpike and any other bata tester I may have forgoten.",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_big",
+        "loadscreen_nazi_zombie_pike2",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "nazi_zombie_big.iwd:images/loadscreen_nazi_zombie_big.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_big"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 117.9,
+    "addon_iwds": [],
+    "flags": [
+      "client_memory_risk"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_big.ff",
+      "nazi_zombie_big_patch.ff",
+      "nazi_zombie_big.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

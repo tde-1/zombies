@@ -1,0 +1,226 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_forschung",
+  "title": "FORSCHUNG",
+  "source": "custom",
+  "author": "Stig4532 and Towniy",
+  "released": "2012-09-29",
+  "fs_game": "mods/nazi_zombie_forschung",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@zct_mod2_mw.iwd": "e3d177371a7cd630c001656ed88e7c7932e2a20c33e2b0444cf0ec312b500f6f"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "zombie_debris",
+          "zombie_cost": 10000
+        }
+      },
+      "candidates": [
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        3000,
+        4000,
+        25000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game name an ending and are this map's own; script hardcodes cost 25000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 97,
+    "script_count": 97,
+    "entities": 1041,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      3000,
+      4000,
+      25000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        10000,
+        "zombie_debris",
+        "outside door"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "out door"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "out door"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "9 door"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "8 door"
+      ]
+    ],
+    "buyable_ending_candidate": {
+      "zombie_cost": 10000,
+      "targetname": "zombie_debris",
+      "target": "outside door",
+      "next_highest": 2000
+    },
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "e3d177371a7cd630c001656ed88e7c7932e2a20c33e2b0444cf0ec312b500f6f",
+    "map_specific_triggers": [
+      "art_trig",
+      "blocker_activate",
+      "buy_powerup",
+      "deactivate_block",
+      "end_game",
+      "music_box_player",
+      "zombie_perks"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:18:51Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_Forschung_v1.05.exe",
+    "original_sha256": "239e12fd9c691e4d9722d212e5997fbe79e81bdc02d3e0494355b052397f7d86",
+    "original_size": 187597913,
+    "source_url": "http://www.mediafire.com/file/haiporqls81u8e3/nazi_zombie_Forschung_v1.05.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T16:17:42Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "By Stig4532 and Towniy The Year is 2015. You play the role of soldiers from North America sent in to locate and eliminate the Nazis who escaped the de-Nazification after World War II. Despite profound efforts in doing so, the house has been ambushed by hordes of the undead. Good luck, you might need it. Console: map nazi_zombie_forschung",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_factory",
+        "loadscreen_nazi_zombie_forschung",
+        "loadscreen_nazi_zombie_maze",
+        "loadscreen_nazi_zombie_maze2",
+        "loadscreen_nazi_zombie_maze3",
+        "loadscreen_nazi_zombie_maze4",
+        "loadscreen_nazi_zombie_maze5",
+        "loadscreen_nazi_zombie_mp2_1",
+        "loadscreen_nazi_zombie_mp2_3",
+        "loadscreen_nazi_zombie_ott"
+      ],
+      "iwd_images": [
+        "zct_mod2_mw.iwd:images/menu_zct_mod.iwi",
+        "zct_mod2_mw.iwd:images/menu_zct_mod_wide.iwi",
+        "zct_mod2_mw.iwd:images/weapon_red_cross_background.iwi",
+        "zct_mod2_mw.iwd:images/zombie_vending_sleight_logo_c.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_forschung"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 80.4,
+    "addon_iwds": [
+      {
+        "file": "zct_mod2_mw.iwd",
+        "entries": 293,
+        "scripts": 38,
+        "bytes": 111205258
+      }
+    ],
+    "flags": [
+      "no_patch_ff",
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": false,
+    "napalmblob": [
+      "nazi_zombie_forschung.ff",
+      "zct_mod2_mw.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "zct_mod2_mw.iwd:maps/tom_music_player_unl.gsc",
+        "menus": [],
+        "responses": [
+          "1",
+          "10",
+          "11",
+          "12",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9"
+        ],
+        "note": "in game: a music player"
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

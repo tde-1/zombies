@@ -1,0 +1,136 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_rancid",
+  "title": "RANCID",
+  "source": "custom",
+  "author": "Darkflame",
+  "released": "2010-04-05",
+  "fs_game": "mods/nazi_zombie_rancid",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_rancid.ff": "0fe1fe5d658c2dfbf7a539172ad56ee05d75d251baf1f101b05eb22c9625b4f6"
+  },
+  "badge": {
+    "main_finish": "round",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "round",
+    "why": "no easter egg or ending found; default Round 20",
+    "verdict_stock_baseline_only": "round",
+    "scripts": 43,
+    "script_count": 43,
+    "entities": 583,
+    "ee_candidates": [],
+    "ending_words": [],
+    "hardcoded_costs": [
+      1000,
+      1500
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "door1"
+      ],
+      [
+        1000,
+        "zombie_debris",
+        "couch1"
+      ],
+      [
+        1000,
+        "zombie_debris",
+        "chair1"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "pf2127_auto1"
+      ],
+      [
+        150,
+        "auto7",
+        "?"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [],
+    "zombiemode_sha256": "0fe1fe5d658c2dfbf7a539172ad56ee05d75d251baf1f101b05eb22c9625b4f6",
+    "map_specific_triggers": [],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:07:29Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_rancid.exe",
+    "original_sha256": "9f0b538e670a36c95fe37e2a7c8f6b2a3d89cb17e2d13432790012fbc68ff0bc",
+    "original_size": 41709463,
+    "source_url": "https://www.mediafire.com/file/v5uohsrbw9f06sn/nazi_zombie_rancid.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T16:06:21Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "The map looks really nice for 2010, a lot of thought was put into it. Other than a couple texture and geometry issues it\u2019s relatively issue free on the visual side. Gameplay wise, the zombies take forever to reach the windows, and even if you\u2019re outside the zombies will go through the windows, then loop back around to come to you. Not much else I can complain about though, just a good Nacht style map with good attention to detail. Strats: Train anywhere outside or camp with your back against the gate on the outside, the zombies to your right will run to the windows on the house then loop around and come to you clumping most of the zombies together.",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_rancid",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "nazi_zombie_rancid.iwd:images/loadscreen_nazi_zombie_rancid.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_rancid"
+    }
+  },
+  "notes": "Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 70.8,
+    "addon_iwds": [],
+    "flags": [
+      "no_patch_ff"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": false,
+    "napalmblob": [
+      "nazi_zombie_rancid.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

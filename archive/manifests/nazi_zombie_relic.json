@@ -1,0 +1,187 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_relic",
+  "title": "RELIC",
+  "source": "custom",
+  "author": "Niknokinater",
+  "released": "2015-06-11",
+  "fs_game": "mods/nazi_zombie_relic",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_relic.iwd": "b685e1972024a550cc21837d54d7edd80b366adec2c16e929891298f80fa9a94"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "crawler_round_ending"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        1800,
+        2000,
+        2500,
+        3000,
+        5000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 5000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 93,
+    "script_count": 93,
+    "entities": 1750,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      1800,
+      2000,
+      2500,
+      3000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        1500,
+        "zombie_debris",
+        "treetrunk"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "treetrunk"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "finalmain"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "finalmain"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "barrelsandbag1"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "b685e1972024a550cc21837d54d7edd80b366adec2c16e929891298f80fa9a94",
+    "map_specific_triggers": [
+      "bear1_trigger",
+      "bear2_trigger",
+      "bear3_trigger",
+      "bear4_trigger",
+      "bear5_trigger",
+      "bear6_trigger",
+      "bear7_trigger",
+      "bear8_trigger",
+      "boards_trigger",
+      "finaldoor",
+      "initial_trigger",
+      "money_trig",
+      "screech1",
+      "statictrig"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:53:24Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_Relic.exe",
+    "original_sha256": "03d060f335a324149bd47faf53037dae20f63a6859fe05c598358e8350a6cdce",
+    "original_size": 80087160,
+    "source_url": "https://www.mediafire.com/file/mcryzrp3holyor4/nazi_zombie_Relic.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T15:50:02Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Description Hello, all! I return to release the custom zombie map, Relic. I started this one month after Claustrophobia and remained dedicated to it until this very day, ensuring everything was acceptable. Once again, I hope it enjoyed to an extent, be it little or large (preferably large, of course) and do post videos! I do not care a bit if you are a small Youtuber or large; I love to watch footage of how others react to my content(*cough *cough; for bugs and glitches, I mean). The best of regards, Niknokinater! Solo Command: map nazi_zombie_relic -Custom Announcer -Small Teddy Bear \u201cHide and Seek\u201d Objective to unlock Pack-A-Punch -Small cash piles around the map (Double Points does double them) -Double Points doubles Nukes and Carpenters -Immense texture blending and detail -No heavy modding -Wunderwaffe DG-2 no longer lowers max health when zapped -Dogs, Risers, and functional zones -The 4 original perks -Japanese Zombies -Ambient Sounds Credits to MakeCents \u2013 Much scripting support Credits to Jbird632 \u2013 Scripting support Credits to Rvex \u2013 Ambient sounds tutorial",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_nazi_zombie_relic"
+      ],
+      "iwd_images": [
+        "nazi_zombie_relic.iwd:images/loadscreen_nazi_zombie_relic.iwi",
+        "nazi_zombie_relic.iwd:images/vending_boarders_logo.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_relic"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 109.3,
+    "addon_iwds": [],
+    "flags": [],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_relic.ff",
+      "nazi_zombie_relic_patch.ff",
+      "nazi_zombie_relic.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

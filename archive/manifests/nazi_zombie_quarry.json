@@ -1,0 +1,191 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_quarry",
+  "title": "Nazi Zombie Quarry",
+  "source": "custom",
+  "author": "UltimateBear",
+  "released": "2013-02-05",
+  "fs_game": "mods/nazi_zombie_quarry",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_quarry.iwd": "46c8c6604a7be3a3db495c97a7b73bc174955870f0dfd6679cf3bcb25cbb1966"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game",
+        "teleport_power_up"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000,
+        60000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game, teleport_power_up name an ending and are this map's own; script hardcodes cost 60000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 99,
+    "script_count": 99,
+    "entities": 1238,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game",
+      "teleport_power_up"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      60000
+    ],
+    "orphan_end_triggers": [
+      "trigger_teleport_pad_0"
+    ],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "blocker5"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "blocker49"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "blocker3"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "blocker28"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "blocker25"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "46c8c6604a7be3a3db495c97a7b73bc174955870f0dfd6679cf3bcb25cbb1966",
+    "map_specific_triggers": [
+      "end_game",
+      "hurt_away",
+      "hurt_home",
+      "purchase",
+      "select",
+      "use_lander_1",
+      "use_lander_2"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:52:35Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_quarry.exe",
+    "original_sha256": "148ed776249fbbab576fe39fa3a7a0c59f8d966596efb708776a609741c01a54",
+    "original_size": 160901845,
+    "source_url": "https://www.mediafire.com/file/o6yddkd79xngzll/nazi_zombie_quarry.exe/file",
+    "source_page": "https://callofdutyrepo.com/2013/02/05/nazi-zombie-quarry/",
+    "fetched": "2026-09-26T15:49:38Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending"
+    ],
+    "catalogue_description": "Features: Buyable ending Der Reise style Custom respawn speed Custom FX Custom weapons \u2013 swords Pack-a-Punch All 4 perks Custom weapon names Different names of weapons and colors Some weapons have been edited Boxing with movement Thunder and rain CoD 4 skins Additional perk machine",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_quarry",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "nazi_zombie_quarry.iwd:images/loadscreen_nazi_zombie_quarry.iwi",
+        "nazi_zombie_quarry.iwd:images/Menu_map_nazi_zombie_quarry"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_quarry"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 126.7,
+    "addon_iwds": [],
+    "flags": [
+      "client_memory_risk"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_quarry.ff",
+      "nazi_zombie_quarry_patch.ff",
+      "nazi_zombie_quarry.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

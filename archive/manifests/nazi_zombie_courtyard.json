@@ -1,0 +1,137 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_courtyard",
+  "title": "Nazi Zombie Courtyard",
+  "source": "custom",
+  "author": "Roachmotel_",
+  "released": "2010-02-28",
+  "fs_game": "mods/nazi_zombie_courtyard",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_courtyard.ff": "ef17ff55f963721d20ea4dc6327840214ac4c8bf4c03faa4ba447425a54f3de2"
+  },
+  "badge": {
+    "main_finish": "round",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "round",
+    "why": "no easter egg or ending found; default Round 20",
+    "verdict_stock_baseline_only": "round",
+    "scripts": 39,
+    "script_count": 39,
+    "entities": 361,
+    "ee_candidates": [],
+    "ending_words": [],
+    "hardcoded_costs": [
+      1000,
+      1250,
+      1500
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        1500,
+        "zombie_debris",
+        "frontdoor"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "deckdoor"
+      ],
+      [
+        1250,
+        "zombie_debris",
+        "diningdoor"
+      ],
+      [
+        1000,
+        "zombie_debris",
+        "china_cabinet"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "pf279_auto1"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [],
+    "zombiemode_sha256": "ef17ff55f963721d20ea4dc6327840214ac4c8bf4c03faa4ba447425a54f3de2",
+    "map_specific_triggers": [],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:01:24Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_courtyard.exe",
+    "original_sha256": "e2c91830ccb83c6efc654c1d792a19c597d2d5db30eb90f29904859e4b960214",
+    "original_size": 42547014,
+    "source_url": "http://www.mediafire.com/file/8uytxykj1ggc068/nazi_zombie_courtyard.exe/file",
+    "source_page": "https://callofdutyrepo.com/2010/02/28/nazi-zombie-courtyard/",
+    "fetched": "2026-09-26T16:01:01Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "This map initially starts in a courtyard surrounded by three houses. One of the houses is accessible and has 4 playable rooms and the weapon box \u2013 including an upstairs that leads to a deck on the front of the house.",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_courtyard",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "nazi_zombie_courtyard.iwd:images/loadscreen_nazi_zombie_courtyard.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_courtyard"
+    }
+  },
+  "notes": "Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 71.2,
+    "addon_iwds": [],
+    "flags": [
+      "no_patch_ff"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": false,
+    "napalmblob": [
+      "nazi_zombie_courtyard.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

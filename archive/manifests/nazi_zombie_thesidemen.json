@@ -1,0 +1,210 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_thesidemen",
+  "title": "Nazi Zombie TheSidemen",
+  "source": "custom",
+  "author": "razzadaman",
+  "released": "2015-08-03",
+  "fs_game": "mods/nazi_zombie_thesidemen",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_thesidemen.iwd": "9ad2c0d3d46c47cd9f0009fff86af96e383eb0cb67b5063a710594c82708cc33"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_trigger"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game",
+        "end_trigger"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        3000,
+        45000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game, end_trigger name an ending and are this map's own; script hardcodes cost 45000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 107,
+    "script_count": 107,
+    "entities": 518,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game",
+      "end_trigger"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      3000,
+      45000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "zombie_debris",
+        "door4"
+      ],
+      [
+        5000,
+        "pf739_auto1",
+        "?"
+      ],
+      [
+        5000,
+        "give_ammo",
+        "?"
+      ],
+      [
+        5000,
+        "give_ammo",
+        "?"
+      ],
+      [
+        4000,
+        "pf843_auto1",
+        "?"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "9ad2c0d3d46c47cd9f0009fff86af96e383eb0cb67b5063a710594c82708cc33",
+    "map_specific_triggers": [
+      "end_trigger",
+      "give_ammo",
+      "harrybo21_perk_trigger",
+      "music_box_player"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:56:53Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_thesidemen.exe",
+    "original_sha256": "40c34f5c719dc44f7108418d6a6cf60af9c405cc8db1489020118522e35ff000",
+    "original_size": 240169585,
+    "source_url": "https://www.mediafire.com/file_premium/4r0ggu49huqkt6r/nazi_zombie_thesidemen.exe/file",
+    "source_page": "https://callofdutyrepo.com/2015/08/03/nazi-zombie-thesidemen/",
+    "fetched": "2026-09-26T16:56:14Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "GUESS WHO\u2019S BACK?! YES I\u2019M BACK! It\u2019s been a while but I decided to go ahead and make my 4th zombies map, previously I had worked on a Family Guy map for Yoteslaya before he died, I know Syndicate or SyndicateProject plays custom zombies and was going to make a map for him but I chose The Sidemen, a group of YouTubers from the UK consisting of KSI, ZerkaaHD, Miniminter, TBJZL, Behzinga, Vikkstar and Wroetoshaw. I spent just over two weeks making this map and adding a lot of custom scripting. Special thanks to everyone here at ZM, CFGFactory and Others on YouTube including: Tom_BMX Yaph1l ZK (Zombie K1ller) Earth Harry Bo21 ADDICTED Holty007 And Many More! DISCLAIMER: This map is currently a beta as there are few glitches in this map which I have requested help on but haven\u2019t had any luck on. I will edit and re-upload the completed map when it\u2019s all finished. Hope you guys will enjoy it, my other maps have had positive feedback in the past and have been featured on NGT Zombies YouTube channel",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [
+        "harrybo21_perks.iwd:images/p6_zm_al_vending_ads_logo_m.iwi",
+        "harrybo21_perks.iwd:images/p6_zm_al_vending_three_gun_logo_m.iwi",
+        "harrybo21_perks.iwd:images/p6_zm_al_vending_three_gun_logo_n.iwi",
+        "harrybo21_perks.iwd:images/specialty_fastreload_zombies.iwi",
+        "harrybo21_perks.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "harrybo21_perks.iwd:images/_-gp6_zm_al_vending_ads_logo_c.iwi",
+        "harrybo21_perks.iwd:images/_-gzombie_vending_sleight_logo_c.iwi",
+        "harrybo21_perks.iwd:images/~__-gzombie_vending_ads_logo_~7aa94a54.iwi",
+        "nazi_zombie_thesidemen.iwd:images/specialty_fastreload_zombies.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 78.3,
+    "addon_iwds": [
+      {
+        "file": "harrybo21_perks.iwd",
+        "entries": 156,
+        "scripts": 1,
+        "bytes": 17377517
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_thesidemen.ff",
+      "nazi_zombie_thesidemen_patch.ff",
+      "nazi_zombie_thesidemen.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "nazi_zombie_thesidemen.iwd:maps/tom_music_player_unl.gsc",
+        "menus": [],
+        "responses": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9"
+        ],
+        "note": "in game: a music player"
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

@@ -1,0 +1,164 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_eq_well",
+  "title": "EQ WELL",
+  "source": "custom",
+  "author": "shadowvenom",
+  "released": "2013-10-19",
+  "fs_game": "mods/nazi_zombie_eq_well",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_eq_well.iwd": "0049e7ec56a1307ba258d363645dd8e481fb38876b3983eb1e0396867053a3f4"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "crawler_round_ending"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 5000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 96,
+    "script_count": 96,
+    "entities": 399,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_door",
+        "revive"
+      ],
+      [
+        1000,
+        "zombie_door",
+        "speed_cola"
+      ],
+      [
+        1000,
+        "zombie_door",
+        "root_beer"
+      ],
+      [
+        1000,
+        "zombie_door",
+        "jugg"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_2"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "0049e7ec56a1307ba258d363645dd8e481fb38876b3983eb1e0396867053a3f4",
+    "map_specific_triggers": [],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:00:58Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_eq_well.exe",
+    "original_sha256": "aa6c306e954ba3c0c645a11321e6d41c47dee16a3c43c0fbe1008a36b1f6c614",
+    "original_size": 62290394,
+    "source_url": "https://www.mediafire.com/file/ywkxsae8c1oqgyh/nazi_zombie_eq_well.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T16:00:26Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Description My first map, nothing special, i basically just tried out a handful of features to get me started and i learned alot of mapping techniques from alot of sources such as zm/youtube etc while making my map. This was going to be a themed map and there would have been a follow up map but as i went along and learnt new ways of doing things i had much bigger, better, more complex ideas and therefore it sort of changed to more of a standard survival map. My first proper map is well under way, the detail gone into it go well above and beyond this map but it is going to take a good year or so to complete due to its immense size. For now enjoy killing as many zombies as you can!! hope you enjoy Features 4 standard perks No PaP Der riese scripts (no filthy mutts) 5 Hit jugger Custom zombies Moving Random box Custom Chalk (look up slightly (difficult to see)) 4 door triggers: door 1 \u2013 Look at the rocks scattered on the ground inside the well. door 2 \u2013 Hidden floor panel in far right corner as you go into the room door 3 \u2013 Deathcard door 4 \u2013 Wall panel far right corner of the room as you go in Known bugs: Strange invisible wall issue above the door frames that i couldn\u2019t solve for some reason (hardly noticeable unless looking) Browning sounds messed up Beta Testing Xpliciit (myself) Truekiller Credits Since this is my first map i dunno how crediting people involved goes but this is credits to the people that posted tutorials on youtube that helped me to create my map and future",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 81.3,
+    "addon_iwds": [],
+    "flags": [],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_eq_well.ff",
+      "nazi_zombie_eq_well_patch.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

@@ -1,0 +1,168 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "zm_desert",
+  "title": "Desert Village",
+  "source": "custom",
+  "author": "FlaxBusy",
+  "released": "2024-04-15",
+  "fs_game": "mods/zm_desert",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@zm_desert.iwd": "b01218c70b82e96a221b5e1443a4196e9b27105d227585e2b62433c29414f6d3"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "flaxbusy_ee_trigs"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "flaxbusy_ee_trigs look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 104,
+    "script_count": 104,
+    "entities": 174,
+    "ee_candidates": [
+      "flaxbusy_ee_trigs"
+    ],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      5000,
+      100000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_0"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "b01218c70b82e96a221b5e1443a4196e9b27105d227585e2b62433c29414f6d3",
+    "map_specific_triggers": [
+      "flaxbusy_ee_trigs",
+      "radio_music_trigs"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:19:16Z"
+    }
+  },
+  "archive": {
+    "original": "_6Desert_1.5v_By_Flux.exe",
+    "original_sha256": "36913cb8335c1f13e1792d23b4c783ab81b62be6c5fbe9213dc57d032989cf51",
+    "original_size": 348211266,
+    "source_url": "https://www.mediafire.com/file_premium/5w3wsdelnj5obd4/%255E6Desert_1.5v_By_Flux.exe/file",
+    "source_page": "https://callofdutyrepo.com/2024/04/15/desert-village/",
+    "fetched": "2026-09-26T16:17:34Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Hello Today is the best day because i spent 1 year to make a better map (Not a Box map) Features 4 Original perks custom camo buyable ending Buried zombies 4 Bo1 Perks (Mule kick stamina up phd flopper and deadshot) Zombie blood, random weapon, random perk, zombie cash death machine, fire sale, revive players and upgrade weapon powerups Bo1 Weapons custom Song (Blah Blah Blah by kesha) HUGE HUGE HUGE Thanks to -Phil81334 and : Numan for Power ups NGCaudle for Buried zms Shippuden for weapons Gympie For Perks and solo revive",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [
+        "gympie6_perks.iwd:images/~p7_zm_vending_ads_logo_spc-r~301c48c1.iwi",
+        "gympie6_perks.iwd:images/p7_zm_vending_ads_logo_col.iwi",
+        "gympie6_perks.iwd:images/specialty_fastreload_zombies.iwi",
+        "zm_desert.iwd:images/p7_zm_vending_ads_logo_col.iwi",
+        "zm_desert.iwd:images/specialty_fastreload_zombies.iwi",
+        "zm_desert.iwd:images/~p7_zm_vending_ads_logo_spc-r~301c48c1.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 87.0,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 67,
+        "scripts": 0,
+        "bytes": 176320
+      },
+      {
+        "file": "gympie6_perks.iwd",
+        "entries": 287,
+        "scripts": 7,
+        "bytes": 100288503
+      },
+      {
+        "file": "gympie6_wunderfizz.iwd",
+        "entries": 31,
+        "scripts": 0,
+        "bytes": 5479386
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "zm_desert.ff",
+      "zm_desert_patch.ff",
+      "zm_desert.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

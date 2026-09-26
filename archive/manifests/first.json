@@ -1,0 +1,159 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "first",
+  "title": "No Barricade Challenge",
+  "source": "custom",
+  "author": "Distorting_lines1",
+  "released": "2016-01-20",
+  "fs_game": "mods/first",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@first_patch.ff": "601d5205d98d3e04d8d136839a9ced1586e29d89ace9d1cc7ce83b2134210865"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "crawler_round_ending"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 5000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 107,
+    "script_count": 107,
+    "entities": 185,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        950,
+        "treasure_chest_use",
+        "pf151_auto1"
+      ],
+      [
+        600,
+        "weapon_upgrade",
+        "ppsh"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "601d5205d98d3e04d8d136839a9ced1586e29d89ace9d1cc7ce83b2134210865",
+    "map_specific_triggers": [],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:15:10Z"
+    }
+  },
+  "archive": {
+    "original": "No_Barricade_Challenge_V1.1.exe",
+    "original_sha256": "6df71cf834753e0a222da8dffcde75ddab4b7f17e5ee6f76a839676cc3daffc3",
+    "original_size": 59999671,
+    "source_url": "https://www.mediafire.com/file/ynyupkvk3nlh7ni/No_Barricade_Challenge_V1.1.exe/file",
+    "source_page": "https://callofdutyrepo.com/2016/01/20/no-barricade-challenge/",
+    "fetched": "2026-09-26T16:13:02Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Pre-Post Notes: The map is called \u2018First\u2019 as it is my first custom map. This is only V1. Please post any bugs you find in the comments. Actual Post: This is a little idea I had a few days ago, and as I couldn\u2019t find it anywhere, I made one! This Is a small, box map with all OG perks, the mystery box, and two wall weapons. The zombies flood through one massive window, so be very careful. Perks on map: -Juggernog -Speed Cola -Double Tap Root Beer -Quick Revive (DON\u2019T BUY, IT\u2019S CO-OP ONLY, WILL BE FIXED SOON) Quick update: I fixed the dog round, and will release the map when I get home (at school right now). Look forward to it!",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 77.3,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 67,
+        "scripts": 0,
+        "bytes": 176320
+      }
+    ],
+    "flags": [],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "first.ff",
+      "first_patch.ff",
+      "mod.ff",
+      "first.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

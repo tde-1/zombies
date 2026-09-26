@@ -1,0 +1,143 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_swamps",
+  "title": "SWAMPS",
+  "source": "custom",
+  "author": "Gbomb",
+  "released": "2010-03-11",
+  "fs_game": "mods/nazi_zombie_swamps",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@mod.ff": "5f88397e4c78345e0df8f9da37e3fd27f7ff772ebee9348f56d4de70f40a7324"
+  },
+  "badge": {
+    "main_finish": "round",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "round",
+    "why": "no easter egg or ending found; default Round 20",
+    "verdict_stock_baseline_only": "round",
+    "scripts": 97,
+    "script_count": 97,
+    "entities": 1085,
+    "ee_candidates": [],
+    "ending_words": [],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        3000,
+        "weapon_upgrade",
+        "auto3"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "staircase"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "piperock"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "mainhouse"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "bookshelf"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "5f88397e4c78345e0df8f9da37e3fd27f7ff772ebee9348f56d4de70f40a7324",
+    "map_specific_triggers": [
+      "toilet_flush",
+      "toilet_trig.origin"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:06:50Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_swamps.exe",
+    "original_sha256": "d42bfb300d701bceaae109cc7aa0dc9bbdc6b5c60c27b116fadb0488dfe3a16f",
+    "original_size": 82869761,
+    "source_url": "http://www.mediafire.com/file/2sbnv3yk4iqce3t/nazi_zombie_swamps.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T16:05:39Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "This map is shi no numa based map, which starts in sewer pipes with Arisaka, followed by numerous swamp areas and finally multiple roomed house with basement,middle level and top level. There is also shack house outside the house within forest. Map features Hellhounds & Zombies with All four WAW perks,wall weapons and mystery box. Overall great map! Thanks to Wakizashi for providing the map file, description and screenshots.",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). No finish found by name. Before accepting Round 20, someone should glance at this map's own triggers: toilet_flush, toilet_trig.origin. ",
+  "precheck": {
+    "map_zone_inflated_mb": 116.6,
+    "addon_iwds": [],
+    "flags": [
+      "client_memory_risk"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_swamps.ff",
+      "nazi_zombie_swamps_patch.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

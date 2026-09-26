@@ -1,0 +1,213 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "zm_sturm_der_toten",
+  "title": "STURM DER TOTEN",
+  "source": "custom",
+  "author": null,
+  "released": "2026-03-28",
+  "fs_game": "mods/zm_sturm_der_toten",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@zm_sturm_der_toten.iwd": "77c847455a40bef6d137ca8bf504dcef667cfc6f881a71a0a8726ffaaff121db"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "ee_button_1",
+        "ee_button_1_m",
+        "ee_button_2",
+        "ee_button_2_m",
+        "ee_button_3",
+        "ee_button_3_m",
+        "ee_button_4",
+        "ee_button_4_m",
+        "ee_button_5",
+        "ee_button_5_m",
+        "ee_clip",
+        "ee_debris1",
+        "ee_debris2",
+        "ee_debris3",
+        "ee_debris4"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "ee_button_1, ee_button_1_m, ee_button_2, ee_button_2_m, ee_button_3, ee_button_3_m look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 100,
+    "script_count": 100,
+    "entities": 1749,
+    "ee_candidates": [
+      "ee_button_1",
+      "ee_button_1_m",
+      "ee_button_2",
+      "ee_button_2_m",
+      "ee_button_3",
+      "ee_button_3_m",
+      "ee_button_4",
+      "ee_button_4_m",
+      "ee_button_5",
+      "ee_button_5_m",
+      "ee_clip",
+      "ee_debris1",
+      "ee_debris2",
+      "ee_debris3",
+      "ee_debris4"
+    ],
+    "ending_words": [
+      "crawler_round_ending",
+      "dive_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        1250,
+        "zombie_door",
+        "auto3"
+      ],
+      [
+        1250,
+        "zombie_door",
+        "auto3"
+      ],
+      [
+        1250,
+        "zombie_debris",
+        "debris4"
+      ],
+      [
+        1250,
+        "zombie_debris",
+        "debris4"
+      ],
+      [
+        1250,
+        "zombie_debris",
+        "debris2"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "77c847455a40bef6d137ca8bf504dcef667cfc6f881a71a0a8726ffaaff121db",
+    "map_specific_triggers": [
+      "ee_button_1",
+      "ee_button_2",
+      "ee_button_3",
+      "ee_button_4",
+      "ee_button_5",
+      "toilet_trig"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:55:04Z"
+    }
+  },
+  "archive": {
+    "original": "STURM_DER_TOTEN.exe",
+    "original_sha256": "4f9a7f06dd0db8b62562ab21323bd692c4503a7ff8194c74eab40522a3a6a80d",
+    "original_size": 222723623,
+    "source_url": "https://www.mediafire.com/file/vfdtpa2xml6ao13/STURM+DER+TOTEN.exe/file",
+    "source_page": "https://callofdutyrepo.com/2026/03/28/sturm-der-toten/",
+    "fetched": "2026-09-26T16:54:42Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "exe-unknown",
+    "shipped_executables": [],
+    "catalogue_tags": [],
+    "catalogue_description": "After months of work and breaks, I present my first custom zombies map: STURM DER TOTEN THEFF Studios Off the coast of Germany, a hidden island served as the site of secret experiments. The scientists were experimenting with zombies, but it went wrong. FEATURES: Verr\u00fcckt sprinters Easter Egg Song No perk limit Wunderwaffe glitch fix Solo Quick Revive Black Ops 1 Perks Black Ops 1 \u201cFive\u201d Zombies Some World at War Campaign Weapons A custom Perk (Vigor Rush, does slightly more damage to zombies) No main easter egg, no hell hounds, just classic zombies",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak",
+        "loadscreen_sp_makin",
+        "loadscreen_zm_sturm_der_toten"
+      ],
+      "iwd_images": [
+        "zm_sturm_der_toten.iwd:images/black_ops_vending_ads_logo_off_c.iwi",
+        "zm_sturm_der_toten.iwd:images/black_ops_vending_ads_logo_off_n.iwi",
+        "zm_sturm_der_toten.iwd:images/black_ops_vending_ads_logo_on_c.iwi",
+        "zm_sturm_der_toten.iwd:images/black_ops_vending_three_gun_logo_c.iwi",
+        "zm_sturm_der_toten.iwd:images/black_ops_vending_three_gun_logo_on_c.iwi",
+        "zm_sturm_der_toten.iwd:images/dlc4_logo.iwi",
+        "zm_sturm_der_toten.iwd:images/loadscreen_zm_sturm_der_toten.iwi",
+        "zm_sturm_der_toten.iwd:images/menu_zm_sturm_der_toten.iwi",
+        "zm_sturm_der_toten.iwd:images/specialty_fastreload_classic.iwi",
+        "zm_sturm_der_toten.iwd:images/specialty_fastreload_dlc4.iwi",
+        "zm_sturm_der_toten.iwd:images/zombie_vending_ads_logo_c.iwi",
+        "zm_sturm_der_toten.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "zm_sturm_der_toten.iwd:images/zombie_vending_sleight_logo_c.iwi",
+        "zm_sturm_der_toten.iwd:images/zombie_vending_three_gun_logo_c.iwi",
+        "zm_sturm_der_toten.iwd:images/~-gzombie_vending_ads_logo_c.iwi",
+        "zm_sturm_der_toten.iwd:images/~-gzombie_vending_three_gun_logo_c.iwi",
+        "zm_sturm_der_toten.iwd:images/~zombie_vending_sleight_logo_~4305e36c.iwi",
+        "zm_sturm_der_toten.iwd:images/~~~-gzombie_vending_ads_logo_~3880ea39.iwi",
+        "zm_sturm_der_toten.iwd:images/~~~-gzombie_vending_ads_logo_~b134f8b9.iwi"
+      ],
+      "loadscreen": "loadscreen_zm_sturm_der_toten"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 105.4,
+    "addon_iwds": [],
+    "flags": [
+      "no_patch_ff"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": false,
+    "napalmblob": [
+      "mod.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

@@ -1,0 +1,131 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "czmfnaf4",
+  "title": "Czm Fnaf4 Patch",
+  "source": "custom",
+  "author": null,
+  "released": null,
+  "fs_game": "mods/czmfnaf4",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@czm_fnaf4_patch.ff": "ffd79e6dc20ec74006a5464cc27b2c491946963d12b04ddebd6a31bce672910a"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "crawler_round_ending"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 1500",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 46,
+    "script_count": 46,
+    "entities": 0,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "ffd79e6dc20ec74006a5464cc27b2c491946963d12b04ddebd6a31bce672910a",
+    "map_specific_triggers": [],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:40:45Z"
+    }
+  },
+  "archive": {
+    "original": "czm_fnaf4_patch.ff",
+    "original_sha256": "3e60584e377f93900c60fad217a661feeebc006e6fed6b50a8716892ec9b1e5b",
+    "original_size": 337600,
+    "source_url": "https://archive.org/download/nazi_zombie_school/czm_fnaf4/czm_fnaf4_patch.ff",
+    "source_page": "https://archive.org/details/nazi_zombie_school",
+    "fetched": "2026-09-26T16:40:44Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "fastfile",
+    "shipped_executables": [],
+    "catalogue_tags": [
+      "archive_file"
+    ],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": null,
+    "addon_iwds": [],
+    "flags": [
+      "no_patch_ff",
+      "no_map_ff"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": false,
+    "napalmblob": [
+      "czm_fnaf4_patch.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud run: a loose fastfile from an archive.org dump (load/localized/patch zone of another map), not a map",
+  "not_a_map": true
+}

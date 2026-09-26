@@ -1,0 +1,177 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_killerz",
+  "title": "KILLERZ",
+  "source": "custom",
+  "author": "holz",
+  "released": "2014-02-19",
+  "fs_game": "mods/nazi_zombie_killerz",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_killerz.iwd": "b2f966928223939bb2b1f6ec364aaadc261e01456d3c83ef13a9e836c09cbf3d"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "crawler_round_ending"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000,
+        100000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 100000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 109,
+    "script_count": 109,
+    "entities": 24,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      100000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "b2f966928223939bb2b1f6ec364aaadc261e01456d3c83ef13a9e836c09cbf3d",
+    "map_specific_triggers": [],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:50:04Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_killerz.exe",
+    "original_sha256": "c4fac874a0844b9aeb984ea2ae3d1737da9ead3cd51d0b84acbf5dbfcb3c0303",
+    "original_size": 146694186,
+    "source_url": "http://www.mediafire.com/file/gz3ikxrn177xpp7/nazi_zombie_killerz.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T15:48:27Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Description Here is my first Zombie Map Killerz! Style: Der Riese Mapsize: middle Difficulty: easy \u2013 middle Made by: -=LSK=-Holz The Name is program kill all the Zombies, spend all your Money to your Wife and when its enough fleet with the UFO! Inlucdes: \u2013 4 Perk Machines \u2013 Pack a Punch \u2013 Banksystem (TremBank) \u2013 Musikbox (TomsMusicBox) \u2013 Zombie Counter \u2013 Zapper \u2013 Buyable Max Ammo \u2013 Buyable Ending Credits and special Thx goes to: TomBMX, Treminaor, Cinnober, Gen.Buddy Known Bugs: Zapper Lights are invisible, so be careful there.",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_killerz",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "nazi_zombie_killerz.iwd:images/loadscreen_nazi_zombie_killerz.iwi",
+        "nazi_zombie_killerz.iwd:images/menu_map_nazi_zombie_killerz.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_killerz"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 93.9,
+    "addon_iwds": [],
+    "flags": [],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_killer.ff",
+      "nazi_zombie_killer_patch.ff",
+      "nazi_zombie_killerz.ff",
+      "nazi_zombie_killerz_patch.ff"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "nazi_zombie_killerz.iwd:maps/tom_music_player_unl.gsc",
+        "menus": [],
+        "responses": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9"
+        ],
+        "note": "in game: a music player"
+      },
+      {
+        "script": "nazi_zombie_killerz.iwd:maps/trem_bank_2.gsc",
+        "menus": [],
+        "responses": [],
+        "note": "in game: the bank"
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

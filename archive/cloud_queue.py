@@ -80,6 +80,11 @@ def build(db):
                 out.append({"norm": norm, "name": rows[0]["name"], "pop": 10**12, "size": 0})
                 stats["local_unprocessed"] = stats.get("local_unprocessed", 0) + 1
             continue
+        # archive.org dumps list loose zones (`*_load.ff`, `localized_*.ff`) as if they were
+        # maps; a norm whose every link is a bare .ff is a fragment of another map
+        if all((l["filename"] or l["url"]).lower().split("?")[0].endswith(".ff") for l in links):
+            stats["fragment"] = stats.get("fragment", 0) + 1
+            continue
         if not any(fetchable(l) for l in links):
             stats["no_robot_link"] += 1
             continue

@@ -1,0 +1,210 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_deadend",
+  "title": "Nazi Zombie Deadend",
+  "source": "custom",
+  "author": "Tatos",
+  "released": "2012-01-20",
+  "fs_game": "mods/nazi_zombie_deadend",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_Deadend.iwd": "cb11d6ea3e44b296a63f9aab688d0764e2e8735e5dce91c79c684cac0e3a7051"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "zombie_door",
+          "zombie_cost": 20000
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 5000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 104,
+    "script_count": 104,
+    "entities": 803,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        20000,
+        "zombie_door",
+        "auto628"
+      ],
+      [
+        3000,
+        "zombie_door",
+        "auto2134"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto624"
+      ],
+      [
+        1500,
+        "zombie_door",
+        "auto611"
+      ],
+      [
+        1500,
+        "zombie_door",
+        "auto590"
+      ]
+    ],
+    "buyable_ending_candidate": {
+      "zombie_cost": 20000,
+      "targetname": "zombie_door",
+      "target": "auto628",
+      "next_highest": 3000
+    },
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "cb11d6ea3e44b296a63f9aab688d0764e2e8735e5dce91c79c684cac0e3a7051",
+    "map_specific_triggers": [
+      "ammo_trigger",
+      "kino_mainframe_trigger",
+      "kino_teleporter_trigger",
+      "music_box_player"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:15:53Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_Deadend.exe",
+    "original_sha256": "10a4810d4dc41dcf519cee742320b7eddb4febdd0857c65ed9f58fd7f286c3c6",
+    "original_size": 120203848,
+    "source_url": "https://www.mediafire.com/file/x0s50ngweity8tw/nazi_zombie_Deadend.exe/file",
+    "source_page": "https://callofdutyrepo.com/2012/01/20/nazi-zombie-deadend/",
+    "fetched": "2026-09-26T16:14:34Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Features der reise style without dogs small compact map (like asylum) traps ammo carepackage original perks and PaP custom weapon skins custom songs/music forest environment level of difficulty is 8-9 (out of 10) custom teleporters and secret tunnels Storyline As 5 freinds are on their way home from work they deside to take a shortcut through tha woods, soon it became so dark that they couldn\u2019t see the road ahead until they hit something. They get out of the car only to find out they hit a deer walking in the middle of the road. They were so scared that they didnt even cheak to see if it was still alive so they just moved it to the side of the road and drove on into the darkness. After about an hour of driving they run out of gas but they were lucky enough to stop near a house. The front gate was open so they went into see if anyone was around, but after a few minutes of looking around they relize that the house was abandoned and no one had been there for years. The four desided to head back to the car to spend the night there and go looking for help in the morning but as they go to the gate it was locked now. They thought that their other friend that stayed in the car locked it but as they looked through the gate they saw that his body was still in the car and his head was ripped off of him and missing. As the four run back to try to get in the house they start to hear voices and foot steps around the forest, and it was then they found out they were in a Dead End\u2026. \u2014\u2014\u2014\u2014\u2014\u2014\u2013 N",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_deadend",
+        "loadscreen_nazi_zombie_ndu2",
+        "loadscreen_zom1"
+      ],
+      "iwd_images": [
+        "nazi_zombie_Deadend.iwd:images/barlogo.iwi",
+        "nazi_zombie_Deadend.iwd:images/elevatormenu.iwi",
+        "nazi_zombie_Deadend.iwd:images/foodmenu.iwi",
+        "nazi_zombie_Deadend.iwd:images/frontlogo.iwi",
+        "nazi_zombie_Deadend.iwd:images/loadscreen_nazi_zombie_deadend.iwi",
+        "nazi_zombie_Deadend.iwd:images/mainlobbymenu.iwi",
+        "nazi_zombie_Deadend.iwd:images/menu_map_nazi_zombie_deadend.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_deadend"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 98.0,
+    "addon_iwds": [],
+    "flags": [],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "nazi_zombie_deadend.ff",
+      "mod.ff",
+      "nazi_zombie_deadend_patch.ff"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "nazi_zombie_Deadend.iwd:maps/tom_music_player_unl.gsc",
+        "menus": [],
+        "responses": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9"
+        ],
+        "note": "in game: a music player"
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

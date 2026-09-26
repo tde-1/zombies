@@ -1,0 +1,193 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_raining",
+  "title": "RAINING",
+  "source": "custom",
+  "author": "chromastone10",
+  "released": "2014-01-27",
+  "fs_game": "mods/nazi_zombie_raining",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_raining.iwd": "e31d3707c4a46984bee2e2a388650ea86e7fa651ae4a78057502413d96074509"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game",
+        "teleport_power_up"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000,
+        9000,
+        35000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game, teleport_power_up name an ending and are this map's own; script hardcodes cost 35000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 104,
+    "script_count": 104,
+    "entities": 1203,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game",
+      "teleport_power_up"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      9000,
+      35000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        1000,
+        "zombie_debris",
+        "door3"
+      ],
+      [
+        1000,
+        "zombie_debris",
+        "door1"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_4"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_3"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_2"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "e31d3707c4a46984bee2e2a388650ea86e7fa651ae4a78057502413d96074509",
+    "map_specific_triggers": [
+      "end_game",
+      "enter",
+      "five_tele1",
+      "five_tele2",
+      "five_tele3",
+      "five_tele4",
+      "five_tele5",
+      "heli_trig",
+      "moon_teleporter_a_trigger",
+      "moon_teleporter_b_trigger",
+      "purchase",
+      "secret_trigger",
+      "secret_trigger2",
+      "secret_trigger3",
+      "select",
+      "zk_eggtrig"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:11:33Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_raining_early_acces.exe",
+    "original_sha256": "6e9aee2cffd40e27417acc08f9906c6e27ed2ce9ecdf04b0c38c2821dec70e05",
+    "original_size": 183181485,
+    "source_url": "http://www.mediafire.com/file/rg8kscn3g1h2kgr/nazi_zombie_raining_early_acces.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T16:09:52Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Description My 2nd map ever, still a few bugs that will be updated like the buyable ending doesn\u2019t work solo, not sure if it works online, message me if you know how to fix but you can try it The final version of my map I tried to release caused people\u2019s game to crash for unknown reason so I had to release the version right before the final version, the buyable ending was a radio that would end the game about how you take a plane you find but it won\u2019t work, so the 2nd teleporter in the secret area doesn\u2019t work, it was supposed to teleport you to the plane room Features: -SLIDES! -3 bear easter egg to open secret door -Black Ops Weapons and Tom\u2019s Melee weapons all pack a punchable -pack a punchable Walther pistol -Black ops perks and world at war perks -Five teleporters -Custom textures -powerup machine -one way teleporters -buyable raygun -custom zombie eye color and glow -lightning -zombie counter -custom colt -custom main menu music -slide room -custom mystery box music -black ops 2 shaders Thank you to everyone on zombie modding in the user tutorials, I would name them but forgot some of the forums I used for my map and cant find them now nukem \u2013 one way teleporters Bamskater \u2013 Black ops perks five teleporter guy Thanks to beta testers: Wolfdegenius IndyIzzy23 Zombi3_Kill3rz petersonlogan.23",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_nazi_zombie_raining"
+      ],
+      "iwd_images": [
+        "nazi_zombie_raining.iwd:images/loadscreen_nazi_zombie_raining.iwi",
+        "nazi_zombie_raining.iwd:images/specialty_fastreload_zombies.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_raining"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 94.6,
+    "addon_iwds": [],
+    "flags": [],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_raining.ff",
+      "nazi_zombie_raining_patch.ff",
+      "nazi_zombie_raining.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

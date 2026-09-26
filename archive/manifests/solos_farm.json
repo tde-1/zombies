@@ -1,0 +1,180 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "solos_farm",
+  "title": "Solo's Farm",
+  "source": "custom",
+  "author": "SoloCustomZombies",
+  "released": "2014-03-08",
+  "fs_game": "mods/solos_farm",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@solos_farm.iwd": "a045bb40514484f8a56686a0538357e84ed0ffdb7b6c67e9345cde5f6edde175"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        5000,
+        30000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 30000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 98,
+    "script_count": 98,
+    "entities": 937,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000,
+      30000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        8000,
+        "zombie_debris",
+        "auto240"
+      ],
+      [
+        4000,
+        "zombie_debris",
+        "auto261"
+      ],
+      [
+        3000,
+        "zombie_debris",
+        "auto255"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto239"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto233"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "a045bb40514484f8a56686a0538357e84ed0ffdb7b6c67e9345cde5f6edde175",
+    "map_specific_triggers": [
+      "dig_site",
+      "end_game",
+      "saw_trigger",
+      "teddy_one",
+      "teddy_three",
+      "teddy_two"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:54:39Z"
+    }
+  },
+  "archive": {
+    "original": "solos_farm.exe",
+    "original_sha256": "c013e1a5b13bbc0c5497159df04b72231ed2791c2d1674f945640f0ea72903f2",
+    "original_size": 108022632,
+    "source_url": "https://www.mediafire.com/file/j196das59px16ep/solos_farm.exe/file",
+    "source_page": "https://callofdutyrepo.com/2014/03/08/solos-farm/",
+    "fetched": "2026-09-26T15:52:41Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Description Hello guys and welcome to my first ever map which i created for my 3,000 Subscriber Special video. Down below is the trailer for the map as well as the list of features. Enjoy To Run Map Type In Console \u201cmap solos_farm Features Origin Dig Sites 2 Pack A Punch\u2019s Impact Nades All Weapons Customized 3 Teddy Easteregg ( 2 Easy & 1 Hard) Zombie Counter Black Ops 2 Shaders Black Ops Weapons BattleField 3 Weapon Farcry 3 Knife Buyable Ending Droppable Perks (Includes Black Ops Perks) NO Dogs Wunderwaffe fixed Solo Quick Revive 2 Floored Map 5 Monkeys/Molotov\u2019s Nice Detail All 8 Perks Speed Cola Juggernog (FIXED) Quick Revive (Works On Solo & Can Move While Down) DoubleTap 2.0 Mulekick (Fully Working) PHD Flopper (Fully Working) Staminup (Black Ops 1 Speed) Deadshot Daquri And MUCH MORE! CREDITS Mapping GrantDaddy007 ElfenLied (Apex) ZCTxCHAOSx RollonMath42 (Apex) Nukem Scripting gtlad (Apex) Helped A Lot YaPh1l GrantDaddy007 MrZ0mbiesFanatic Features Bamskater (BO Perks) Quizz (Impact Nades) YaPh1l (Typewriter Intro Text) Swazzy (HUD) GrantDaddy007 (Easteregg & Buyable Ending) gtlad (Droppable Perks) Jokergh2 (Co-op Loadscreen) MrHankey91 (Zombie Counter) Origins Dig Sites (BluntStuffy) Custom Powerup FX (Deper63923 BETA Tester\u2019s xZCTxCHAOSx Zebba RollonMath42 (Apex) ElfenLied (Apex) gtlad (Apex) Nukem HDCrazedGamer Skeatch DallaGames MrZ0mbiesFanatic PinkyPromise Thank you to everyone that helped, My map wouldnt of been possible without you guys.",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [
+        "solos_farm.iwd:images/buyable_logo.iwi",
+        "solos_farm.iwd:images/specialty_fastreload_zombies.iwi",
+        "solos_farm.iwd:images/weapon_red_cross_background.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 91.3,
+    "addon_iwds": [],
+    "flags": [],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "solos_farm.ff",
+      "solos_farm_patch.ff",
+      "solos_farm.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

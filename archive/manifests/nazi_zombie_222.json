@@ -1,0 +1,193 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_222",
+  "title": "222",
+  "source": "custom",
+  "author": "Geek008",
+  "released": "2012-02-25",
+  "fs_game": "mods/nazi_zombie_222",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_222.iwd": "6932aca8a5d09333415b14c871ef1acd0ec982bd854d4a34a250f06594691f35"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000,
+        59427
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 59427",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 99,
+    "script_count": 99,
+    "entities": 965,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      59427
+    ],
+    "orphan_end_triggers": [
+      "trigger_teleport_pad_0"
+    ],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "Zombie_Blocker6"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "Zombie_Blocker5"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "Zombie_Blocker2"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "Zombie_Blocker1"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "Zombie_Blocker1"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "6932aca8a5d09333415b14c871ef1acd0ec982bd854d4a34a250f06594691f35",
+    "map_specific_triggers": [
+      "buy_powerup",
+      "end_game",
+      "music_box_player"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:18:30Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_222.exe",
+    "original_sha256": "bcf100eed27aa27c5a7f8e5ed143e6678b973c0e2792a78f68185269e30354bf",
+    "original_size": 62188833,
+    "source_url": "https://www.mediafire.com/file/y46ojizsby6jjfu/nazi_zombie_222.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T16:17:15Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Hello All. dance1 This Is My Second Map Nazi_Zombie_222, I Made This Map As I Saw The Creation Of Nazi_Zombie_111 A Victory. owned2 I Released Nazi_Zombie_111. A Short While Ago. I Spent 2-3 Weeks Making Nazi_Zombie_222. turd1 Thanks To The Beta Testers, Your Help Was Greatly Appreciated. I Hope You Enjoy It. Features: Der Riese Style. Power. 4 Perk Machines(I Customized Jugganaut To 7 Hits). 1 Box. Bowie Knife. Bouncing Bettie\u2019s. Wall Guns. Normal Teleporter. Buy able Ending. Altered Zombie Counter. Pre Game Messages. Music Box. Invisible Ladders. Credits In Mods Folder. Custom Beta Tester Wall. Known Bugs: When You Die and Re Spawn You Do Not Have Any Guns. I Couldn\u2019t Fix This But, If You Buy 2 Guns Off The Wall You Will Be Fine. (Dont Use Box Before Buy 2 Guns Off The Wall The Box Will Eat Your Guns) The Third Player Will Spawn Slightly Higher Than The Rest and Will Be Stuck, Just Crouch and You Will Fall Down. Description: This Map Is Cut Into Sections. So You Start Off Separated Like Verukkt But, You Will Be Joined Again. Your Next Task Is Too Not Die and Survive. The Buy able Ending Is Sort Of Hidden But Its Still Easy To Find. Thank You Th3_Im0rtal",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 82.2,
+    "addon_iwds": [],
+    "flags": [],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "nazi_zombie_222.ff",
+      "mod.ff",
+      "nazi_zombie_222_patch.ff"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "nazi_zombie_222.iwd:maps/tom_music_player_unl.gsc",
+        "menus": [],
+        "responses": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9"
+        ],
+        "note": "in game: a music player"
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

@@ -1,0 +1,131 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_facility",
+  "title": "Nazi Zombie Facility",
+  "source": "custom",
+  "author": "treminaor",
+  "released": "2010-11-26",
+  "fs_game": "mods/nazi_zombie_facility",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_facility.ff": "0fe1fe5d658c2dfbf7a539172ad56ee05d75d251baf1f101b05eb22c9625b4f6"
+  },
+  "badge": {
+    "main_finish": "round",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "round",
+    "why": "no easter egg or ending found; default Round 20",
+    "verdict_stock_baseline_only": "round",
+    "scripts": 44,
+    "script_count": 44,
+    "entities": 3060,
+    "ee_candidates": [],
+    "ending_words": [],
+    "hardcoded_costs": [
+      1000,
+      1500
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        10000,
+        "weapon_upgrade",
+        "pf2766_auto71"
+      ],
+      [
+        3000,
+        "weapon_upgrade",
+        "pf2764_auto71"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "stairs_down3"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "stairs_down3"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "stairs_down2"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [],
+    "zombiemode_sha256": "0fe1fe5d658c2dfbf7a539172ad56ee05d75d251baf1f101b05eb22c9625b4f6",
+    "map_specific_triggers": [],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:17:37Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_facility.exe",
+    "original_sha256": "c37d321cb12abba3fc3b75a8b851e921de35d8167cd054856928b255dd9c983f",
+    "original_size": 47377734,
+    "source_url": "http://www.mediafire.com/file/8hr1z7dfpdtx564/nazi_zombie_facility.exe/file",
+    "source_page": "https://callofdutyrepo.com/2010/11/26/nazi-zombie-facility/",
+    "fetched": "2026-09-26T16:15:51Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "archive_item"
+    ],
+    "catalogue_description": "In nazi zombie facility the players start in four diffrent corners of the facility and must open doors to meet each other in the center of the map, where stairs lead to cavern section beneath the facility, there are mystery boxes and mg purchases, along with most likely best camping place for the map. Good luck surviving! some older maps cannot be played with multiple players (cooperate) this map can be played with multiple players Thanks to Wakizashi for providing the map file and screenshots.",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [],
+      "loadscreen": null
+    }
+  },
+  "notes": "Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 84.0,
+    "addon_iwds": [],
+    "flags": [
+      "no_patch_ff"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": false,
+    "napalmblob": [
+      "nazi_zombie_facility.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

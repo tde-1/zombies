@@ -1,0 +1,185 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "zom_detained",
+  "title": "Zom Detained",
+  "source": "custom",
+  "author": "SWAZZYHD",
+  "released": "2013-03-26",
+  "fs_game": "mods/zom_detained",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@zom_detained.iwd": "ae9834d9cca5b257de880af51ecd16c2249a9d6771fede4de236aca281fe3e65"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000,
+        25000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 25000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 105,
+    "script_count": 105,
+    "entities": 473,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      25000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "door2"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "door3"
+      ],
+      [
+        1250,
+        "zombie_debris",
+        "door1"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_2"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_1"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "ae9834d9cca5b257de880af51ecd16c2249a9d6771fede4de236aca281fe3e65",
+    "map_specific_triggers": [
+      "end_game",
+      "gas_can",
+      "gas_cantrue",
+      "kino_mainframe_trigger",
+      "kino_teleporter_trigger",
+      "oil",
+      "oiltrue",
+      "para_eggtrig"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:15:14Z"
+    }
+  },
+  "archive": {
+    "original": "zom_detained.exe",
+    "original_sha256": "f02815ec983ce1b89e5c613523e8aacfb9742bb9ed120b3ca78b2ff730c2516a",
+    "original_size": 103595656,
+    "source_url": "https://www.mediafire.com/file/zs6ub0evgdhdf79/zom_detained.exe/file",
+    "source_page": "https://callofdutyrepo.com/2013/03/26/zom-detained/",
+    "fetched": "2026-09-26T16:13:09Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Features: Kino-Styled Teleport (Modified Script) Purpose of the game Custom FX New weapon sounds New textures and skins New Achievements (Modified Script) Verr\u00fcckt Sprinter (every 1 / 4th zombie) Buyable ending Black Ops Bonuses Black Ops Perk Bottles Polished Thompson / MP40 when upgraded. Fixed Juggernog / Wunderwaffe Musical Easter Egg Zombie counter New Perk: Downers Delight (Allows 60 seconds of downtime) New Powerup: Player (Who knows how much you will win.) Double Tap 2.0 New HUD icons",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak",
+        "loadscreen_zom_detained",
+        "loadscreen_zom_detained1"
+      ],
+      "iwd_images": [
+        "zom_detained.iwd:images/detained_menu_bg.iwi",
+        "zom_detained.iwd:images/loadscreen_zom_detained.iwi",
+        "zom_detained.iwd:images/menu_map_zom_detained.iwi",
+        "zom_detained.iwd:images/specialty_fastreload_zombies.iwi"
+      ],
+      "loadscreen": "loadscreen_zom_detained"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 96.2,
+    "addon_iwds": [],
+    "flags": [],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "zom_detained.ff",
+      "zom_detained_patch.ff",
+      "zom_detained.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

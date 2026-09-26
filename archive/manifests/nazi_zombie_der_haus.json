@@ -1,0 +1,193 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_der_haus",
+  "title": "[item] Shake Delusion Presents Commie Zombies",
+  "source": "custom",
+  "author": "Shake Delusion of Shake the 5 Dusts",
+  "released": "2024-12-04",
+  "fs_game": "mods/nazi_zombie_der_haus",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@derhaus.iwd": "1a9b2fd8b35dc53af82666f670396b2fe88778dcf7d3d7acf2bf2daa2dab7a65"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "crawler_round_ending"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        5000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 5000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 104,
+    "script_count": 104,
+    "entities": 247,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000
+    ],
+    "orphan_end_triggers": [
+      "trigger_teleport_pad_0",
+      "trigger_teleport_pad_1",
+      "trigger_teleport_pad_2"
+    ],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "power"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "doubletap"
+      ],
+      [
+        1000,
+        "zombie_debris",
+        "speedcola"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_0"
+      ],
+      [
+        600,
+        "weapon_upgrade",
+        "ppsh"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "1a9b2fd8b35dc53af82666f670396b2fe88778dcf7d3d7acf2bf2daa2dab7a65",
+    "map_specific_triggers": [],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:54:59Z"
+    }
+  },
+  "archive": {
+    "original": "Shake_Delusion_Presents_Commie_Zombies.zip",
+    "original_sha256": "7eaad4b080681a86ea354ee14c0d4039f6a45cdc639269a25a3317a670f474c1",
+    "original_size": 1198549378,
+    "source_url": "https://archive.org/download/shake-delusion-presents-commie-zombies/Shake%20Delusion%20Presents%20Commie%20Zombies.zip",
+    "source_page": "https://archive.org/details/shake-delusion-presents-commie-zombies",
+    "fetched": "2026-09-26T16:54:26Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "zip",
+    "shipped_executables": [],
+    "catalogue_tags": [
+      "archive_item"
+    ],
+    "catalogue_description": "\ud835\ude82\ud835\ude91\ud835\ude8a\ud835\ude94\ud835\ude8e \ud835\ude73\ud835\ude8e\ud835\ude95\ud835\ude9e\ud835\ude9c\ud835\ude92\ud835\ude98\ud835\ude97 presents: \ud835\udc02\ud835\udc28\ud835\udc26\ud835\udc26\ud835\udc22\ud835\udc1e \ud835\udc19\ud835\udc28\ud835\udc26\ud835\udc1b\ud835\udc22\ud835\udc1e\ud835\udc2c 5 maps, all galaxy gaffs, 16 years after the fact. \ud835\udff7. \ud835\udc03\ud835\udc1e\ud835\udc2b \ud835\udc07\ud835\udc1a\ud835\udc2e\ud835\udc2c, 2. \ud835\udc13\ud835\udc13\ud835\udc13\ud835\udc28\ud835\udc30\ud835\udc1e\ud835\udc2b, \ud835\udff9. \ud835\udc05\ud835\udc22\ud835\udc2b\ud835\udc2c\ud835\udc2d, \u2643. \ud835\udc12\ud835\udc29\ud835\udc28\ud835\udc28\ud835\udc24 \ud835\udc06\ud835\udc28\ud835\udc28\ud835\udc24\ud835\udc2e\ud835\udc25\ud835\udc1a, \ud835\udffb. \ud835\udc13\ud835\udc2b\ud835\udc1a\ud835\udc2c\ud835\udc21. \ud835\udffb. \ud835\udc13\ud835\udc2b\ud835\udc1a\ud835\udc2c\ud835\udc21 [T4M/Plutonium required] YOU CAN RUN, BUT YOU CAN\u2019T HIDE. DOLPHIN DIVES BLACK OPS 3 PaP (Origins skin) Ascension zombies. A fever dream preceding map \u2643. White Room disorientation, shoot surroundings \u2643 visibility. Jukebox: One Minute (instrumental) +UGX default Vulture Aid, Widow\u2019s Wine, Electric Cherry, Juggernog, Quick Revive, Doubletap2.0, Speed Cola, Stamin-Up, Deadshot Daiquiri, Mule Kick, &PhD Flopper. -500 point BO2 Peacekeeper [in-spawn] -M14gang -Colt Muh Clapclap -Apothican Servant That Lovecraft Shit -Dingo -MaschinenPistole Lang -Skorpion EVO -HK21 -Commando -357 Wicked Stick of the Weast -kar98k -PTRS41 Shake\u2019s Bonkstick -MP40 -PPSh41 The Peepee -STG -Tommy -Type100 Brrrrrt -Sawnoff The Fuckbell -Trench Gun Huh -Browning M1919 -BAR -FG42 Airplane Gun -MG42 Hitler\u2019s Zipper -Panzerschreck That Doom Shit -Flamethrower War Crime -Ray Gun Gay Gun \u2643. \ud835\udc12\ud835\udc29\ud835\udc28\ud835\udc28\ud835\udc24 \ud835\udc06\ud835\udc28\ud835\udc28\ud835\udc24\ud835\udc2e\ud835\udc25\ud835\udc1a [T4M/Plutonium required] [Relatable Garbage album-art source] DOLPHIN DIVES BLACK OPS 3 PaP (Tranzit skin) SHAKE DELUSION POWERUP ANNOUNCER Ascension zombies. By far the mappest map of the bunch. Vulture Aid, Widow\u2019s Wine, Electric Cherry, Juggernog, Quick Revive, Doubletap2.0, Speed Cola, Stamin-Up, &PhD Flopper. Buried Jug area. Menu music that gives Me ASMR. 5. Neverland inst. 7. Relatable Garbage. In-map jukebox: Filthy Frank-Dick Pays Rent Filth",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [
+        "derhaus.iwd:images/specialty_fastreload_zombies.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 85.2,
+    "addon_iwds": [
+      {
+        "file": "derhaus.iwd",
+        "entries": 120,
+        "scripts": 11,
+        "bytes": 2611278
+      },
+      {
+        "file": "motd_zombie_images.iwd",
+        "entries": 30,
+        "scripts": 0,
+        "bytes": 8573564
+      },
+      {
+        "file": "nazi_zombie_asylum.iwd",
+        "entries": 6,
+        "scripts": 6,
+        "bytes": 2722
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_der_haus.ff",
+      "nazi_zombie_der_haus_patch.ff",
+      "derhaus.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

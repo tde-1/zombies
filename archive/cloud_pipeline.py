@@ -37,6 +37,7 @@ import gzip
 import json
 import os
 import queue
+import re
 import shutil
 import subprocess
 import sys
@@ -254,6 +255,8 @@ def main():
                     help="command run as <cmd> <norm> <bsp> after extraction")
     ap.add_argument("--keep-originals", action="store_true")
     ap.add_argument("--retry-failed", action="store_true")
+    ap.add_argument("--retry-match", default=r"^(?!.*(w3x|Wc3)).*(Unsupported Method|upload failed|unar)",
+                    help="with --retry-failed: only failures whose error matches this regex")
     args = ap.parse_args()
 
     # an interrupted run leaves half-built trees; they are rebuilt from the originals
@@ -314,7 +317,10 @@ def main():
     todo = queue.Queue()
     for norm in norms:
         prev = status.get(norm)
-        if prev and (prev.get("ok") or prev.get("final")) and not (args.retry_failed and not prev.get("ok")):
+        retry = (args.retry_failed and not prev.get("ok")
+                 and re.search(args.retry_match, " ".join(e or "" for e in prev.get("errors") or [])))\
+            if prev else False
+        if prev and (prev.get("ok") or prev.get("final")) and not retry:
             continue
         todo.put(norm)
     log("[start] %d maps to do, %d fetchers, %d workers" % (todo.qsize(), args.fetchers, args.workers))
@@ -343,6 +349,17 @@ def main():
                     save_status(status)
                 log("[fetch] %-24s %s" % (norm, res.get("status")))
                 continue
+            if not os.path.exists(res.get("file", "")) and args.retry_failed:
+                # processed before and freed, but it failed after the fetch: its original is
+                # in the bucket (step 2 runs first), so take it from there, not the host
+                key = "archive/originals/%s/%s" % (fetch.SAFE.sub("_", norm),
+                                                   os.path.basename(res.get("file", "")))
+                try:
+                    os.makedirs(os.path.dirname(res["file"]), exist_ok=True)
+                    s3.download_file(BUCKET, key, res["file"])
+                    log("[retry] %-24s original back from the bucket" % norm)
+                except Exception as exc:
+                    log("[retry] %-24s bucket copy unavailable: %s" % (norm, exc))
             if not os.path.exists(res.get("file", "")):
                 with STATE_LOCK:
                     if norm not in status:

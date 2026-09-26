@@ -1,0 +1,190 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_sh_bunker",
+  "title": "Nazi Zombie Sh Bunker",
+  "source": "custom",
+  "author": "Andressh",
+  "released": "2012-07-16",
+  "fs_game": "mods/nazi_zombie_sh_bunker",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@zct_mod2_mw.iwd": "ad49d73476fe9cf0c84efede9c966e0e9b4b6f489e50043c9bd7d8c3d1ac579b"
+  },
+  "badge": {
+    "main_finish": "round",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "round",
+    "why": "no easter egg or ending found; default Round 20",
+    "verdict_stock_baseline_only": "round",
+    "scripts": 86,
+    "script_count": 86,
+    "entities": 717,
+    "ee_candidates": [],
+    "ending_words": [],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      4500,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "zombie_debris",
+        "door04"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door08"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door03"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door02"
+      ],
+      [
+        2000,
+        "door08",
+        "?"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "ad49d73476fe9cf0c84efede9c966e0e9b4b6f489e50043c9bd7d8c3d1ac579b",
+    "map_specific_triggers": [
+      "buy_powerup",
+      "music_box_player"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:50:07Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_sh_Bunker.exe",
+    "original_sha256": "be978c33092c417b4930a8a292f68cc6e32dc800bf6096ceb37c32859997cd0a",
+    "original_size": 129604381,
+    "source_url": "https://www.mediafire.com/file/e5wm6qbt7oixtag/nazi_zombie_sh_Bunker.exe/file",
+    "source_page": "https://callofdutyrepo.com/2012/07/16/nazi-zombie-sh-bunker/",
+    "fetched": "2026-09-26T15:48:35Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Update v1.1 -Fixed Zombie Bug when going upstairs -A Little more light -Added Ray Gun to Mistery Box So. This is my first map and i just don\u2019t know what to say. i hope you like it because it took me like 5 weeks to make. if there is anything wrong with the map just tell me please. Features: -ZCT Mod 2.0 with Modern Weapons + Ray Gun -Usable MG42 -Usable Triple25mm (Missing Sounds) -Mistery Box -Tom\u2019s Music Box (I couldn\u2019t add more songs than the original ones) -Buyable & Drop Powerups -2 Friendly AI with M16 & M4 The Map is basically a pyramid and you start at the top and open doors to the bottom To play solo its: devmap nazi_zombie_sh_bunker Known Bugs/Errors: (I Hope someone can help me with this) -Triple25mm has no sounds. -If you get killed while using the Triple25mm the map will crash. (run when they\u2019re close)",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_factory",
+        "loadscreen_nazi_zombie_maze",
+        "loadscreen_nazi_zombie_maze2",
+        "loadscreen_nazi_zombie_maze3",
+        "loadscreen_nazi_zombie_maze4",
+        "loadscreen_nazi_zombie_maze5",
+        "loadscreen_nazi_zombie_mp2_1",
+        "loadscreen_nazi_zombie_mp2_3",
+        "loadscreen_nazi_zombie_ott",
+        "loadscreen_nazi_zombie_sh_bunker"
+      ],
+      "iwd_images": [
+        "zct_mod2_mw.iwd:images/menu_zct_mod.iwi",
+        "zct_mod2_mw.iwd:images/menu_zct_mod_wide.iwi",
+        "zct_mod2_mw.iwd:images/weapon_red_cross_background.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_sh_bunker"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). No finish found by name. Before accepting Round 20, someone should glance at this map's own triggers: buy_powerup, music_box_player. ",
+  "precheck": {
+    "map_zone_inflated_mb": 76.1,
+    "addon_iwds": [
+      {
+        "file": "zct_mod2_mw.iwd",
+        "entries": 233,
+        "scripts": 27,
+        "bytes": 53091037
+      }
+    ],
+    "flags": [
+      "no_patch_ff",
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": false,
+    "napalmblob": [
+      "nazi_zombie_sh_bunker.ff",
+      "zct_mod2_mw.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "nazi_zombie_sh_Bunker.iwd:maps/tom_music_player_unl.gsc",
+        "menus": [],
+        "responses": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9"
+        ],
+        "note": "in game: a music player"
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

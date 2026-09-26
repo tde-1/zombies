@@ -1,0 +1,150 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_korobka",
+  "title": "KOROBKA",
+  "source": "custom",
+  "author": "Weetuska",
+  "released": "2014-01-16",
+  "fs_game": "mods/nazi_zombie_korobka",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_korobka.iwd": "5dd474fbef64593ca9449a2db8115b515eeb71b99c148f5cf689e94c395542a6"
+  },
+  "badge": {
+    "main_finish": "round",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "round",
+    "why": "no easter egg or ending found; default Round 20",
+    "verdict_stock_baseline_only": "round",
+    "scripts": 48,
+    "script_count": 48,
+    "entities": 261,
+    "ee_candidates": [],
+    "ending_words": [],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        4500,
+        "zombie_debris",
+        "debris2"
+      ],
+      [
+        3000,
+        "zombie_debris",
+        "debris1"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "pf1_auto1"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [],
+    "zombiemode_sha256": "5dd474fbef64593ca9449a2db8115b515eeb71b99c148f5cf689e94c395542a6",
+    "map_specific_triggers": [
+      "music_box_player"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:05:30Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_korobka.exe",
+    "original_sha256": "d04736736fa26273da4dacacda462b7a29b266bce27b4f0ccb635ba3c0e5c76f",
+    "original_size": 47096954,
+    "source_url": "http://www.mediafire.com/file/3csw4679hlzslli/nazi_zombie_korobka.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T16:02:49Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Features -Mystery Box -Machinegun Wall buys (M1919 Browning Machingegun,MG42,DP28 and there is also Ray Gun wall buy) -Imperial Zombies",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_korobka",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [],
+      "loadscreen": "loadscreen_nazi_zombie_korobka"
+    }
+  },
+  "notes": "Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). No finish found by name. Before accepting Round 20, someone should glance at this map's own triggers: music_box_player. ",
+  "precheck": {
+    "map_zone_inflated_mb": 80.4,
+    "addon_iwds": [],
+    "flags": [
+      "no_patch_ff"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": false,
+    "napalmblob": [
+      "nazi_zombie_korobka.ff"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "nazi_zombie_korobka.iwd:maps/tom_music_player_unl.gsc",
+        "menus": [],
+        "responses": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9"
+        ],
+        "note": "in game: a music player"
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

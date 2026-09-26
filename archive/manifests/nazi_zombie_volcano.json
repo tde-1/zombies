@@ -1,0 +1,174 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_volcano",
+  "title": "Paradise",
+  "source": "custom",
+  "author": "bamskater33",
+  "released": "2013-02-10",
+  "fs_game": "mods/nazi_zombie_volcano",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_volcano.iwd": "d5d2c2fde21b096844bc352582b8266b4ef46d3413ecb5c76c7664cd77e7571f"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "crawler_round_ending"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000,
+        9000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 9000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 103,
+    "script_count": 103,
+    "entities": 1013,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      9000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "rocks_perk"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "rocks2"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "rocks1"
+      ],
+      [
+        1250,
+        "zombie_debris",
+        "rocks_bridge"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_2"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "d5d2c2fde21b096844bc352582b8266b4ef46d3413ecb5c76c7664cd77e7571f",
+    "map_specific_triggers": [
+      "use_skyride"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:57:40Z"
+    }
+  },
+  "archive": {
+    "original": "paradise.exe",
+    "original_sha256": "996c84a6b027b67feb1ab1439d4153f7366998ab31f079ad4f5aadd0baecc5f6",
+    "original_size": 83162442,
+    "source_url": "https://www.mediafire.com/file/jz8ece1n4tgy6vn/paradise.exe/file",
+    "source_page": "https://callofdutyrepo.com/2013/02/10/paradise/",
+    "fetched": "2026-09-26T15:56:22Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Description you get teleported to an unfamiliar island in an unfamiliar time. She\u2019s here. features: Black Ops Perks Moving Pack-A-Punch Moving Weapon Chalks Sky Rail transportation Effects New Coupon Queen Perk credits: OnlineX420 for black ops machine models",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_nazi_zombie_volcano"
+      ],
+      "iwd_images": [
+        "nazi_zombie_volcano.iwd:images/loadscreen_nazi_zombie_volcano.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_volcano"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 113.2,
+    "addon_iwds": [],
+    "flags": [
+      "client_memory_risk"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_volcano.ff",
+      "nazi_zombie_volcano_patch.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

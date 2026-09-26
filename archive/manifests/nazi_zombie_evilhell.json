@@ -1,0 +1,192 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_evilhell",
+  "title": "Evil Hell",
+  "source": "custom",
+  "author": "frd",
+  "released": "2012-11-20",
+  "fs_game": "mods/nazi_zombie_evilhell",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_evilhell.iwd": "e7dfa3d1106312a2be304bc4cec7f418eaeb62af639f02538583c07477b426f6"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "boss_zone_spawners",
+        "boss_zone_spawners_rise",
+        "cross_egg",
+        "cross_egg_trigger",
+        "zombie_boss_spawner"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "boss_zone_spawners, boss_zone_spawners_rise, cross_egg, cross_egg_trigger, zombie_boss_spawner look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 112,
+    "script_count": 112,
+    "entities": 458,
+    "ee_candidates": [
+      "boss_zone_spawners",
+      "boss_zone_spawners_rise",
+      "cross_egg",
+      "cross_egg_trigger",
+      "zombie_boss_spawner"
+    ],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      2750,
+      3000,
+      3500,
+      4000,
+      4500,
+      5000,
+      50000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "debris4"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "debris3"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "debris2"
+      ],
+      [
+        1500,
+        "gambler_trigger",
+        "auto1"
+      ],
+      [
+        1250,
+        "zombie_debris",
+        "debris1"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "e7dfa3d1106312a2be304bc4cec7f418eaeb62af639f02538583c07477b426f6",
+    "map_specific_triggers": [
+      "axe",
+      "church_debris",
+      "churchhint",
+      "cross_egg_trigger",
+      "end_game",
+      "end_game_ai_trigger",
+      "gambler_trigger",
+      "lever_triggers",
+      "lookat",
+      "obj1",
+      "perk_trigger",
+      "pvt_trigger",
+      "sarge_trigger",
+      "shovel_trigger",
+      "speedhint",
+      "tomb_key",
+      "wood_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:09:21Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_evilHell.exe",
+    "original_sha256": "4478cb10788f5625a2961d75e40dad91fd56309aeecfdf4a4962ea59e40bf969",
+    "original_size": 73697834,
+    "source_url": "https://www.mediafire.com/file/ndk299fejmgijft/nazi_zombie_evilHell.exe/file",
+    "source_page": "https://callofdutyrepo.com/2012/11/20/evil-hell/",
+    "fetched": "2026-09-26T16:08:30Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "nazi_zombie_evilhell.iwd:images/loadscreen_nazi_zombie_evilhell.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 87.2,
+    "addon_iwds": [],
+    "flags": [],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_evilhell.ff",
+      "nazi_zombie_evilhell_patch.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

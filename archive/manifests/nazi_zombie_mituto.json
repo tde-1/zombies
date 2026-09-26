@@ -1,0 +1,178 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_mituto",
+  "title": "Nazi Zombie Myth",
+  "source": "custom",
+  "author": "deper VS Zombis",
+  "released": "2013-05-10",
+  "fs_game": "mods/nazi_zombie_mituto",
+  "script_fingerprints": {
+    "_zombiemode.gsc@nazi_zombie_mituto.iwd": "4e2a94a0265011b3f2531ef97919242c6eb5075cf16d833ba32647b5f44f0e99",
+    "maps/_zombiemode.gsc@mod.ff": "ffd79e6dc20ec74006a5464cc27b2c491946963d12b04ddebd6a31bce672910a"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "crawler_round_ending"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 5000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 101,
+    "script_count": 101,
+    "entities": 5198,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_door",
+        "auto75"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto74"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto73"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto72"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto69"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "ffd79e6dc20ec74006a5464cc27b2c491946963d12b04ddebd6a31bce672910a",
+    "map_specific_triggers": [
+      "flag_primary",
+      "zapper_damage_wuen"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:54:57Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_mituto.exe",
+    "original_sha256": "4e0f9d7e5bd88cfd2472f376924e7b05df9d47d15995ea920dea2173f2554ccc",
+    "original_size": 63862757,
+    "source_url": "http://www.mediafire.com/file/zwigekghb27bwv7/nazi_zombie_mituto.exe/file",
+    "source_page": "https://callofdutyrepo.com/2013/05/10/nazi-zombie-mituto/",
+    "fetched": "2026-09-26T15:53:59Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Features -4 Perks -Mystery Box -Wall Buys -Hellhounds -Pack A Punch",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 101.0,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 123,
+        "scripts": 0,
+        "bytes": 333477
+      }
+    ],
+    "flags": [],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_mituto.ff",
+      "nazi_zombie_mituto_patch.ff",
+      "nazi_zombie_mituto.iwd:_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

@@ -1,0 +1,188 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_cb",
+  "title": "Nazi Zombie CB",
+  "source": "custom",
+  "author": "RandyWest",
+  "released": "2011-03-21",
+  "fs_game": "mods/nazi_zombie_cb",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_cb.iwd": "e1a16ceb75d61d3250bc639817560d178383ec25a70d6a56795260d07c754a65"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "teleport_pad"
+        }
+      },
+      "candidates": [
+        "teleport_pad"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        4500,
+        5000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "teleport_pad name an ending and are this map's own; script hardcodes cost 5000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 54,
+    "script_count": 54,
+    "entities": 1716,
+    "ee_candidates": [],
+    "ending_words": [
+      "teleport_pad"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      4500,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_door",
+        "auto173"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto173"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto172"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto172"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto171"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "e1a16ceb75d61d3250bc639817560d178383ec25a70d6a56795260d07c754a65",
+    "map_specific_triggers": [
+      "catacombs_personality",
+      "zombie_perks"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:59:14Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_cb.exe",
+    "original_sha256": "709930ffb886dfd67fb6f2669d7feed6dc92375d2eb5adf4183b702e71636d72",
+    "original_size": 149161885,
+    "source_url": "http://www.mediafire.com/file/fngo11un3w7rpj4/nazi_zombie_cb.exe/file",
+    "source_page": "https://callofdutyrepo.com/2011/03/21/nazi-zombie-cb/",
+    "fetched": "2026-09-26T15:58:11Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Based on nacht der untoten with the ZCT MW 2 mod. It has all the ZCT MW2 features like: -power defence -teleporters -buyable perks -modern weapons Players need a little luck to get to the magic box!! Know issues: Players may get stuck in the elevators when attacked by a zombie so use it wisely!!! All credits for the mod ZCT MW2 go to the : Zombie Chicken taco members Credits to the helpful testers: Green-Nvidia -Revolution- Have Fun, Forw4rd",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_cb",
+        "loadscreen_nazi_zombie_factory",
+        "loadscreen_nazi_zombie_maze",
+        "loadscreen_nazi_zombie_maze2",
+        "loadscreen_nazi_zombie_maze3",
+        "loadscreen_nazi_zombie_maze4",
+        "loadscreen_nazi_zombie_maze5",
+        "loadscreen_nazi_zombie_mp2_1",
+        "loadscreen_nazi_zombie_mp2_3",
+        "loadscreen_nazi_zombie_ott"
+      ],
+      "iwd_images": [
+        "nazi_zombie_cb.iwd:images/loadscreen_nazi_zombie_cb.iwi",
+        "nazi_zombie_cb.iwd:images/menu_map_nazi_zombie_cb.iwi",
+        "nazi_zombie_cb.iwd:images/menu_zct_mod.iwi",
+        "nazi_zombie_cb.iwd:images/menu_zct_mod_wide.iwi",
+        "nazi_zombie_cb.iwd:images/weapon_red_cross_background.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_cb"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 84.4,
+    "addon_iwds": [],
+    "flags": [
+      "no_patch_ff"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": false,
+    "napalmblob": [
+      "nazi_zombie_cb.ff",
+      "nazi_zombie_cb.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

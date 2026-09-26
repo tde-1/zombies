@@ -1,0 +1,139 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_fhs",
+  "title": "Nazi Zombie FHS",
+  "source": "custom",
+  "author": "Scorpion",
+  "released": "2008-12-30",
+  "fs_game": "mods/nazi_zombie_fhs",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_fhs.ff": "0fe1fe5d658c2dfbf7a539172ad56ee05d75d251baf1f101b05eb22c9625b4f6"
+  },
+  "badge": {
+    "main_finish": "round",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "round",
+    "why": "no easter egg or ending found; default Round 20",
+    "verdict_stock_baseline_only": "round",
+    "scripts": 40,
+    "script_count": 40,
+    "entities": 788,
+    "ee_candidates": [],
+    "ending_words": [],
+    "hardcoded_costs": [
+      1000,
+      1500
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "stairs"
+      ],
+      [
+        1500,
+        "weapon_cabinet_use",
+        "pf1250_auto2"
+      ],
+      [
+        1000,
+        "zombie_debris",
+        "house1"
+      ],
+      [
+        1000,
+        "zombie_debris",
+        "door9"
+      ],
+      [
+        1000,
+        "zombie_debris",
+        "door9"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [],
+    "zombiemode_sha256": "0fe1fe5d658c2dfbf7a539172ad56ee05d75d251baf1f101b05eb22c9625b4f6",
+    "map_specific_triggers": [
+      "entered_area"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:19:51Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_fhs.exe",
+    "original_sha256": "03f725fe2cb0abaf16ee1f234ef58629601d2e094761afd4a5b36ccbeea22536",
+    "original_size": 40946203,
+    "source_url": "https://www.mediafire.com/file/bhsgn0khikm9mgx/nazi_zombie_fhs.exe/file",
+    "source_page": "https://callofdutyrepo.com/2008/12/30/nazi-zombie-fhs/",
+    "fetched": "2026-09-26T16:18:43Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "A Small but fun custom nazi mod map. Located in a small rural Farm House. Started off as a test map but, every tester I had said it was fun and asked me to release so here it is. Features -Wall Guns -2x Mystery Boxes",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_FHS",
+        "loadscreen_nazi_zombie_fhs",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "nazi_zombie_fhs.iwd:images/loadscreen_nazi_zombie_fhs.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_FHS"
+    }
+  },
+  "notes": "Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). No finish found by name. Before accepting Round 20, someone should glance at this map's own triggers: entered_area. ",
+  "precheck": {
+    "map_zone_inflated_mb": 73.1,
+    "addon_iwds": [],
+    "flags": [
+      "no_patch_ff"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": false,
+    "napalmblob": [
+      "nazi_zombie_fhs.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

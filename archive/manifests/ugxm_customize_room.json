@@ -1,0 +1,121 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "ugxm_customize_room",
+  "title": "Ugxm Customize Room Patch",
+  "source": "custom",
+  "author": null,
+  "released": null,
+  "fs_game": "mods/ugxm_customize_room",
+  "script_fingerprints": {},
+  "badge": {
+    "main_finish": "round",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "round",
+    "why": "no easter egg or ending found; default Round 20",
+    "verdict_stock_baseline_only": "round",
+    "scripts": 8,
+    "script_count": 8,
+    "entities": 3,
+    "ee_candidates": [],
+    "ending_words": [],
+    "hardcoded_costs": [],
+    "orphan_end_triggers": [],
+    "top_costs": [],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [],
+    "zombiemode_sha256": null,
+    "map_specific_triggers": [],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:57:29Z"
+    }
+  },
+  "archive": {
+    "original": "ugxm_customize_room.ff",
+    "original_sha256": "ee53e02fa730af6f0f3d7d292dbd20c7392d0f036f36c3f271f0f4062d831396",
+    "original_size": 909216,
+    "source_url": "https://archive.org/download/nazi_zombie_school/czm_fnaf4/ugxm_customize_room.ff",
+    "source_page": "https://archive.org/details/nazi_zombie_school",
+    "fetched": "2026-09-26T16:57:00Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "fastfile",
+    "shipped_executables": [],
+    "catalogue_tags": [
+      "archive_file"
+    ],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [],
+      "loadscreen": null
+    }
+  },
+  "notes": "",
+  "precheck": {
+    "map_zone_inflated_mb": 8.2,
+    "addon_iwds": [],
+    "flags": [
+      "no_patch_ff"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": false,
+    "napalmblob": []
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "ugxm_customize_room.ff:maps/ugxm_customize_room.gsc",
+        "menus": [
+          "ugxm_customize_char"
+        ],
+        "responses": [
+          "CLOSE",
+          "CUSTOM_CHAR_CAT1",
+          "CUSTOM_CHAR_CAT2",
+          "CUSTOM_CHAR_CAT3",
+          "CUSTOM_CHAR_CAT4",
+          "NONE_ACCESSORY",
+          "NONE_BODY",
+          "NONE_HAT",
+          "NONE_HEAD",
+          "RESET",
+          "THIRDPERSON"
+        ],
+        "note": "only in UGX's separate customize-room map"
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud run: a loose fastfile from an archive.org dump (load/localized/patch zone of another map), not a map",
+  "not_a_map": true
+}

@@ -1,0 +1,199 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_mfm",
+  "title": "MFM",
+  "source": "custom",
+  "author": "Chaox",
+  "released": "2013-05-12",
+  "fs_game": "mods/nazi_zombie_mfm",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_mfm.iwd": "59b4fcae00481d6fa6dfc9306a4323f6d74d18a9d7d4f6f4dae29d16eba12242"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000,
+        25000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 25000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 100,
+    "script_count": 100,
+    "entities": 214,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      25000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        1250,
+        "zombie_debris",
+        "auto3"
+      ],
+      [
+        1000,
+        "zombie_debris",
+        "auto2"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_1"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_0"
+      ],
+      [
+        750,
+        "zombie_debris",
+        "auto1"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "59b4fcae00481d6fa6dfc9306a4323f6d74d18a9d7d4f6f4dae29d16eba12242",
+    "map_specific_triggers": [
+      "end_game",
+      "music_box_player"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:19:45Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_mfm.exe",
+    "original_sha256": "4e1f5c567cfa0745c827b720f107948943a2e5fea05bd65b2ed50939b9bdfbef",
+    "original_size": 80078002,
+    "source_url": "http://www.mediafire.com/file/0zlcqidxiqi00t2/nazi_zombie_mfm.exe/file",
+    "source_page": "https://callofdutyrepo.com/2013/05/12/nazi-zombie-mfm/",
+    "fetched": "2026-09-26T16:18:36Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Description Essentially, mfm stands for my first map. Haha, oh well. So this is m first map and it I\u2019m pretty satisfied about how it turned out. It wasn\u2019t originally supposed to be published but it gave enough of a challenge to be\u2026 well publishable. It\u2019s a small map so it\u2019s a struggle to stay alive, especially in solo. The perk machines are reduced in price by 500 each even though it doesn\u2019t say and there is a buyable PPSh and ending. Features: Buyable ending: 25K Reduced Perk Machines (-500) No PaP (sorry but it\u2019s not necessary for this map) PPSh on the wall. Thank me later. Awesome songs in the music box (thank you Tom_bmx) \u2013 the 3 normal songs \u2013 Nacht Der Untoten Easter Egg \u2013 Undone \u2013 Beauty of Annihilation sped up 1.5x (it\u2019s sounds so much better than the original) \u2013 Both of the ZCT main menu songs; Two Steps From Hell by Armada and Keep it in the Family by Hybrid. Main Menu has a custom song (it\u2019s the main menu song from Black Ops 1) And also, to Axel from NGTZombies, the box is in the second room. Go nuts hahaha. Thanks to: Tom_bmx (music box) Cinnober and The Zombie Don (support) and a big thanks to SajeOne from UGX for the video tutorials. He\u2019s awesome! (I hope I didn\u2019t forget anyone\u2026)",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 72.8,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 123,
+        "scripts": 0,
+        "bytes": 333477
+      }
+    ],
+    "flags": [],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_mfm.ff",
+      "nazi_zombie_mfm_patch.ff"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "nazi_zombie_mfm.iwd:maps/tom_music_player_unl.gsc",
+        "menus": [],
+        "responses": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9"
+        ],
+        "note": "in game: a music player"
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

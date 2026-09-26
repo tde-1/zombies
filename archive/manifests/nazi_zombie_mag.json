@@ -1,0 +1,306 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_mag",
+  "title": "MAGNUS V2",
+  "source": "custom",
+  "author": "MagnusAudi",
+  "released": "2014-08-23",
+  "fs_game": "mods/nazi_zombie_mag",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@ugx_mod.iwd": "e9ac10bb4ac1589bb2bbea732cbab19482279159bbd39c20f82b902d52a8e1c8"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "crawler_round_ending"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 5000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 145,
+    "script_count": 145,
+    "entities": 1109,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000
+    ],
+    "orphan_end_triggers": [
+      "trigger_teleport_pad_0",
+      "trigger_teleport_pad_1",
+      "trigger_teleport_pad_2"
+    ],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "auto261"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "auto260"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "auto259"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "auto258"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "auto255"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc",
+      "maps/_utility.gsc"
+    ],
+    "zombiemode_sha256": "e9ac10bb4ac1589bb2bbea732cbab19482279159bbd39c20f82b902d52a8e1c8",
+    "map_specific_triggers": [
+      "music_box_player",
+      "trem_bank_trig"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:03:03Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_mag.zip",
+    "original_sha256": "8bdbd80297aea718fc74c4d569d6aa12feab0bb24f4222f68d4a8740fe82e615",
+    "original_size": 252731833,
+    "source_url": "https://www.mediafire.com/file/8218j0tk7lzjpfj/nazi_zombie_mag.zip/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T16:01:39Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "zip",
+    "shipped_executables": [],
+    "catalogue_tags": [],
+    "catalogue_description": "Hello, my name is Magnus, and ive made a new map, which is nearly finished. Its my first map, and it uses the ugx mod. first sorry for my english knowledge. it uses also toms music box and terminaors bak system. Here are some screenshots of the map: Changelog: -more detailed -added zombie spawner in the big house the details were added by XShaneWilson UGX Mod 1.0 4 standard perks Music radio Bank Teleports Moving PaP No dogs No ending",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_template",
+        "loadscreen_user",
+        "loadscreen_zombie_house"
+      ],
+      "iwd_images": [
+        "nazi_zombie_mag.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "nazi_zombie_mag.iwd:images/ugx_mod_menu_template.iwi",
+        "ugx_mod.iwd:images/menu_button_backing_highlight.iwi",
+        "ugx_mod.iwd:images/ugx_camp_beta_menu.iwi",
+        "ugx_mod.iwd:images/ugx_mod_pregamemenu.iwi",
+        "ugx_mod.iwd:images/zombie_house_menu_bg.iwi",
+        "ugxm_guns.iwd:images/weapon_red_cross_background.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc, maps/_utility.gsc); re-verify the generic down/revive/score events on it. PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 60.2,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 123,
+        "scripts": 0,
+        "bytes": 333477
+      },
+      {
+        "file": "ugx_mod.iwd",
+        "entries": 116,
+        "scripts": 29,
+        "bytes": 30476097
+      },
+      {
+        "file": "ugxm_guns.iwd",
+        "entries": 393,
+        "scripts": 10,
+        "bytes": 78820629
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "localized_common.ff",
+      "localized_nazi_zombie_mag.ff",
+      "mod.ff",
+      "nazi_zombie_mag.ff",
+      "nazi_zombie_mag_patch.ff",
+      "ugxm_customize_room_patch.ff",
+      "ugx_mod.iwd:maps/_zombiemode_spawner.gsc",
+      "ugx_mod.iwd:maps/_zombiemode_weapons.gsc",
+      "ugxm_guns.iwd:maps/ugx_pap_handle.gsc",
+      "ugxm_guns.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "modes": {
+    "ugx": {
+      "mechanism": "ugx_vote_1",
+      "calls_vote": true,
+      "default": "classic",
+      "modes": [
+        {
+          "id": "classic",
+          "label": "Classic",
+          "response": "cl",
+          "note": "Stock zombies with the UGX weapons and perks."
+        },
+        {
+          "id": "gungame",
+          "label": "Gun Game",
+          "response": "gg",
+          "note": "Every kill moves you to the next gun; no wall guns, box, perks cabinet or Pack-a-Punch."
+        },
+        {
+          "id": "arcademode",
+          "label": "Arcade Mode",
+          "response": "ar",
+          "note": "Classic plus UGX power-ups and boss rounds."
+        },
+        {
+          "id": "sharpshooter",
+          "label": "Sharpshooter",
+          "response": "ss",
+          "note": "Everyone's gun changes on a timer; 15-minute game; no buying."
+        },
+        {
+          "id": "bountyhunter",
+          "label": "Bounty Hunter",
+          "response": "bh",
+          "note": "Points race with a 15-minute limit."
+        }
+      ],
+      "options_off": [
+        "objectives"
+      ],
+      "source": {
+        "init": "ugx_mod.iwd:maps/ugxm_init.gsc",
+        "settings": "ugx_mod.iwd:maps/ugxm_user_settings.gsc",
+        "zombiemode": "ugx_mod.iwd:maps/_zombiemode.gsc"
+      }
+    },
+    "other": [
+      {
+        "script": "nazi_zombie_mag.iwd:maps/tom_music_player_unl.gsc",
+        "menus": [],
+        "responses": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9"
+        ],
+        "note": "in game: a music player"
+      },
+      {
+        "script": "nazi_zombie_mag.iwd:maps/trem_bank_2.gsc",
+        "menus": [],
+        "responses": [],
+        "note": "in game: the bank"
+      },
+      {
+        "script": "ugx_mod.iwd:maps/ugxm_character.gsc",
+        "menus": [],
+        "responses": [],
+        "note": "only in UGX's separate customize-room map (no custom_character entity elsewhere)"
+      },
+      {
+        "script": "ugxm_customize_room.ff:maps/ugxm_customize_room.gsc",
+        "menus": [
+          "ugxm_customize_char"
+        ],
+        "responses": [
+          "CLOSE",
+          "CUSTOM_CHAR_CAT1",
+          "CUSTOM_CHAR_CAT2",
+          "CUSTOM_CHAR_CAT3",
+          "CUSTOM_CHAR_CAT4",
+          "NONE_ACCESSORY",
+          "NONE_BODY",
+          "NONE_HAT",
+          "NONE_HEAD",
+          "RESET",
+          "THIRDPERSON"
+        ],
+        "note": "only in UGX's separate customize-room map"
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

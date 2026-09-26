@@ -1,0 +1,133 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_trenches",
+  "title": "TRENCHES",
+  "source": "custom",
+  "author": "Dsm2000",
+  "released": "2010-02-28",
+  "fs_game": "mods/nazi_zombie_trenches",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_trenches.ff": "0fe1fe5d658c2dfbf7a539172ad56ee05d75d251baf1f101b05eb22c9625b4f6"
+  },
+  "badge": {
+    "main_finish": "round",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "round",
+    "why": "no easter egg or ending found; default Round 20",
+    "verdict_stock_baseline_only": "round",
+    "scripts": 42,
+    "script_count": 42,
+    "entities": 414,
+    "ee_candidates": [],
+    "ending_words": [],
+    "hardcoded_costs": [
+      1000,
+      1500
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        10000,
+        "weapon_upgrade",
+        "auto23"
+      ],
+      [
+        3000,
+        "weapon_upgrade",
+        "auto17"
+      ],
+      [
+        3000,
+        "weapon_upgrade",
+        "auto13"
+      ],
+      [
+        3000,
+        "weapon_upgrade",
+        "auto10"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "door4"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [],
+    "zombiemode_sha256": "0fe1fe5d658c2dfbf7a539172ad56ee05d75d251baf1f101b05eb22c9625b4f6",
+    "map_specific_triggers": [],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:14:42Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_trenches.exe",
+    "original_sha256": "e9a8ce479eefa65b935c1217dd0dd1262ea961c65bb22ecd7f8712ceb05a8954",
+    "original_size": 40561327,
+    "source_url": "http://www.mediafire.com/file/ahhs7uathqonqob/nazi_zombie_trenches.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T16:11:45Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "The map has starting area which is the trenches and three more areas inside bunker next to the trenches. Inside the bunker there are Two Mystery Boxes,MG wall buys,Flamethrower wall buy and Raygun wall buy. Good nacht der untoten zombies map! Thanks to Wakizashi for providing the map file, description and screenshots.",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_nazi_zombie_trenches"
+      ],
+      "iwd_images": [
+        "nazi_zombie_trenches.iwd:images/loadscreen_nazi_zombie_trenches.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_trenches"
+    }
+  },
+  "notes": "Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 68.9,
+    "addon_iwds": [],
+    "flags": [
+      "no_patch_ff"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": false,
+    "napalmblob": [
+      "nazi_zombie_trenches.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

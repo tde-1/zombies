@@ -1,0 +1,234 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "zm_minecraft",
+  "title": "Minecraft Zombies 2024 v2",
+  "source": "custom",
+  "author": null,
+  "released": "2024-09-14",
+  "fs_game": "mods/zm_minecraft",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@zm_minecraft.iwd": "2ee43a9a290e3244903f467bbce3bd50f281b393607baa1aaee53b7c79bdf82e"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "weapon_upgrade",
+          "zombie_cost": 10000
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "dive_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        3500,
+        4000,
+        5000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, dive_ending, end_game name an ending and are this map's own; script hardcodes cost 5000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 130,
+    "script_count": 130,
+    "entities": 3830,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "dive_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      3500,
+      4000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        10000,
+        "weapon_upgrade",
+        "ray_gun"
+      ],
+      [
+        1750,
+        "weapon_upgrade",
+        "mg42"
+      ],
+      [
+        1750,
+        "weapon_upgrade",
+        "30cal_lmg"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "auto46"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "auto46"
+      ]
+    ],
+    "buyable_ending_candidate": {
+      "zombie_cost": 10000,
+      "targetname": "weapon_upgrade",
+      "target": "ray_gun",
+      "next_highest": 1750
+    },
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "2ee43a9a290e3244903f467bbce3bd50f281b393607baa1aaee53b7c79bdf82e",
+    "map_specific_triggers": [
+      "audio_touch_trigger",
+      "book_trigger",
+      "enchant_trigger",
+      "end_battle_trigger",
+      "end_game_trigger",
+      "end_trig",
+      "free_perk",
+      "jumpscare",
+      "kill_trigs",
+      "mc_portal",
+      "minecart_trigger",
+      "mushroom_trig",
+      "music_box_player",
+      "nether2_trig",
+      "nether_gate_init",
+      "nether_trig",
+      "pickaxe_upgrade_trig",
+      "satchel_charge",
+      "searchable_trig",
+      "shootable_sound",
+      "sword_upgrade_trigger",
+      "teddy_trigger",
+      "tnt_block_trig",
+      "trap",
+      "villager_vox",
+      "vision_trig",
+      "wart_plant",
+      "witch_vox"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:51:08Z"
+    }
+  },
+  "archive": {
+    "original": "Minecraft_Zombies_2024_v2_by_Ginger.exe",
+    "original_sha256": "e8d82332e23286d99f046ca9d1009e3052f3284d6de058dcb5ecaab7909894fe",
+    "original_size": 357374316,
+    "source_url": "https://www.mediafire.com/file/9vuk4l5b5jwicad/Minecraft_Zombies_2024_v2_by_Ginger.exe/file",
+    "source_page": "https://callofdutyrepo.com/2024/09/14/minecraft-zombies-2024-v2/",
+    "fetched": "2026-09-26T16:50:45Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "exe-unknown",
+    "shipped_executables": [],
+    "catalogue_tags": [],
+    "catalogue_description": "Take a trip down memory lane in this Installment of Call of Duty: World at War \u2013 Zombies. This map is inspired by the Original Tutorial world from the Console editions of Minecraft. Everything is Minecraft-ified, including weapon textures, zombie models, and the main quest itself. Discover the plethora of new weapons, perks and traps that can aid you in slaughtering the Undead hordes. The map started out as a total meme back in April of 2024, but quickly derailed in a scripting nightmare, with countless attempts at making the main quest work. I hope you enjoy! Features included: \u2013 Custom Box Locator \u2013 Bo1 weapons \u2013 Bo1 Perks (bo1 QR, DT 2.0) \u2013 Full Easter Egg Quest \u2013 Custom Easter Egg Song \u2013 Buyable ending \u2013 Bandolier Perk & Electric Cherry \u2013 Dive to Prone PHD \u2013 Custom Pickaxe Weapon \u2013 Minecraft Parody Music Box Credits: Vertasea & YaF3li \u2013 Cod WaW Mod Tool Definitive Edition (which includes many of the prefabs, anims, models, and others used), countless hours of scripting and mapping help, being general homies. Literally every other day I was bothering one of these two for scripting help, so this wouldn\u2019t have happened without either of them. Quizz \u2013 Texture help with the PaPed weapon textures. Bo1 Weapons: *Deper *Ricko0z *Espi_thekiller *Gogeta (gogetinis) *RDV *natesmithzombies *shippuden1592 \u2014Beta Testers\u2014 *mikevlc *Krazzyboy97 *JiffyNoodles 7/10/2025 | Updated Map Links as there were inconsistencies between exes 5/24/2026 | Added custom box locator, fixed music box and ",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak",
+        "loadscreen_sp_makin",
+        "loadscreen_zm_minecraft"
+      ],
+      "iwd_images": [
+        "zm_minecraft.iwd:images/dlc4_logo.iwi",
+        "zm_minecraft.iwd:images/itemframe_background.iwi",
+        "zm_minecraft.iwd:images/loadscreen_zm_minecraft.iwi",
+        "zm_minecraft.iwd:images/menu_zm_minecraft.iwi",
+        "zm_minecraft.iwd:images/specialty_fastreload_classic.iwi",
+        "zm_minecraft.iwd:images/zombie_vending_ads_logo_c.iwi",
+        "zm_minecraft.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "zm_minecraft.iwd:images/zombie_vending_three_gun_logo_c.iwi",
+        "zm_minecraft.iwd:images/~-gzombie_vending_ads_logo_c.iwi",
+        "zm_minecraft.iwd:images/~-gzombie_vending_three_gun_logo_c.iwi",
+        "zm_minecraft.iwd:images/~~~-gzombie_vending_ads_logo_~b134f8b9.iwi"
+      ],
+      "loadscreen": "loadscreen_zm_minecraft"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 178.7,
+    "addon_iwds": [],
+    "flags": [
+      "client_memory_risk",
+      "no_patch_ff"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": false,
+    "napalmblob": [
+      "mod.ff",
+      "zm_minecraft.ff",
+      "zm_minecraft.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "zm_minecraft.iwd:maps/tom_music_player_unl.gsc",
+        "menus": [],
+        "responses": [
+          "9"
+        ],
+        "note": "in game: a music player"
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

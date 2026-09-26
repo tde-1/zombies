@@ -1,0 +1,164 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_challanger",
+  "title": "Nazi Zombie Challenger",
+  "source": "custom",
+  "author": "holty007",
+  "released": "2013-10-28",
+  "fs_game": "mods/nazi_zombie_challanger",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_Challanger.iwd": "3be4626073708a55aa046d37cd4f916a6448db1ad1b5f72f62067ee49b682fdb"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "crawler_round_ending"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 5000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 99,
+    "script_count": 99,
+    "entities": 225,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "secret"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "room4"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "room3"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "room2"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "power"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "3be4626073708a55aa046d37cd4f916a6448db1ad1b5f72f62067ee49b682fdb",
+    "map_specific_triggers": [],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:06:29Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_Challanger.exe",
+    "original_sha256": "9ec12b2abded000c04a22c422db9bb4596b9e0c6c70d3db931fb691a8881d602",
+    "original_size": 70670349,
+    "source_url": "http://www.mediafire.com/file/779e9rn2tpndrm8/nazi_zombie_Challanger.exe/file",
+    "source_page": "https://callofdutyrepo.com/2013/10/28/nazi-zombie-challanger/",
+    "fetched": "2026-09-26T16:05:09Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Hello everyone Nazi_zombie_Challenger \u2013 essentially a challenge map. This will be hard from the start (for instance you cant knife and kill a zombie straight away on round one it takes 2 knifes) concentrating on tight spaces with high point requirement for further areas [ if you can find the buy-able ] adds a small degree of team play \u2013 essentially forcing people to use there money for the greater of the team rather than just hording your points for that shiny juggernog. As this is essentially my first proper map (edited off spiders_bite) there are no custom textures/ guns or perks. How ever i have tried to incorporate fresh ideas into the map with the buy-able doors. As i have made this as a challenge map there will be the following changes to your normal zombie mode: \u2013 Higher Health Zombies (zombies start with double the hp of normal) \u2013 No Dogs round (so no free max ammo) \u2013 No Power ups (its a challenge \u2013 not a marathon) \u2013 Free style zombies (zombies have the ability to select which windows to attack from to try and pincer co-op players) \u2013 Fast rounds (no rest for the wicked) \u2013 Some Doors will require a little bit of searching before you can open them.",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 91.7,
+    "addon_iwds": [],
+    "flags": [],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_challanger.ff",
+      "nazi_zombie_challanger_patch.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

@@ -1,0 +1,168 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_basement",
+  "title": "Nazi Zombie Basement",
+  "source": "custom",
+  "author": "risukasa5",
+  "released": "2012-03-26",
+  "fs_game": "mods/nazi_zombie_basement",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_basement.iwd": "55947f24e5ade2e224ce19d887762d19e2054fb01affc6e2e5aea9d5d7eb6e3a"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000,
+        66600
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 66600",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 99,
+    "script_count": 99,
+    "entities": 383,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      66600
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "debris6"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "debris5"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "debris4"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "debris3"
+      ],
+      [
+        1250,
+        "zombie_debris",
+        "debris2"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "55947f24e5ade2e224ce19d887762d19e2054fb01affc6e2e5aea9d5d7eb6e3a",
+    "map_specific_triggers": [
+      "end_game"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:26:22Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_basement.exe",
+    "original_sha256": "9490447f56b7b8d12cc2d91d6d5bf64bad311de84ade8ded9707f75f53ac96d2",
+    "original_size": 60357270,
+    "source_url": "https://www.mediafire.com/file/kb5kff1xv4c9u65/nazi_zombie_basement.exe/file",
+    "source_page": "https://callofdutyrepo.com/2012/03/26/nazi-zombie-basement/",
+    "fetched": "2026-09-26T16:24:58Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Description This is my first zombie map, so don\u2019t expect ultimate detail Map includes: \u2013 Perk a Cola machines ( Juggernaut is 5-hit kill) \u2013 Pack-a-Punch (It\u2019s a little bit hidden) \u2013 Random Box \u2013 No Hellhounds, because they were laggy \u2013 Buyable weapons on wall: \u2013 Kar98k \u2013 M1 Garand \u2013 Double barreled shotgun \u2013 Type 100 \u2013 Bowie Knife \u2013 Bouncing Betty \u2013 PTRS \u2013 PPsH Map includes buyable ending, witch costs 66600 There isn\u2019t alot running space, so it might be little hard. Known Bugs: \u2013 In second room, zombies may not come in. You can still shoot them easily there. \u2013 Powerups may spawn outside, so be careful",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 78.9,
+    "addon_iwds": [],
+    "flags": [],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_basement.ff",
+      "nazi_zombie_basement_patch.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

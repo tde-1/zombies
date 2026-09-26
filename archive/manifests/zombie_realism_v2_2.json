@@ -1,0 +1,518 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "zombie_realism_v2_2",
+  "title": "REALISM MOD 2.2",
+  "source": "custom",
+  "author": null,
+  "released": null,
+  "fs_game": "mods/zombie_realism_v2_2",
+  "script_fingerprints": {
+    "maps/_rampage_zombiemode.gsc@zombie_realism_v2.2.iwd": "1ca22cec18994ff78625907edede3eceabc984fb61d4a313cd0a96c0249363f2",
+    "maps/_zombiemode.gsc@nazi_zombie_abandon_patch.ff": "ffd79e6dc20ec74006a5464cc27b2c491946963d12b04ddebd6a31bce672910a",
+    "maps/asylum/_zombiemode.gsc@zombie_realism_v2.2.iwd": "73fe425ea7835cd747a43b6e63cdad87fca5a91a4c2ec3ed1baa6674c71649f8",
+    "maps/dead_sand_elite/dead_sand_elite_zombiemode.gsc@zombie_realism_mp2.iwd": "f380f42564eba7e4256ca66364a3faf6f0f127fa06db6ab4ba6d44fb63358997",
+    "maps/dlc1/_zombiemode.gsc@zombie_realism_mp2.iwd": "3985de0000e6d34752667880c606686e608ab089b68b831f849a1bb0a89c4a64",
+    "maps/dlc2/_zombiemode.gsc@zombie_realism_mp2.iwd": "f7848ebe311143149e9ec62a8d5c7c138cd97f80115425c701d1bd0bbfd1f502",
+    "maps/dlc3/_zombiemode.gsc@zombie_realism_mp2.iwd": "45943dbc598d6a2db0be9e02d2143207dffb6cb0c123d743da282a88eb3efd83",
+    "maps/factory/_zombiemode.gsc@zombie_realism_v2.2.iwd": "50c6134ad613ba1c3ab8c61104ce3cd8056994bfe4abbbe6b543ffd30c95743c",
+    "maps/nazi_zombie_berlinbank/_zombiemode.gsc@zombie_realism_mp2.iwd": "412c067e1a5746ea0f179e1e9888eb5328ca337de69000e2f61809367d0d1e8e",
+    "maps/nazi_zombie_demise/_zombiemode.gsc@zombie_realism_v2.2.iwd": "73041fd81006925b754bfa9bf23a880257481ac845e8fe7b93ca0cf8b201778c",
+    "maps/sumpf/_zombiemode.gsc@zombie_realism_v2.2.iwd": "6be92abaf0a4d96c5e6bbb0fca4952f335b426ca37dd25b496e65141419be1e9"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "crawler_round_ending"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1350,
+        1500,
+        2000,
+        2500,
+        3000,
+        3500,
+        5000,
+        7500,
+        30000,
+        42420
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 42420",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 377,
+    "script_count": 377,
+    "entities": 0,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1350,
+      1500,
+      2000,
+      2500,
+      3000,
+      3500,
+      5000,
+      7500,
+      30000,
+      42420
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "ffd79e6dc20ec74006a5464cc27b2c491946963d12b04ddebd6a31bce672910a",
+    "map_specific_triggers": [],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:53:34Z"
+    }
+  },
+  "archive": {
+    "original": "zombie_realism_v2.2_100211.exe",
+    "original_sha256": "51f57a13e2bc4bd6bcb3c3c8234eccd0a419d2dd14f5bb5395b8cfe5b77bb094",
+    "original_size": 112044773,
+    "source_url": "http://www.mediafire.com/file/9f3bq3jyue1d3mt/zombie_realism_v2.2_100211.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T16:53:12Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_nazi_zombie_asylum",
+        "loadscreen_nazi_zombie_demise",
+        "loadscreen_nazi_zombie_factory_mini",
+        "loadscreen_nazi_zombie_prototype",
+        "loadscreen_nazi_zombie_sumpf_mini"
+      ],
+      "iwd_images": [
+        "chemplant_elite.iwd:images/loadscreen_chemplant_elite.iwi",
+        "chemplant_elite.iwd:images/menu_map_chemplant_elite.iwi",
+        "dead_sand_elite.iwd:images/loadscreen_dead_sand_elite.iwi",
+        "nazi_zombie_abandon.iwd:images/loadscreen_nazi_zombie_abandon.iwi",
+        "nazi_zombie_afterwar_mw.iwd:images/loadscreen_nazi_zombie_afterwar_mw.iwi",
+        "nazi_zombie_aitest.iwd:images/loadscreen_nazi_zombie_aitest.iwi",
+        "nazi_zombie_anzio.iwd:images/loadscreen_nazi_zombie_anzio.iwi",
+        "nazi_zombie_berlinbank.iwd:Images/loadscreen_nazi_zombie_berlinbank.iwi",
+        "nazi_zombie_cimetiere.iwd:images/loadscreen_nazi_zombie_cimetiere.iwi",
+        "nazi_zombie_const.iwd:images/loadscreen_nazi_zombie_const.iwi",
+        "nazi_zombie_crazed.iwd:images/loadscreen_nazi_zombie_crazed.iwi",
+        "nazi_zombie_demise.iwd:images/menu_map_nazi_zombie_demise.iwi",
+        "nazi_zombie_demise.iwd:images/loadscreen_nazi_zombie_demise.iwi",
+        "nazi_zombie_fruchurch.iwd:images/loadscreen_nazi_zombie_fruchurch.iwi",
+        "nazi_zombie_fruxtreme.iwd:images/loadscreen_nazi_zombie_fruxtreme.iwi",
+        "nazi_zombie_gould.iwd:images/loadscreen_nazi_zombie_gould.iwi",
+        "nazi_zombie_higher.iwd:images/loadscreen_nazi_zombie_higher.iwi",
+        "nazi_zombie_hq.iwd:images/loadscreen_nazi_zombie_hq.iwi",
+        "nazi_zombie_killzone.iwd:images/loadscreen_nazi_zombie_killzone.iwi",
+        "nazi_zombie_realism_dr.iwd:images/loadscreen_nazi_zombie_realism_dr.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": null,
+    "addon_iwds": [
+      {
+        "file": "chemplant_elite.iwd",
+        "entries": 22,
+        "scripts": 0,
+        "bytes": 1415584
+      },
+      {
+        "file": "dead_sand_elite.iwd",
+        "entries": 26,
+        "scripts": 4,
+        "bytes": 998816
+      },
+      {
+        "file": "nazi_zombie_10.iwd",
+        "entries": 3,
+        "scripts": 0,
+        "bytes": 273971
+      },
+      {
+        "file": "nazi_zombie_abandon.iwd",
+        "entries": 4,
+        "scripts": 0,
+        "bytes": 1115587
+      },
+      {
+        "file": "nazi_zombie_afterwar_mw.iwd",
+        "entries": 17,
+        "scripts": 0,
+        "bytes": 948707
+      },
+      {
+        "file": "nazi_zombie_aitest.iwd",
+        "entries": 2,
+        "scripts": 0,
+        "bytes": 636777
+      },
+      {
+        "file": "nazi_zombie_anzio.iwd",
+        "entries": 3,
+        "scripts": 0,
+        "bytes": 787757
+      },
+      {
+        "file": "nazi_zombie_berlinbank.iwd",
+        "entries": 7,
+        "scripts": 0,
+        "bytes": 1161760
+      },
+      {
+        "file": "nazi_zombie_cimetiere.iwd",
+        "entries": 2,
+        "scripts": 0,
+        "bytes": 528978
+      },
+      {
+        "file": "nazi_zombie_const.iwd",
+        "entries": 8,
+        "scripts": 0,
+        "bytes": 1582168
+      },
+      {
+        "file": "nazi_zombie_crazed.iwd",
+        "entries": 2,
+        "scripts": 0,
+        "bytes": 932778
+      },
+      {
+        "file": "nazi_zombie_demise.iwd",
+        "entries": 37,
+        "scripts": 0,
+        "bytes": 3382110
+      },
+      {
+        "file": "nazi_zombie_doom.iwd",
+        "entries": 2,
+        "scripts": 0,
+        "bytes": 2204
+      },
+      {
+        "file": "nazi_zombie_fruchurch.iwd",
+        "entries": 10,
+        "scripts": 0,
+        "bytes": 1258315
+      },
+      {
+        "file": "nazi_zombie_fruxtreme.iwd",
+        "entries": 1,
+        "scripts": 0,
+        "bytes": 527087
+      },
+      {
+        "file": "nazi_zombie_gould.iwd",
+        "entries": 4,
+        "scripts": 0,
+        "bytes": 1690027
+      },
+      {
+        "file": "nazi_zombie_higher.iwd",
+        "entries": 5,
+        "scripts": 0,
+        "bytes": 761769
+      },
+      {
+        "file": "nazi_zombie_hq.iwd",
+        "entries": 3,
+        "scripts": 0,
+        "bytes": 779622
+      },
+      {
+        "file": "nazi_zombie_killzone.iwd",
+        "entries": 20,
+        "scripts": 0,
+        "bytes": 1031321
+      },
+      {
+        "file": "nazi_zombie_op4.iwd",
+        "entries": 2,
+        "scripts": 0,
+        "bytes": 2204
+      },
+      {
+        "file": "nazi_zombie_realism_dr.iwd",
+        "entries": 4,
+        "scripts": 1,
+        "bytes": 115517
+      },
+      {
+        "file": "nazi_zombie_realism_pro.iwd",
+        "entries": 4,
+        "scripts": 1,
+        "bytes": 114769
+      },
+      {
+        "file": "nazi_zombie_subway.iwd",
+        "entries": 15,
+        "scripts": 0,
+        "bytes": 1390328
+      },
+      {
+        "file": "nazi_zombie_the_river.iwd",
+        "entries": 2,
+        "scripts": 0,
+        "bytes": 667645
+      },
+      {
+        "file": "nazi_zombie_tun.iwd",
+        "entries": 2,
+        "scripts": 0,
+        "bytes": 521153
+      },
+      {
+        "file": "nazi_zombie_western.iwd",
+        "entries": 169,
+        "scripts": 0,
+        "bytes": 37368158
+      },
+      {
+        "file": "nazi_zombie_zct_castle.iwd",
+        "entries": 10,
+        "scripts": 6,
+        "bytes": 600928
+      },
+      {
+        "file": "nazi_zombie_zenith.iwd",
+        "entries": 10,
+        "scripts": 1,
+        "bytes": 31459
+      },
+      {
+        "file": "nuclear_silo.iwd",
+        "entries": 4,
+        "scripts": 0,
+        "bytes": 731808
+      },
+      {
+        "file": "simpsons.iwd",
+        "entries": 60,
+        "scripts": 0,
+        "bytes": 5956764
+      },
+      {
+        "file": "zombie_realism_mp1.iwd",
+        "entries": 40,
+        "scripts": 39,
+        "bytes": 63803
+      },
+      {
+        "file": "zombie_realism_mp2.iwd",
+        "entries": 115,
+        "scripts": 106,
+        "bytes": 615698
+      },
+      {
+        "file": "zombie_realism_mp3.iwd",
+        "entries": 13,
+        "scripts": 13,
+        "bytes": 74497
+      },
+      {
+        "file": "zombie_realism_mp4.iwd",
+        "entries": 31,
+        "scripts": 31,
+        "bytes": 83397
+      },
+      {
+        "file": "zombie_realism_raw.iwd",
+        "entries": 574,
+        "scripts": 20,
+        "bytes": 18049669
+      },
+      {
+        "file": "zombie_realism_v2.2.iwd",
+        "entries": 103,
+        "scripts": 103,
+        "bytes": 696944
+      },
+      {
+        "file": "zombiechickentaco.iwd",
+        "entries": 15,
+        "scripts": 0,
+        "bytes": 3254973
+      }
+    ],
+    "flags": [
+      "no_patch_ff",
+      "addon_iwd_with_scripts",
+      "no_map_ff"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": false,
+    "napalmblob": [
+      "nazi_zombie_abandon_patch.ff",
+      "nazi_zombie_bonzai_patch.ff",
+      "nazi_zombie_const_patch.ff",
+      "nazi_zombie_corrosive_patch.ff",
+      "nazi_zombie_demise_patch.ff",
+      "nazi_zombie_doom3x_patch.ff",
+      "nazi_zombie_killzone_patch.ff",
+      "nazi_zombie_pirate_ship_patch.ff",
+      "nazi_zombie_sb_patch.ff",
+      "nazi_zombie_ufso_patch.ff",
+      "nuclear_silo_patch.ff",
+      "simpsons_patch.ff",
+      "zombie_realism_v2.2.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "zombie_realism_v2.2.iwd:maps/menu_classes.gsc",
+        "menus": [],
+        "responses": [
+          "1",
+          "2",
+          "3",
+          "30cal_bipod",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9",
+          "a_engineer",
+          "a_medic",
+          "a_none",
+          "a_soldier",
+          "a_support",
+          "accept",
+          "ak47",
+          "ak74u",
+          "aperture",
+          "aperture_i",
+          "bar_bipod",
+          "bayonet",
+          "bayonet_i",
+          "bigammo",
+          "bigammo_i",
+          "cancel",
+          "custom",
+          "deserteagle",
+          "doublebarrel",
+          "dragunov",
+          "engineer",
+          "engineer_1",
+          "engineer_upgrade_other1",
+          "engineer_upgrade_other2",
+          "engineer_upgrade_other3",
+          "engineer_upgrade_other4",
+          "engineer_upgrade_weapon1",
+          "engineer_upgrade_weapon2",
+          "fg42_bipod",
+          "gewehr43"
+        ],
+        "note": null
+      },
+      {
+        "script": "zombie_realism_mp2.iwd:maps/nazi_zombie_killzone/tom_killzone_player.gsc",
+        "menus": [],
+        "responses": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5"
+        ],
+        "note": null
+      },
+      {
+        "script": "zombie_realism_mp2.iwd:maps/simpsons/tom_player_unl.gsc",
+        "menus": [],
+        "responses": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9"
+        ],
+        "note": null
+      },
+      {
+        "script": "zombie_realism_mp4.iwd:maps/tom_music_player_unl.gsc",
+        "menus": [],
+        "responses": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9"
+        ],
+        "note": "in game: a music player"
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

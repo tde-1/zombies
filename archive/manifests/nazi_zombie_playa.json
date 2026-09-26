@@ -1,0 +1,181 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_playa",
+  "title": "Barbie Inverted Tower",
+  "source": "custom",
+  "author": null,
+  "released": "2024-10-01",
+  "fs_game": "mods/nazi_zombie_playa",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_playa.iwd": "3cc33a3894d51e37bbec67e638225b09c5172a92e64e7e70614a71c0e6dfb48b"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000,
+        50000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 50000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 100,
+    "script_count": 100,
+    "entities": 340,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      50000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        9000,
+        "zombie_door",
+        "puerta9"
+      ],
+      [
+        8000,
+        "zombie_door",
+        "puerta8"
+      ],
+      [
+        7000,
+        "zombie_door",
+        "puerta7"
+      ],
+      [
+        6000,
+        "zombie_door",
+        "puerta6"
+      ],
+      [
+        5000,
+        "zombie_door",
+        "puerta5"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "3cc33a3894d51e37bbec67e638225b09c5172a92e64e7e70614a71c0e6dfb48b",
+    "map_specific_triggers": [
+      "end_game"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:38:48Z"
+    }
+  },
+  "archive": {
+    "original": "Barbie_Tower_Normal_version.exe",
+    "original_sha256": "f73920b3f41cbb827a1a6750547ce6f449805ac00fa8072b8634345fd21ba834",
+    "original_size": 335222258,
+    "source_url": "https://www.mediafire.com/file_premium/z1ztqb0d7vo8de3/Barbie_Tower_Normal_version.exe/file",
+    "source_page": "https://callofdutyrepo.com/2024/10/01/barbie-inverted-tower/",
+    "fetched": "2026-09-26T16:38:32Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Hello everyone! Today I bring you a map that I made on Steam in Black Ops 3 for WaW. I want to clarify that it is not a copy paste, since I had to do everything again and in a different way to make it playable here in WaW. Anyway, I leave notes of the map and content and some images. Note: I was going to make the map more detailed but currently I am without a graph since it burned me. I made the map with a very old 4-core processor \u201cFX 4300\u201d so please understand. With the permission of the UGX Mod Administrator, if anyone wants to collaborate at least to get a simple graph, my paypal email is: [email protected] thank you! the map is somewhat simple, it does not have many turns and it will be easy to win for those who are used to playing these types of maps. I didn\u2019t put anything else in it, more than anything to avoid crashes or bugs on the map. Something that I also think I\u2019m going to use often temporarily is to use the infinite warfare perks many times since those don\u2019t give me a problem. The gympie ones work very well but I\u2019m the one who still can\u2019t put them correctly on a custom map and well that\u2019s why some of my previous maps crashed. BUGS: I had a friend play my map several times and myself included, so far I haven\u2019t found any bugs, you could say only one, which is the one where sometimes when you start, the map doesn\u2019t start and a sign appears saying that a script fails or you start and The Waw campaign hud appears. but that\u2019s as simple as exiting the map and recreatin",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [
+        "nazi_zombie_playa.iwd:images/specialty_fastreload_zombies.iwi",
+        "nazi_zombie_playa.iwd:images/weapon_red_cross_background.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 80.0,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 123,
+        "scripts": 0,
+        "bytes": 333477
+      }
+    ],
+    "flags": [],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_playa.ff",
+      "nazi_zombie_playa_patch.ff",
+      "nazi_zombie_playa.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

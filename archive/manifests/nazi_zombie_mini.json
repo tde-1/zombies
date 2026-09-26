@@ -1,0 +1,207 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_mini",
+  "title": "Nazi Zombie Mini",
+  "source": "custom",
+  "author": "johnfrost16",
+  "released": "2012-04-13",
+  "fs_game": "mods/nazi_zombie_mini",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_mini.iwd": "863b1c5bee8440af2e54f4ee10ec1f15259904f53e10fefeb89d9b48e39811dc"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game",
+        "endgame_clip",
+        "endgame_table",
+        "endgame_teddy",
+        "endgame_teleaway"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000,
+        25000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game, endgame_clip, endgame_table, endgame_teddy, endgame_teleaway name an ending and are this map's own; script hardcodes cost 25000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 94,
+    "script_count": 94,
+    "entities": 277,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game",
+      "endgame_clip",
+      "endgame_table",
+      "endgame_teddy",
+      "endgame_teleaway"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      25000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_door",
+        "door2"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "door1"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "pf225_auto1"
+      ],
+      [
+        600,
+        "weapon_upgrade",
+        "ppsh"
+      ],
+      [
+        500,
+        "betty_purchase",
+        "betty"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "863b1c5bee8440af2e54f4ee10ec1f15259904f53e10fefeb89d9b48e39811dc",
+    "map_specific_triggers": [
+      "end_game",
+      "hiddentrig",
+      "music_box_player",
+      "playble_area"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:23:11Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_mini.exe",
+    "original_sha256": "44fe0324ffe545c3c47d98fbbbdaa5f9bc72546a627c9018a2d59510083dc9d2",
+    "original_size": 104045205,
+    "source_url": "https://www.mediafire.com/file/hpj4ukk0xq4fxjp/nazi_zombie_mini.exe/file",
+    "source_page": "https://callofdutyrepo.com/2012/04/13/nazi-zombie-mini/",
+    "fetched": "2026-09-26T16:22:44Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "*FEATURES* -2 hidden weapons (PPSH and WonderWaffe) -All the guns have been renamed (includes the upgraded ones) -All the guns have been textured to something else -PaP texture is different as well -2 floors, stairs in between -Zombies have a custom texture -Tom\u2019s Music Player (full of songs) -All 4 perks (custom Textured) -Dogs included -PaP with a custom texture -Power up drops have be customized -Includes Bouncing Betties and Bowie Knife -Power switch has custom texture -Japanese and German zombies -Mission Objectives -Pre-game messages -Box is stationary and also includes the starting Colt and Gewehr 43 -Buyable Ending *SPECIAL THANKS* ESSOfps \u2013 Beta Tester X-President \u2013 Beta Tester ADDICTED \u2013 Helping Me With Some Scripts HDCrazedGamer \u2013 Beta Testing [ZCT] xCHAOSx \u2013 Beta Testing Tom_bmx \u2013 Music Box SajeOne \u2013 Mission Objectives",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_mini",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "nazi_zombie_mini.iwd:images/loadscreen_nazi_zombie_mini.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_mini"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 81.1,
+    "addon_iwds": [],
+    "flags": [],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_mini.ff",
+      "nazi_zombie_mini_patch.ff"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "nazi_zombie_mini.iwd:maps/tom_music_player_unl.gsc",
+        "menus": [],
+        "responses": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9"
+        ],
+        "note": "in game: a music player"
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

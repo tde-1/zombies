@@ -1,0 +1,170 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_hectic",
+  "title": "HECTIC",
+  "source": "custom",
+  "author": "TheGlitchCrib",
+  "released": "2012-07-23",
+  "fs_game": "mods/nazi_zombie_hectic",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_Hectic.iwd": "8b3841d06bbb40443fab62d9361fad6d6a0b9d829704ee97751a541be99e1c54"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000,
+        50000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 50000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 99,
+    "script_count": 99,
+    "entities": 1420,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      50000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "blocker6"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "blocker5"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "blocker4"
+      ],
+      [
+        1750,
+        "zombie_debris",
+        "blocker3"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "blocker2"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "8b3841d06bbb40443fab62d9361fad6d6a0b9d829704ee97751a541be99e1c54",
+    "map_specific_triggers": [
+      "Playable_area",
+      "buy_powerup",
+      "end_game"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:28:38Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_Hectic.exe",
+    "original_sha256": "f96e1c66f3a95a1b18eb60e448e183278acb78e89403552a482bb4ecc899ad2a",
+    "original_size": 63179795,
+    "source_url": "https://www.mediafire.com/file/6jbvr3gdg7cdf4i/nazi_zombie_Hectic.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T16:27:21Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Description Notice: To play map solo, enable console and type \u201c/map nazi_zombie_Hectic\u201d. I apologize that there is no option that you can click to play the map automatically. Also, please go subcribe to our YouTube channel (ZombiesEd) Link is further down! vv Features: -Different mystery box locations -Custom Scripting -All four Perks -P-A-P -No Dogs -Buyable Ending -Increased zombie spawn rates -Buyable RayGun -Buyable Max Ammo -Buyable Insta-kill -laser sights on all guns -4 dedicated levels for running rape trains! Contact info: Skype-TheGlitchCrib Steam-ZombiesEd Youtube: http://www.youtube.com/user/ZombiesEd http://www.youtube.com/user/i2eboot Credit: Joeybbb: http://www.youtube.com/user/TheJoeybbb The only know bugs so far is the way the zombies jump up onto the ledge and stay halfway in the floor, and in the water you can see what would be under the map! ballbuster1",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 88.4,
+    "addon_iwds": [],
+    "flags": [],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_hectic.ff",
+      "nazi_zombie_hectic_patch.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

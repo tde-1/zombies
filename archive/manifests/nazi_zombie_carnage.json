@@ -1,0 +1,148 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_carnage",
+  "title": "Nazi Zombie Carnage",
+  "source": "custom",
+  "author": "BK-FR",
+  "released": "2009-11-04",
+  "fs_game": "mods/nazi_zombie_carnage",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@mod.ff": "d27dab6509d9264c035f9863ad0d0f0aaf07393617d8b9715ead39d1fa45292e"
+  },
+  "badge": {
+    "main_finish": "round",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "round",
+    "why": "no easter egg or ending found; default Round 20",
+    "verdict_stock_baseline_only": "round",
+    "scripts": 58,
+    "script_count": 58,
+    "entities": 1319,
+    "ee_candidates": [],
+    "ending_words": [],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2500,
+        "flood_and_secure",
+        "allie_spawn1"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "d7"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "d4"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "d3"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "d2"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [],
+    "zombiemode_sha256": "d27dab6509d9264c035f9863ad0d0f0aaf07393617d8b9715ead39d1fa45292e",
+    "map_specific_triggers": [
+      "flood_and_secure",
+      "ups"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:14:55Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_carnage.exe",
+    "original_sha256": "daa8b09b722ddc8daf00030a9365a65fbb645b1786f35e7663c74d9b32c6f988",
+    "original_size": 56385708,
+    "source_url": "https://www.mediafire.com/file/2vintpl6az077l1/nazi_zombie_carnage.exe/file",
+    "source_page": "https://callofdutyrepo.com/2009/11/04/nazi-zombie-carnage/",
+    "fetched": "2026-09-26T16:12:43Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Carnage takes place in a building on an abandoned island, with the storyteller: electricity, barriers, 2 sites where there are a good fifty explosive barrels to get you (or get in!: P) from delicate situations. There is also a magic box (that goes without saying), AI that you can call, and free weapons on the ground (ideal for trading weapons with your teammates). To test !",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_ber1",
+        "loadscreen_ber2",
+        "loadscreen_ber3",
+        "loadscreen_ber3b",
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_asylum",
+        "loadscreen_nazi_zombie_carnage",
+        "loadscreen_oki1",
+        "loadscreen_oki2",
+        "loadscreen_oki3",
+        "loadscreen_pby_fly"
+      ],
+      "iwd_images": [],
+      "loadscreen": "loadscreen_nazi_zombie_carnage"
+    }
+  },
+  "notes": "Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). No finish found by name. Before accepting Round 20, someone should glance at this map's own triggers: flood_and_secure, ups. ",
+  "precheck": {
+    "map_zone_inflated_mb": 81.7,
+    "addon_iwds": [],
+    "flags": [
+      "no_patch_ff"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": false,
+    "napalmblob": [
+      "nazi_zombie_carnage.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

@@ -1,0 +1,224 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_x",
+  "title": "KINO: THE REBIRTH",
+  "source": "custom",
+  "author": null,
+  "released": null,
+  "fs_game": "mods/nazi_zombie_x",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_x.iwd": "b29577db31622a8377a649a34356fb3d35f29af5c8f67c68034f039151680b9b"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "ee_gen_trig",
+        "kino_ee_all_parts_delete",
+        "kino_ee_part_built_",
+        "kino_ee_ss_complete",
+        "kino_ee_ss_enabled",
+        "kino_ee_ss_screen_active",
+        "kino_ee_start",
+        "kino_ee_stge_0",
+        "kino_ee_stge_1",
+        "kino_ee_stge_2",
+        "kino_ee_table_complete"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "ee_gen_trig, kino_ee_all_parts_delete, kino_ee_part_built_, kino_ee_ss_complete, kino_ee_ss_enabled, kino_ee_ss_screen_active look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 204,
+    "script_count": 204,
+    "entities": 1646,
+    "ee_candidates": [
+      "ee_gen_trig",
+      "kino_ee_all_parts_delete",
+      "kino_ee_part_built_",
+      "kino_ee_ss_complete",
+      "kino_ee_ss_enabled",
+      "kino_ee_ss_screen_active",
+      "kino_ee_start",
+      "kino_ee_stge_0",
+      "kino_ee_stge_1",
+      "kino_ee_stge_2",
+      "kino_ee_table_complete"
+    ],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game",
+      "endgame",
+      "first_special_teleport",
+      "mech_escape_trigger",
+      "teleport_sec_0",
+      "teleport_sec_1",
+      "teleport_sec_2",
+      "teleport_sec_3"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "harrybo21_upgrade",
+        "?"
+      ],
+      [
+        4000,
+        "harrybo21_vending",
+        "?"
+      ],
+      [
+        3000,
+        "harrybo21_vending",
+        "?"
+      ],
+      [
+        2500,
+        "harrybo21_vending",
+        "?"
+      ],
+      [
+        2500,
+        "harrybo21_vending",
+        "?"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "b29577db31622a8377a649a34356fb3d35f29af5c8f67c68034f039151680b9b",
+    "map_specific_triggers": [
+      "auto_door_trig",
+      "claymore_purchase",
+      "ee_gen_trig",
+      "gersch_touch_trig",
+      "kino_mainframe_trigger",
+      "kino_teleporter_trigger",
+      "kinorock1",
+      "kinorock2",
+      "kinorock3",
+      "mech_escape_trigger",
+      "obj_comp_trig",
+      "orb_shoot_trig",
+      "pf6001_auto_turret_trigger",
+      "phat_stack_trigger",
+      "ss_trig",
+      "windtrig"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:47:30Z"
+    }
+  },
+  "archive": {
+    "original": "Kino_The_Rebirth.exe",
+    "original_sha256": "663f9e746d44a331823ca3f94dfbb9a656478619287550a94ba8a095e67966f5",
+    "original_size": 462004533,
+    "source_url": "https://www.mediafire.com/file/ka8g40xdd932s8o/Kino_The_Rebirth.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T16:46:39Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_x",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "nazi_zombie_x.iwd:images/aaaa_logo.iwi",
+        "nazi_zombie_x.iwd:images/aaaa_logo2.iwi",
+        "nazi_zombie_x.iwd:images/loadscreen_nazi_zombie_x.iwi",
+        "nazi_zombie_x.iwd:images/p6_zm_al_vending_ads_logo_m.iwi",
+        "nazi_zombie_x.iwd:images/p6_zm_al_vending_three_gun_logo_m.iwi",
+        "nazi_zombie_x.iwd:images/p6_zm_al_vending_three_gun_logo_n.iwi",
+        "nazi_zombie_x.iwd:images/specialty_fastreload_zombies.iwi",
+        "nazi_zombie_x.iwd:images/weapon_red_cross_background_2.iwi",
+        "nazi_zombie_x.iwd:images/weapon_red_cross_background_iw5.iwi",
+        "nazi_zombie_x.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "nazi_zombie_x.iwd:images/_-gp6_zm_al_vending_ads_logo_c.iwi",
+        "nazi_zombie_x.iwd:images/_-gzombie_vending_sleight_logo_c.iwi",
+        "nazi_zombie_x.iwd:images/~__-gzombie_vending_ads_logo_~7aa94a54.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_x"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 110.7,
+    "addon_iwds": [
+      {
+        "file": "moon_zombies.iwd",
+        "entries": 126,
+        "scripts": 53,
+        "bytes": 7828116
+      }
+    ],
+    "flags": [
+      "client_memory_risk",
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "nazi_zombie_x_patch.ff",
+      "nazi_zombie_x.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

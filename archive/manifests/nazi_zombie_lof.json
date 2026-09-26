@@ -1,0 +1,136 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_lof",
+  "title": "Nazi Zombie Lof",
+  "source": "custom",
+  "author": "Sniperhanz",
+  "released": "2009-03-03",
+  "fs_game": "mods/nazi_zombie_lof",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_lof.ff": "0fe1fe5d658c2dfbf7a539172ad56ee05d75d251baf1f101b05eb22c9625b4f6"
+  },
+  "badge": {
+    "main_finish": "round",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "round",
+    "why": "no easter egg or ending found; default Round 20",
+    "verdict_stock_baseline_only": "round",
+    "scripts": 44,
+    "script_count": 44,
+    "entities": 1745,
+    "ee_candidates": [],
+    "ending_words": [],
+    "hardcoded_costs": [
+      1000,
+      1500
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "treppe"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "wohn"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "ko"
+      ],
+      [
+        1500,
+        "weapon_cabinet_use",
+        "pf928_auto2"
+      ],
+      [
+        1500,
+        "weapon_cabinet_use",
+        "pf2023_auto2"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [],
+    "zombiemode_sha256": "0fe1fe5d658c2dfbf7a539172ad56ee05d75d251baf1f101b05eb22c9625b4f6",
+    "map_specific_triggers": [],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:14:44Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_lof.exe",
+    "original_sha256": "63fb3d09b25895c1236de40473d9e317524f72b9387b57df86f8055bd53ea5ce",
+    "original_size": 43783039,
+    "source_url": "http://www.mediafire.com/file/rrdfbih9dsmzovf/nazi_zombie_lof.exe/file",
+    "source_page": "https://callofdutyrepo.com/2009/03/03/nazi-zombie-lof/",
+    "fetched": "2026-09-26T16:11:53Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Features -Mystery Box -Wall Buys -Numerous apartment complexes",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_lof",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "nazi_zombie_lof.iwd:images/loadscreen_nazi_zombie_lof.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_lof"
+    }
+  },
+  "notes": "Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 76.6,
+    "addon_iwds": [],
+    "flags": [
+      "no_patch_ff"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": false,
+    "napalmblob": [
+      "nazi_zombie_lof.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

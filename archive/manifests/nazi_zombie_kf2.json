@@ -1,0 +1,145 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_kf2",
+  "title": "Nazi Zombie KF2",
+  "source": "custom",
+  "author": "{UST}Danzy",
+  "released": "2009-07-06",
+  "fs_game": "mods/nazi_zombie_kf2",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@mod.ff": "4fd9aa8ed1dfffb39dc0f5ce27057f72d83eeed13174cac120d682db182e6b03"
+  },
+  "badge": {
+    "main_finish": "round",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "round",
+    "why": "no easter egg or ending found; default Round 20",
+    "verdict_stock_baseline_only": "round",
+    "scripts": 50,
+    "script_count": 50,
+    "entities": 833,
+    "ee_candidates": [],
+    "ending_words": [],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "door_8"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door_6"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door_5"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door_4"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door_12"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [],
+    "zombiemode_sha256": "4fd9aa8ed1dfffb39dc0f5ce27057f72d83eeed13174cac120d682db182e6b03",
+    "map_specific_triggers": [],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:05:50Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_kf2.exe",
+    "original_sha256": "d5c1865a1686bea1895adf980f7ebd14c8b0109901a67417512c91201335c103",
+    "original_size": 61672791,
+    "source_url": "https://www.mediafire.com/file/kxx7tsilo6uqtet/nazi_zombie_kf2.exe/file",
+    "source_page": "https://callofdutyrepo.com/2009/07/06/nazi-zombie-kf2/",
+    "fetched": "2026-09-26T16:04:18Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Nazi zombie kf2 is a update of KillFest my fest zombie map. This one you start off in the barn but soon you will need to get out fast And RUN for your life LOL kill or be killed \u00e2\u20ac\u00a6\u00e2\u20ac\u00a6..",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_castle",
+        "loadscreen_nazi_zombie_d1",
+        "loadscreen_nazi_zombie_hms",
+        "loadscreen_nazi_zombie_kf2",
+        "loadscreen_nazi_zombie_killfest",
+        "loadscreen_nazi_zombie_ver_ex",
+        "loadscreen_nazi_zombie_wed",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "nazi_zombie_kf2.iwd:images/loadscreen_nazi_zombie_kf2.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_kf2"
+    }
+  },
+  "notes": "Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 96.1,
+    "addon_iwds": [],
+    "flags": [
+      "no_patch_ff"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": false,
+    "napalmblob": [
+      "nazi_zombie_kf2.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

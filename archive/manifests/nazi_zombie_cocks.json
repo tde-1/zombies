@@ -1,0 +1,211 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_cocks",
+  "title": "Nazi Zombie MTA",
+  "source": "custom",
+  "author": "Ag0rak",
+  "released": "2013-07-25",
+  "fs_game": "mods/nazi_zombie_cocks",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_cocks.iwd": "0993316be5c25b6b10e51358329327088ef3f921e4b09ce84de9b88ffed24556"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000,
+        250000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 250000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 102,
+    "script_count": 102,
+    "entities": 4074,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      250000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "zombie_debris",
+        "papstation1"
+      ],
+      [
+        5000,
+        "zombie_debris",
+        "papstation1"
+      ],
+      [
+        5000,
+        "zombie_debris",
+        "circledoor"
+      ],
+      [
+        5000,
+        "zombie_debris",
+        "bankdoor"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "upperlevel3"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "0993316be5c25b6b10e51358329327088ef3f921e4b09ce84de9b88ffed24556",
+    "map_specific_triggers": [
+      "end_game",
+      "imortal_die_die_die",
+      "imortals_train_exec",
+      "imortals_train_exec_2",
+      "music_box_player",
+      "trem_bank_trig"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:59:25Z"
+    }
+  },
+  "archive": {
+    "original": "Nazi_Zombie_MTA.exe",
+    "original_sha256": "595c814b539990eb96a2c6ea93c0a39c33f910b3784c001cd229f433faad067c",
+    "original_size": 141668027,
+    "source_url": "https://www.mediafire.com/file/dlxo8s7hmpq8nq4/Nazi_Zombie_MTA.exe/file",
+    "source_page": "https://callofdutyrepo.com/2013/07/25/nazi-zombie-mta/",
+    "fetched": "2026-09-26T15:58:25Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Finally managed to finish working on my 1st zombie map. I started this map in February and managed to finish this just a few days ago. I\u2019m not an expert in map-making/details, so sorry about the lack of exquisite amount of details. So what does this map have? -No teleporters -Pack a Punch -Black ops perks (BO1 Quick Revive, and BO2 Double Tap included) -Dogs -Tweaked some weapons, along with certain weapons being buyable off the wall. (assuming you find them ) -Bank System -Working Train System**Press train button to reset train in order to go back**(Do NOT jump inside of the train, or get in front of the train\u2019s path. You will get stuck! -A train that can down you/kill you. -Buyable Ending -Tom\u2019s Music Box (Features most of the zombie maps theme song.) -Zombie Counter -Hidden Bowie Knife -One or two secret EE. This map is based off of three locations in NYC, 47th-50th Street Rockefeller Center, 7th ave-53rd Street, and 59th Street-Columbus Circle. (Not 100% accurate though. I tried to the best of my abilities.) **NOTE: To load up this map, you will have to find nazi_zombie_cocks in the mod list. Reason being was that I had a hard time trying to get the map work in the first place (took me several tries :breakcomp: ) before I got it right. And changing the map name to the name I wanted, kept screwing things up for me so I decided to leave it as it is now. ** Thanks to: -Tom for the music box tutorial, as well as the other basics/101 tutorials required for map making :cheerful",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_cocks",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "nazi_zombie_cocks.iwd:images/loadscreen_nazi_zombie_cocks.iwi",
+        "nazi_zombie_cocks.iwd:images/menu_map_nazi_zombie_cocks.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_cocks"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 150.6,
+    "addon_iwds": [],
+    "flags": [
+      "client_memory_risk"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_cocks.ff",
+      "nazi_zombie_cocks_patch.ff",
+      "nazi_zombie_cocks.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "nazi_zombie_cocks.iwd:maps/tom_music_player_unl.gsc",
+        "menus": [],
+        "responses": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9"
+        ],
+        "note": "in game: a music player"
+      },
+      {
+        "script": "nazi_zombie_cocks.iwd:maps/trem_bank_2.gsc",
+        "menus": [],
+        "responses": [],
+        "note": "in game: the bank"
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

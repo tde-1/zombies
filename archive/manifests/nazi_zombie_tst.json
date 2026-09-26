@@ -1,0 +1,132 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_tst",
+  "title": "Nazi Zombie Survival Bunker",
+  "source": "custom",
+  "author": "PizzaDevil",
+  "released": "2010-03-01",
+  "fs_game": "mods/nazi_zombie_tst",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@mod.ff": "e065c09e69b8aeaeac45b354f206c0b03b0210e213d515c98778a468f60cea26"
+  },
+  "badge": {
+    "main_finish": "round",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "round",
+    "why": "no easter egg or ending found; default Round 20",
+    "verdict_stock_baseline_only": "round",
+    "scripts": 64,
+    "script_count": 64,
+    "entities": 163,
+    "ee_candidates": [],
+    "ending_words": [],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        1500,
+        "zombie_debris",
+        "barrel"
+      ],
+      [
+        1000,
+        "weapon_upgrade",
+        "auto2"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "pf45_auto1"
+      ],
+      [
+        850,
+        "weapon_upgrade",
+        "auto1"
+      ],
+      [
+        750,
+        "zombie_debris",
+        "toilet"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [],
+    "zombiemode_sha256": "e065c09e69b8aeaeac45b354f206c0b03b0210e213d515c98778a468f60cea26",
+    "map_specific_triggers": [],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:08:59Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_tst.exe",
+    "original_sha256": "7c740eb7e1a35b6ab646029add876949a018cfbcc19a0df63e5a9dd1f7a66be2",
+    "original_size": 63227006,
+    "source_url": "https://www.mediafire.com/file/b3iozrxhmx8f1b9/nazi_zombie_tst.exe/file",
+    "source_page": "https://callofdutyrepo.com/2010/03/01/nazi-zombie-survival-bunker/",
+    "fetched": "2026-09-26T16:08:02Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Hello, this is my first map for CoD WaW. It\u2019s a small map but hard. It has new features never seen before in other NZ maps: Zombies with guns ( they drop them also ) Wehrmacht zombies All Weapons in the game are in the Treasure chest. Please read the Read Me for known bugs etc. Some features: \u2013 Nacht der Untoten and Verruckt sounds \u2013 Zombies with guns ( they drop them also ) \u2013 Nazi, Wehrmacht & Japanese Zombies \u2013 All the Weapons in the game are in the box ( except satchels and mortars, and some are on the wall ) \u2013 Two buyable blockers",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [],
+      "loadscreen": null
+    }
+  },
+  "notes": "Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 98.9,
+    "addon_iwds": [],
+    "flags": [
+      "no_patch_ff"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": false,
+    "napalmblob": [
+      "nazi_zombie_tst.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

@@ -1,0 +1,180 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_candyland",
+  "title": "Verletzung (nazi_zombie_candyland)",
+  "source": "custom",
+  "author": "iBarnett",
+  "released": "2013-09-30",
+  "fs_game": "mods/nazi_zombie_candyland",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_candyland.iwd": "0a2c08ccec98ec86fa58fe4daa886d5ee442ec5950728e894267fa5af1e1dd00"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000,
+        75000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 75000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 102,
+    "script_count": 102,
+    "entities": 1421,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      75000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "door12"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "door6"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "door6"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "door4"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "door3"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "0a2c08ccec98ec86fa58fe4daa886d5ee442ec5950728e894267fa5af1e1dd00",
+    "map_specific_triggers": [
+      "end_game",
+      "trig_c"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:10:17Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_candyland.exe",
+    "original_sha256": "778d404940f4f754f421486b36347d23315d7a02244db64502e7a2a9552f03f9",
+    "original_size": 87664475,
+    "source_url": "https://www.mediafire.com/file/mz4ex64eey384uf/nazi_zombie_candyland.exe/file",
+    "source_page": "https://callofdutyrepo.com/2013/09/30/verletzung-nazi_zombie_candyland/",
+    "fetched": "2026-09-26T16:09:23Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Description Hey everyone Finally finished my first ever zombie map Verletzung aka Candyland. So this map dosnt really have a story because is just a reimage of ascension from Blops. Content \u2013 Decent amount of detail \u2013 Blops/Orig perks \u2013 Buyable ending \u2013 W.aW. weapons with P.a.P \u2013 Drops/Power ups (Full Map) \u2013 34 window zombies NO risers \u2013 NO dogs \u2013 !0 Zones/ 32 portals-cells \u2013 Online Credits/Thanks \u2013 All mappig and scripting done by me \u2013 Treminaor \u2013 General Help/Video tuts (zones) \u2013 SajeOne \u2013 General Help/Video tuts (zones) \u2013 BlackJackJonny \u2013 Video tuts (portals/curved terrain patch/blending/and probably more) Props to you! \u2013 ZK \u2013 Video tuts ( Very very good video tuts) Props to you! \u2013 Bamskater 33 \u2013 Blops perks \u2013 Tom_BMX \u2013 Buyable ending \u2013 Everyone else who made me carry on when I wanted to shot my p.c. THANK! HOPE YOU ENJOY!!!",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 141.5,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 123,
+        "scripts": 0,
+        "bytes": 333477
+      }
+    ],
+    "flags": [
+      "client_memory_risk"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_candyland.ff",
+      "nazi_zombie_candyland_patch.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

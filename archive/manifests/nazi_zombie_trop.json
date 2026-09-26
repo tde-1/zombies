@@ -1,0 +1,161 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_trop",
+  "title": "TROP",
+  "source": "custom",
+  "author": "TheNiceUb3r",
+  "released": "2012-08-04",
+  "fs_game": "mods/nazi_zombie_trop",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_trop.iwd": "3ab7fd12d7e282f2ca65053384c57143ac5111f99771b9681c662836aa550f22"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "crawler_round_ending"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 5000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 110,
+    "script_count": 110,
+    "entities": 3123,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "door1"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_0"
+      ],
+      [
+        600,
+        "weapon_upgrade",
+        "ppsh"
+      ],
+      [
+        100,
+        "zombie_debris",
+        "1"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "3ab7fd12d7e282f2ca65053384c57143ac5111f99771b9681c662836aa550f22",
+    "map_specific_triggers": [],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:26:38Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_trop.exe",
+    "original_sha256": "6043aef6049ebaa3bacc08f969c5c7629b0c8982513b298fe77cf8152a81ce40",
+    "original_size": 85825415,
+    "source_url": "http://www.mediafire.com/file/lnisa6nqkkx9666/nazi_zombie_trop.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T16:25:13Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Ok everyone so I would first like to thank you for viewing my topic this map was mainly made for as it says 15 hours to make it!! Ok so I would like to say that this map was made in 15 hours as said and will NOT be as good as other maps such as seelow and etc. It is still a very fund map and for a story line I would have to give it a small one that will be below\u2026 [box title=TitleBox]Husband: Babe something don\u2019t feel right I keep hearing this really weird noises Wife: Well why not go out side and check? Husband: Ok I will be right back Wife: Okay Husband: Well just got back their is nothing out side a few hour later the wife wakes up in the middle of the night Wife: Babe wake up Husband :\u201dSnooring\u201d Wife: Ok I will go check this one out myself A few moments later Wife \u201cahhhhhhh\u201d Husband wakes up and goes down stares to see that his wife is on the floor dead and a zombie is over her body he quicky runes up stares and grabs is colt runs back down and starts shootig after the first was dead they just came and came and came he kept them off as long as he could[/box] Okay everyone I would first like to say that I really enjoyed making the map. I will have to say that the funnest part was the fx and trying to get it all done with in 15 hours! Some of the basic features of the map are Pap double tap quick revive speed cola box Here are some of the cooler feature I had time to add with the map time of 15 hours Features: Timed gameplay multiplier weapons secret cool guns custom fx regu",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_nazi_zombie_trop"
+      ],
+      "iwd_images": [],
+      "loadscreen": "loadscreen_nazi_zombie_trop"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 92.3,
+    "addon_iwds": [],
+    "flags": [],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_trop.ff",
+      "nazi_zombie_trop_patch.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

@@ -1,0 +1,176 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_wt4",
+  "title": "Nazi Zombie WT4",
+  "source": "custom",
+  "author": "ZMG",
+  "released": "2012-05-17",
+  "fs_game": "mods/nazi_zombie_wt4",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_wt4.iwd": "cae4d4d5f9d6afdef1fd0cb67b6a9111b7b9bfe71b817de5b4ed1a0e4ea3c29e"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "crawler_round_ending"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 5000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 99,
+    "script_count": 99,
+    "entities": 1841,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000
+    ],
+    "orphan_end_triggers": [
+      "trigger_teleport_pad_0",
+      "trigger_teleport_pad_1",
+      "trigger_teleport_pad_2"
+    ],
+    "top_costs": [
+      [
+        15000,
+        "zombie_debris",
+        "auto69"
+      ],
+      [
+        5000,
+        "zombie_debris",
+        "auto60"
+      ],
+      [
+        4000,
+        "zombie_door",
+        "auto7"
+      ],
+      [
+        4000,
+        "zombie_debris",
+        "blocker15"
+      ],
+      [
+        4000,
+        "zombie_debris",
+        "blocker13"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "cae4d4d5f9d6afdef1fd0cb67b6a9111b7b9bfe71b817de5b4ed1a0e4ea3c29e",
+    "map_specific_triggers": [
+      "zapper1",
+      "zapper2",
+      "zapper3",
+      "zapper_damage_bridge",
+      "zapper_damage_warehouse",
+      "zapper_damage_wuen"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:57:14Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_wt4.exe",
+    "original_sha256": "fb8ebd6dbe73a9ce6ebb02043a241bb1c8a82f3f1654e9a1848025d1af70e60a",
+    "original_size": 64620147,
+    "source_url": "https://www.mediafire.com/file/tu0yl0og2aatf2m/nazi_zombie_wt4.exe/file",
+    "source_page": "https://callofdutyrepo.com/2012/05/17/nazi-zombie-wt4/",
+    "fetched": "2026-09-26T15:56:00Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "cod waw nazi_zombie_wt4 is a chill game playing with more players only one player is not easy the game is a big house where you alive and you most survive the game\u2026 included: * spawnable treasure chest * 4 perks * PAP (Pack A Punch) * Trap (eletric / mistery) * Mistery doors * Teleporters Credits: ****************************** ****************************** *********\u00aecreated by\u00ae****** ****************************** ************\u00a9ZMG\u00a9********* ****************************** ******************************",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 89.6,
+    "addon_iwds": [],
+    "flags": [],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_wt4.ff",
+      "nazi_zombie_wt4_patch.ff",
+      "nazi_zombie_wt4.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

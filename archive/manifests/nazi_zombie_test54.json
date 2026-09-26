@@ -1,0 +1,132 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_test54",
+  "title": "Nazi Zombie Test 54",
+  "source": "custom",
+  "author": "zazou_loco",
+  "released": "2010-10-21",
+  "fs_game": "mods/nazi_zombie_test54",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_test54.iwd": "e4ded1c0251807ab6089591944427f0eeefe63028f7b7a69d8d6da67ea706517"
+  },
+  "badge": {
+    "main_finish": "round",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "round",
+    "why": "no easter egg or ending found; default Round 20",
+    "verdict_stock_baseline_only": "round",
+    "scripts": 39,
+    "script_count": 39,
+    "entities": 589,
+    "ee_candidates": [],
+    "ending_words": [],
+    "hardcoded_costs": [
+      1000,
+      1500
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "debris5"
+      ],
+      [
+        1750,
+        "zombie_debris",
+        "debris4"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "debris2"
+      ],
+      [
+        1500,
+        "weapon_cabinet_use",
+        "pf393_auto2"
+      ],
+      [
+        1250,
+        "zombie_debris",
+        "debris3"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [],
+    "zombiemode_sha256": "e4ded1c0251807ab6089591944427f0eeefe63028f7b7a69d8d6da67ea706517",
+    "map_specific_triggers": [],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:28:42Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_test54.exe",
+    "original_sha256": "b9561dd29411a3c1122b496ebae942d121005a37c1f868e1c3b5b3ba814e076c",
+    "original_size": 105132191,
+    "source_url": "https://www.mediafire.com/file/qpnpgri9lb1hbvb/nazi_zombie_test54.exe/file",
+    "source_page": "https://callofdutyrepo.com/2010/10/21/nazi-zombie-test-54/",
+    "fetched": "2026-09-26T16:27:29Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Test 54 is a medium sized map with enough debris to open for its size which features 2 magic boxes and lots of originalities like modified sounds, modern weapons and a weapon like no other: a Laser Colt! A map with more AI allies which will lend you a hand against zombies and which are very effective at long range. A pleasant map that deserves to be tested despite its few bugs. A zombie map created by a new mapper who hits hard for his departure: zazou loco! Bravo to him \ud83d\ude42",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [
+        "nazi_zombie_test54.iwd:images/loadscreen_zombie1.iwi",
+        "nazi_zombie_test54.iwd:images/weapon_red_cross_background.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 81.0,
+    "addon_iwds": [],
+    "flags": [
+      "no_patch_ff"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": false,
+    "napalmblob": [
+      "nazi_zombie_test54.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

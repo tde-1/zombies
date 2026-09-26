@@ -1,0 +1,253 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "d",
+  "title": "Kino: Rezurrection 1.05 2026",
+  "source": "custom",
+  "author": null,
+  "released": "2026-05-14",
+  "fs_game": "mods/d",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@d.iwd": "18b811ee83126ad5faa003186e1e1f7d20190fe6298fa24903f71bade4a3bd6d"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "ee_ai_spawners_trig",
+        "ee_gen_trig",
+        "ee_teleport_player0",
+        "ee_teleport_player1",
+        "ee_teleport_player2",
+        "ee_teleport_player3",
+        "lb_ee_leave",
+        "lb_ee_vista_left",
+        "lb_ee_vista_path_left",
+        "lb_ee_vista_path_right",
+        "lb_ee_vista_right",
+        "quick_ee"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "ee_ai_spawners_trig, ee_gen_trig, ee_teleport_player0, ee_teleport_player1, ee_teleport_player2, ee_teleport_player3 look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 190,
+    "script_count": 190,
+    "entities": 2002,
+    "ee_candidates": [
+      "ee_ai_spawners_trig",
+      "ee_gen_trig",
+      "ee_teleport_player0",
+      "ee_teleport_player1",
+      "ee_teleport_player2",
+      "ee_teleport_player3",
+      "lb_ee_leave",
+      "lb_ee_vista_left",
+      "lb_ee_vista_path_left",
+      "lb_ee_vista_path_right",
+      "lb_ee_vista_right",
+      "quick_ee"
+    ],
+    "ending_words": [
+      "crawler_round_ending",
+      "ee_teleport_player0",
+      "ee_teleport_player1",
+      "ee_teleport_player2",
+      "ee_teleport_player3",
+      "end_game",
+      "ending",
+      "ending_extended_death",
+      "first_special_teleport",
+      "gersh_teleport",
+      "projroom_teleport_player0",
+      "projroom_teleport_player1",
+      "projroom_teleport_player2",
+      "projroom_teleport_player3",
+      "theater_teleport_player0",
+      "theater_teleport_player1",
+      "theater_teleport_player2",
+      "theater_teleport_player3"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      3000,
+      4000,
+      5000,
+      7000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        1500,
+        "zombie_door",
+        "theatre"
+      ],
+      [
+        1500,
+        "zombie_door",
+        "quick_path"
+      ],
+      [
+        1500,
+        "zombie_door",
+        "quick_path"
+      ],
+      [
+        1250,
+        "zombie_door",
+        "door4"
+      ],
+      [
+        1250,
+        "zombie_door",
+        "door4"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "18b811ee83126ad5faa003186e1e1f7d20190fe6298fa24903f71bade4a3bd6d",
+    "map_specific_triggers": [
+      "activate_mg",
+      "auto_door_trig",
+      "blocker_trig",
+      "claymore_purchase",
+      "dev_end",
+      "ee_ai_spawners_trig",
+      "ee_gen_trig",
+      "ending",
+      "gersch_touch_trig",
+      "jukebox",
+      "kino_mainframe_trigger",
+      "kinorock1",
+      "kinorock2",
+      "kinorock3",
+      "lb_turret_call",
+      "leave_trigger",
+      "obj_comp_trig",
+      "orb_shoot_trig",
+      "phat_stack_trigger",
+      "quick_ee",
+      "soul_chest_area",
+      "ss_trig",
+      "tablet_pickup"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:46:57Z"
+    }
+  },
+  "archive": {
+    "original": "Kino_Rezurrection_1.06.exe",
+    "original_sha256": "aa73733b119eed844905ba27bc4fce9c58a86624f60abb47b4044fa2e72242b9",
+    "original_size": 558751317,
+    "source_url": "https://mega.nz/file/Ud0HQIwY#O4WZiiNL2o8kK1xa4VzOmdZJLKzsC7fvByJ0nPCqSGQ",
+    "source_page": "https://callofdutyrepo.com/2026/05/14/kino-rezurrection-1-05-2026/",
+    "fetched": "2026-09-26T16:46:31Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "T4M [R49] required Special thanks to Numan for all the help on this release This is a major update to Kino: The rebirth Black ops weapon set, dogs instead of panzers and a functioing helicopter setup. Credits: B0hnez NG Roscoe Bluntstuffy Harry bo21 C.H.N Tomikaze shippuden1592 YaPh1 GTTClan gympie Weapons",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_MAK",
+        "loadscreen_locked",
+        "loadscreen_zombie_theater"
+      ],
+      "iwd_images": [
+        "main.iwd:images/weapon_red_cross_background.iwi",
+        "main.iwd:images/~t5_weapon_m202_loader_s-rgb&~316aee98.iwi",
+        "main.iwd:images/loadscreen_d.iwi",
+        "main.iwd:images/loadscreen_zombie_theater.iwi",
+        "main.iwd:images/shad_co_loadout_lmg_col.iwi",
+        "main.iwd:images/logo_kino.iwi",
+        "main.iwd:images/p7_zm_vending_ads_logo_col.iwi",
+        "main.iwd:images/specialty_fastreload_zombies.iwi",
+        "main.iwd:images/~p7_zm_vending_ads_logo_spc-r~301c48c1.iwi",
+        "main.iwd:images/aaaa_logo.iwi",
+        "main.iwd:images/aaaa_logo2.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 70.7,
+    "addon_iwds": [
+      {
+        "file": "main.iwd",
+        "entries": 2534,
+        "scripts": 52,
+        "bytes": 400793509
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "d_patch.ff",
+      "d.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "d.iwd:maps/ugx_jukebox.gsc",
+        "menus": [],
+        "responses": [],
+        "note": "in game: the jukebox"
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

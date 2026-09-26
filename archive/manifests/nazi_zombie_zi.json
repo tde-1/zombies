@@ -1,0 +1,174 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_zi",
+  "title": "Zombie Industry",
+  "source": "custom",
+  "author": "DarkFlame",
+  "released": "2010-04-04",
+  "fs_game": "mods/nazi_zombie_zi",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_zi.iwd": "ffd79e6dc20ec74006a5464cc27b2c491946963d12b04ddebd6a31bce672910a"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "moving_step"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "moving_step look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 105,
+    "script_count": 105,
+    "entities": 2122,
+    "ee_candidates": [
+      "moving_step"
+    ],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000
+    ],
+    "orphan_end_triggers": [
+      "trigger_teleport_pad_0",
+      "trigger_teleport_pad_1",
+      "trigger_teleport_pad_2"
+    ],
+    "top_costs": [
+      [
+        2000,
+        "zombie_door",
+        "laboutside_door"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "laboutside_door"
+      ],
+      [
+        1500,
+        "zombie_door",
+        "lab_entrance_door"
+      ],
+      [
+        1500,
+        "zombie_door",
+        "lab_bridge_door"
+      ],
+      [
+        1500,
+        "zombie_door",
+        "lab_bridge_door"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "ffd79e6dc20ec74006a5464cc27b2c491946963d12b04ddebd6a31bce672910a",
+    "map_specific_triggers": [
+      "activate_mg",
+      "walk_sound",
+      "zapper_damage_bridge",
+      "zapper_damage_warehouse",
+      "zapper_damage_wuen"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:20:46Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_zi.exe",
+    "original_sha256": "9e64644daa5b59d74a5002eef5226eb94a10b075109082d7ebe2b49f99798cd4",
+    "original_size": 74978992,
+    "source_url": "https://www.mediafire.com/file/v12b09d2hx363q8/nazi_zombie_zi.exe/file",
+    "source_page": "https://callofdutyrepo.com/2010/04/04/nazi-zombie-zi/",
+    "fetched": "2026-09-26T16:20:19Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Description Story: 100 yrs. ago there was this metal industry which was operated by a crazy rich guy. he hated the labors who worked for him. so with the help of a evil scientist he started testing chemicals on the workers. but it turns out to be that these experiments started to fail and the workers started dying. this experiment which let out fumes caused all the other workers suffer form ill and later they died. somehow the government came to know of this experiment, so this rich guys instead of loosing his dignity he hung himself inside the industry. Dempsey: this is the end of the article. hum.. that guy hung himself for good. Nikolai: yah, people like him should kill themselves. Richtofen: enough blabbering of this idiot lets test this Teleporter. Takeo: why should we?. Richtofen: i did some \u201cfixings\u201d to it come on guys lets test. Dempsey: whatever Takeo: ah man! here we go again on this stupid mans thing. Nikolai: \u2026\u2026\u2026 Richtofen: here goes nothing. (he turns the switch on, they heard some electrical sound, but nothing happened.) Nikolai: hahaha! this man is really crazy. (Whoosh!) Dempsey: what the hell is going on. where are we going. Richtofen: i dont know. this is bad. Oh god. (they come to a different place) Takeo: where are we? Nikolai: this isn\u2019t where we started!. Dempsey: guys look at this picture in this article. doesn\u2019t this place looks like the one in here. Richtofen: guys we have a bigger problem than that. Takeo: NO not again! Nikolai we got company! get su",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_zi",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "nazi_zombie_zi.iwd:images/loadscreen_nazi_zombie_zi.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_zi"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 111.7,
+    "addon_iwds": [],
+    "flags": [
+      "client_memory_risk"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_zi.ff",
+      "nazi_zombie_zi_patch.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

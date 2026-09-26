@@ -1,0 +1,191 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_111",
+  "title": "111",
+  "source": "custom",
+  "author": "Geek008",
+  "released": "2012-01-29",
+  "fs_game": "mods/nazi_zombie_111",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_111.iwd": "59b4fcae00481d6fa6dfc9306a4323f6d74d18a9d7d4f6f4dae29d16eba12242"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000,
+        32961
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 32961",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 98,
+    "script_count": 98,
+    "entities": 497,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      32961
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "blocker_two"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "blocker_one"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_0"
+      ],
+      [
+        600,
+        "weapon_upgrade",
+        "ppsh"
+      ],
+      [
+        500,
+        "betty_purchase",
+        "betty"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "59b4fcae00481d6fa6dfc9306a4323f6d74d18a9d7d4f6f4dae29d16eba12242",
+    "map_specific_triggers": [
+      "end_game",
+      "music_box_player"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:00:29Z"
+    }
+  },
+  "archive": {
+    "original": "Nazi_Zombie_111.exe",
+    "original_sha256": "d1807ec6368dcc979c28dde325bad71445fe52c2d3a8f2b8af7c0af0556089da",
+    "original_size": 60171107,
+    "source_url": "http://www.mediafire.com/file/ckvq8a2syw65a8v/Nazi_Zombie_111.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T15:59:46Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "I Hope You Like This Map, Its My First. I Spent About A Month Working On It. It Was Meant To Get Me Warmed Up For Me To Make More Maps Later In The Future. Its Small But Challenging. Hope You Enjoy It. P.S Thanks To Treminaor For His Mapping Tutorials and Tom_Bmx For His Help. Thanks To The Beta Testers For Finding The Problems. Known Bugs: When You Die and Re Spawn You Do Not Have Any Guns. I Couldn\u2019t Fix This But, If You Buy 2 Guns Off The Wall You Will Be Fine. (Dont Use Box Before Buy 2 Guns Off The Wall The Box Will Eat Your Guns) When You Climb Up To PaP The Zombies Will Freeze For A Few Seconds. Features: Der Riese Style. Power. 4 Perk Machines. 1 Box. Bowie. Buy able Ending. Altered Zombie Counter. Music Box. Wall Guns. Note: Juggernaut Was Not Customized So It Only Takes 3 Consecutive Hits To Die. Sorry I Found This Out Too Late To Change It.",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 78.6,
+    "addon_iwds": [],
+    "flags": [],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_111.ff",
+      "nazi_zombie_111_patch.ff",
+      "nazi_zombie_111.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "nazi_zombie_111.iwd:maps/tom_music_player_unl.gsc",
+        "menus": [],
+        "responses": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9"
+        ],
+        "note": "in game: a music player"
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

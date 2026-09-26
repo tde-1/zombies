@@ -1,0 +1,216 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_estate",
+  "title": "Industrial Estate New Realism 3 0 Version",
+  "source": "custom",
+  "author": "StevieWonder87 & BluntStuffy",
+  "released": "2017-05-05",
+  "fs_game": "mods/nazi_zombie_estate",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@new_realism_core.iwd": "edbd2ede51ab8aa76a4a2e99fb63a574a94ab8e5026c96e00ee64e2dc787b23e"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "meteor_ambient"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "meteor_ambient look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 165,
+    "script_count": 165,
+    "entities": 1267,
+    "ee_candidates": [
+      "meteor_ambient"
+    ],
+    "ending_words": [
+      "crawler_round_ending",
+      "gersh_teleport"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        1500,
+        "zombie_debris",
+        "zone_grate_door"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "tunnel_zone_door"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "speed_zone_door"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "phd_zone_barrels"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "mule_zone_door"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "edbd2ede51ab8aa76a4a2e99fb63a574a94ab8e5026c96e00ee64e2dc787b23e",
+    "map_specific_triggers": [
+      "activate_by_touch",
+      "keycard_trigger",
+      "lift_call_trigger",
+      "lift_inside",
+      "lift_use_trigger",
+      "mech_power_core",
+      "supply_drop_radio",
+      "temple_geyser",
+      "wall_buy_touch",
+      "wall_buy_use"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:46:45Z"
+    }
+  },
+  "archive": {
+    "original": "New_Realism_IE_V1.0.exe",
+    "original_sha256": "5ca39c419530f2941f46777617a84fa12aba9ea1bac5a06546b74298e6559d1c",
+    "original_size": 675103187,
+    "source_url": "https://www.mediafire.com/file/1pdg7zvnrvdxb07/New_Realism_IE_V1.0.exe/file",
+    "source_page": "https://callofdutyrepo.com/2017/05/05/industrial-estate-new-realism-3-0-version/",
+    "fetched": "2026-09-26T16:45:46Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "top100",
+      "t4m_req",
+      "top_100"
+    ],
+    "catalogue_description": "Presenting the 2 nd map to have the new Realism Mod 3.0 on it. StevieWonder87 provided the map & BluntStuffy supplied the Mod and the objectives. Come enjoy Industrial Estate like never before with all of the benefits of the Realism Mod 3.0 including a new enemy boss, but be warned before taking him on you better be ready with your best guns, perks, attachments and a turret and Nano Shield couldn\u2019t hurt either\u2026also might be a good idea to update your last will and testament because you just might die a horrible death : ) Features: -The Realism Mod 3.0 and all of its amazing features like character classes, leveling up, a prestige system, gun attachments, supply drops, zombie types, Juggernauts and the Panzer Soldat from BO3. -ED209, a brand new totally awesome, totally brutal custom boss. -A fun objective that unlocks a brand new weapon. ~Tomikaze",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_yard",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "nazi_zombie_estate.iwd:images/ammo_background.iwi",
+        "nazi_zombie_estate.iwd:images/ammo_background2.iwi",
+        "nazi_zombie_estate.iwd:images/ammo_background2_new.iwi",
+        "nazi_zombie_estate.iwd:images/ammo_background_new.iwi",
+        "nazi_zombie_estate.iwd:images/custom_zombies_menu.iwi",
+        "nazi_zombie_estate.iwd:images/loadscreen_nazi_zombie_oil_rig.iwi",
+        "nazi_zombie_estate.iwd:images/loadscreen_nazi_zombie_yard.iwi",
+        "nazi_zombie_estate.iwd:images/menu_button_backing_right.iwi",
+        "nazi_zombie_estate.iwd:images/menu_map_custom_zombies_menu.iwi",
+        "nazi_zombie_estate.iwd:images/water_splash.iwi",
+        "new_realism.iwd:images/1motd_camo_menu_img.iwi",
+        "new_realism.iwd:images/3motd_camo_menu_img.iwi",
+        "new_realism.iwd:images/almagro_loadout_a_col.iwi",
+        "new_realism.iwd:images/almagro_loadout_b_col.iwi",
+        "new_realism.iwd:images/dark_mat_camo_menu_img.iwi",
+        "new_realism.iwd:images/devgru_loadout_a_col.iwi",
+        "new_realism.iwd:images/devgru_loadout_a_nml.iwi",
+        "new_realism.iwd:images/devgru_loadout_bd_col.iwi",
+        "new_realism.iwd:images/devgru_loadout_b_nml.iwi",
+        "new_realism.iwd:images/devgru_loadout_ed_col.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 80.5,
+    "addon_iwds": [
+      {
+        "file": "new_realism.iwd",
+        "entries": 961,
+        "scripts": 0,
+        "bytes": 304135314
+      },
+      {
+        "file": "new_realism_core.iwd",
+        "entries": 96,
+        "scripts": 72,
+        "bytes": 6651262
+      },
+      {
+        "file": "nr_combined_all.iwd",
+        "entries": 111,
+        "scripts": 17,
+        "bytes": 51305640
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "new_realism_core.iwd:animscripts/death.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

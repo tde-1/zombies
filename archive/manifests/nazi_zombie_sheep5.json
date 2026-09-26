@@ -1,0 +1,198 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_sheep5",
+  "title": "Nazi Zombie Sheep",
+  "source": "custom",
+  "author": "thefanod",
+  "released": "2015-01-19",
+  "fs_game": "mods/nazi_zombie_sheep5",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_sheep5.iwd": "8f2e218f7ef1eafda5302d5693f476a7eb42c984beb9e42482227de95d3c391a"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game",
+        "teleport_power_up"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        9000,
+        10000,
+        27500
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game, teleport_power_up name an ending and are this map's own; script hardcodes cost 27500",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 106,
+    "script_count": 106,
+    "entities": 722,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game",
+      "teleport_power_up"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      9000,
+      10000,
+      27500
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "walldoor"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "wall3"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "wall1"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "tub"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "fence1"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "8f2e218f7ef1eafda5302d5693f476a7eb42c984beb9e42482227de95d3c391a",
+    "map_specific_triggers": [
+      "end_game",
+      "purchase",
+      "select",
+      "trem_bank_trig"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:49:34Z"
+    }
+  },
+  "archive": {
+    "original": "Nazi_zombie_sheep5.exe",
+    "original_sha256": "90357d67f1c181b240616ae2cff933d1619f938dcef1da7c71460c2d42f54916",
+    "original_size": 79151916,
+    "source_url": "https://www.mediafire.com/file/csw7lkooxwa6jzz/Nazi_zombie_sheep5.exe/file",
+    "source_page": "https://callofdutyrepo.com/2015/01/19/nazi-zombie-sheep/",
+    "fetched": "2026-09-26T15:47:53Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Description This is a map I made for fun back in 2012. It isn\u2019t as fantastic as some other maps on this website\u2026 But its definitely one of a kind. This map includes: -Custom textures (Thanks Porkroyalz) -Custom Waw Guns -A buyable ending. -Pack a Punch -All perks in waw and black ops and a special thanks to (porkroyalz)",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 85.9,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 123,
+        "scripts": 0,
+        "bytes": 333477
+      }
+    ],
+    "flags": [],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_sheep5.ff",
+      "nazi_zombie_sheep5_patch.ff",
+      "nazi_zombie_sheep5.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "nazi_zombie_sheep5.iwd:maps/trem_bank_2.gsc",
+        "menus": [],
+        "responses": [],
+        "note": "in game: the bank"
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

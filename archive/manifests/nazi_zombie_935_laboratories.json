@@ -1,0 +1,183 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_935_laboratories",
+  "title": "935 LABORATORIES",
+  "source": "custom",
+  "author": "bamskater33",
+  "released": "2012-06-06",
+  "fs_game": "mods/nazi_zombie_935_laboratories",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_935_laboratories.iwd": "e5b538356818fe4d35ba61b4866c3170e9c969eac6b638aaffcb5d83ee622b40"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000,
+        20000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 20000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 103,
+    "script_count": 103,
+    "entities": 666,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      20000
+    ],
+    "orphan_end_triggers": [
+      "trigger_teleport_pad_0"
+    ],
+    "top_costs": [
+      [
+        1250,
+        "zombie_door",
+        "4"
+      ],
+      [
+        1250,
+        "zombie_door",
+        "3"
+      ],
+      [
+        1250,
+        "zombie_door",
+        "2"
+      ],
+      [
+        1250,
+        "zombie_door",
+        "1"
+      ],
+      [
+        1000,
+        "116",
+        "?"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "e5b538356818fe4d35ba61b4866c3170e9c969eac6b638aaffcb5d83ee622b40",
+    "map_specific_triggers": [
+      "116",
+      "118",
+      "122",
+      "end_game",
+      "help",
+      "map_song",
+      "pa_system_935",
+      "power_player",
+      "radio1",
+      "radio2",
+      "radio3",
+      "teddy1",
+      "teddy2",
+      "teddy3"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:55:22Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_935_laboratories.exe",
+    "original_sha256": "526f363a25852bcd8d26f4b616d54f3df10af9b29d0730bd53c52be74f5a0ca5",
+    "original_size": 81141299,
+    "source_url": "https://www.mediafire.com/file/dajgrfy6ptcrfvn/nazi_zombie_935_laboratories.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T15:54:21Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "my most ambitious mapping ever. I attempt to fill in the story of the mysterious group 935. After realizing there was a lack of volunteers for their experiments, they turned to a supply of war prisoners to meet their needs. They studies the effects of elements 112,115,116,118, and 122. It appears that 112 can kill those with 115 in their system, and the rest are nuetralizing agents. features \u2013 4 story telling radios \u2013 1 3-bear song easter egg \u2013 buyable Ending with a sad story of sacrifice \u2013 custom Element 112 trap \u2013 custom textures \u2013 effects \u2013 custom sounds for doors \u2013 custom Pack-A-Punch access system with sounds \u2013 perk bottle powerup \u2013 ambient sounds \u2013 dogs took 3 long weeks to make, so enjoy!",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 93.7,
+    "addon_iwds": [],
+    "flags": [],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_935_laboratories.ff",
+      "nazi_zombie_935_laboratories_patch.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

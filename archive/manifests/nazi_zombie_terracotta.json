@@ -1,0 +1,201 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_terracotta",
+  "title": "TERRACOTTA",
+  "source": "custom",
+  "author": "baseball4ev",
+  "released": "2010-09-26",
+  "fs_game": "mods/nazi_zombie_terracotta",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_terracotta.iwd": "dff5672580ac200a552b7148bffa4c095e64da91d52ed63151693ae7250a50a0"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000,
+        50000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 50000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 143,
+    "script_count": 143,
+    "entities": 7599,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      50000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        7000,
+        "zombie_door",
+        "exitdoor1"
+      ],
+      [
+        7000,
+        "zombie_debris",
+        "secretexit"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "slidingsecret"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "slidingdoor1"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "exitdoor3"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "dff5672580ac200a552b7148bffa4c095e64da91d52ed63151693ae7250a50a0",
+    "map_specific_triggers": [
+      "buy_powerup",
+      "end_game",
+      "end_game_ai_trigger",
+      "music_box_player",
+      "radius_dmg_trigs"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:12:50Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_terracotta_v1-1.exe",
+    "original_sha256": "eb0cf999921a92e7dc827b55e86366c640deef6855f0c0bf692c04e96bd72e10",
+    "original_size": 116117668,
+    "source_url": "https://www.mediafire.com/file/ggkau6d0acv8wy5/nazi_zombie_terracotta_v1-1.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T16:10:31Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Description YOU HAVE TO HAVE THE SAME VERSION AS EVERYONE ELSE IN A COOP GAME. IF YOU HAVE A DIFFERENT VERSION THAN THE OTHER PEOPLE THEN YOU WILL GET SOME ISSUES. v1.1 change log: Fixed the power door (before you weren\u2019t able to buy the door that led to the power) Fixed a maze column preventing zombies from going through it Added a hint as to which room the power is in Since so many people complained about not being able to see I added a ton more laterns to light the way in each room (this still might not be enough for some people but I added a lot more in so\u2026.) In the year 210 BC, Qin Shi Huang, the First Emperor of China, constructed what is now known as the Terra Cotta Army. There are estimates that say that there are over 8,000 soldiers in this army. Qin Shi Huang had this army built so that he might rule over another empire in the afterlife. For that reason each soldier is entirely unique. Not a single one is duplicated, each one is an individual person. The soldiers were given \u201cthe life blood\u201d of one soldier from the living army. This blood could be used in the afterlife to identify each soldier. The blood would then be used to call forth the army to bring forth another empire in the afterlife. Over 2000 years passed and the army had not been called forth, the blood from those 8,000 soldiers was still waiting to be called into action\u2026 In 1931, when the Japanese invaded Manchuria, they discovered huge underground pits that had been partially unearthed from their bombing",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_oldtown",
+        "loadscreen_nazi_zombie_terracotta"
+      ],
+      "iwd_images": [
+        "nazi_zombie_terracotta.iwd:images/loadscreen_nazi_zombie_terracotta.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_terracotta"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 123.8,
+    "addon_iwds": [],
+    "flags": [
+      "client_memory_risk"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_terracotta.ff",
+      "nazi_zombie_terracotta_patch.ff"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "nazi_zombie_terracotta.iwd:maps/tom_music_player_unl.gsc",
+        "menus": [],
+        "responses": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9"
+        ],
+        "note": "in game: a music player"
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

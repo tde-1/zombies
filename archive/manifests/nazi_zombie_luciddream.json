@@ -1,0 +1,182 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_luciddream",
+  "title": "LUCID DREAM",
+  "source": "custom",
+  "author": "Atomic_Tank",
+  "released": "2015-07-11",
+  "fs_game": "mods/nazi_zombie_luciddream",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@luciddream.iwd": "ff5eb2aa296eec1d4a8dff1a8e79679c2c8c9fcda8ad3654489f9da0f8b4a8c4"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000,
+        40000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 40000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 102,
+    "script_count": 102,
+    "entities": 214,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      40000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        3000,
+        "zombie_door",
+        "door4"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_1"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_0"
+      ],
+      [
+        750,
+        "zombie_door",
+        "door3"
+      ],
+      [
+        750,
+        "zombie_door",
+        "door2"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "ff5eb2aa296eec1d4a8dff1a8e79679c2c8c9fcda8ad3654489f9da0f8b4a8c4",
+    "map_specific_triggers": [
+      "end_game",
+      "juke_box_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:55:38Z"
+    }
+  },
+  "archive": {
+    "original": "LucidDream.exe",
+    "original_sha256": "ce7ebb26a3efbce4942d704b12b1f9c39a34c7bb22a28f05d7a17d4c7e021b19",
+    "original_size": 149755463,
+    "source_url": "https://www.mediafire.com/file/oknzb82qrvryulb/LucidDream.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T15:54:12Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "This map is extremely small, and if you can beat it in solo, you are an amazing player! Features: -Double Tap 2.0 -Solo Quick Revive -Fully Functional Custom Jukebox with Random Songs (Youtube Safe) -Buyable Ending -Zombie Counter -BO2 Perk Shaders and Chalk -Special Explosive Downs to Make Things Easier -Multiplayer Player Models -And a Fun Challenge for Everyone! Credits: -FinalKillGaming for answering all my questions and scripting Double Tap 2.0, the Jukebox and Explosive Downs. -Tom BMX for the buyable ending. -ZK for his tutorials. -Also thanks to everyone who helped beta test my map! Links to music: -Cosmic Dreamer: http://www.newgrounds.com/audio/listen/591740 -At the Speed of Light: http://www.newgrounds.com/audio/listen/467339 -Dark Angel: http://www.newgrounds.com/audio/listen/444085 -Knights of Cydonia EON Remix: http://www.newgrounds.com/audio/listen/224573 -Sonic Blaster: http://www.newgrounds.com/audio/listen/574484",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_nazi_zombie_hate"
+      ],
+      "iwd_images": [
+        "luciddream.iwd:images/specialty_fastreload_zombies.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 69.1,
+    "addon_iwds": [
+      {
+        "file": "luciddream.iwd",
+        "entries": 109,
+        "scripts": 13,
+        "bytes": 44506129
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_luciddream_patch.ff",
+      "luciddream.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

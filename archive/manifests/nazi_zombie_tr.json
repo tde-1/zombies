@@ -1,0 +1,129 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_tr",
+  "title": "TRANSMITTER",
+  "source": "custom",
+  "author": "Adave",
+  "released": "2010-02-28",
+  "fs_game": "mods/nazi_zombie_tr",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_tr.ff": "e2b0f8209988bf4d58615399f0b09ea447b6565b9d3656b25108fedbd1c79a14"
+  },
+  "badge": {
+    "main_finish": "round",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "round",
+    "why": "no easter egg or ending found; default Round 20",
+    "verdict_stock_baseline_only": "round",
+    "scripts": 45,
+    "script_count": 45,
+    "entities": 651,
+    "ee_candidates": [],
+    "ending_words": [],
+    "hardcoded_costs": [
+      1000,
+      1500
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "zombie_debris",
+        "couch9"
+      ],
+      [
+        5000,
+        "zombie_debris",
+        "couch8"
+      ],
+      [
+        5000,
+        "zombie_debris",
+        "couch7"
+      ],
+      [
+        5000,
+        "zombie_debris",
+        "couch6"
+      ],
+      [
+        5000,
+        "zombie_debris",
+        "couch5"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [],
+    "zombiemode_sha256": "e2b0f8209988bf4d58615399f0b09ea447b6565b9d3656b25108fedbd1c79a14",
+    "map_specific_triggers": [],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:01:12Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_tr.exe",
+    "original_sha256": "7a37ce7c9f350501ea57e129a2fb0ef5384a5190df53022e5d7c21c9b3dda294",
+    "original_size": 43901953,
+    "source_url": "https://www.mediafire.com/file/njza1bbx1w9e2yw/nazi_zombie_tr.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T16:00:53Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "7/10 Fine work has been put into this map. There is a lot of detail on the outside, the inside of the house is lacking some but still looks alright. The custom weapon sounds and multiplayer weapons are a breath of fresh air for Nacht style maps. The multiplayer weapons do piss poor damage because they were ripped straight from multiplayer where enemies have 100 health instead of the zombies insanely high health. The 5000 point barricades to the turrets are weird, you have to pay 5000 points for every barricade. The other debris on this map is only 2000 points though. When you run out of mortars if you get them from the box they remove your 2nd weapon and you can\u2019t get a second weapon back. Most of the weapons do so little damage it\u2019s almost impossible to kill zombies. Strats: Either run trains around the flipped tank in the box area or don\u2019t buy the bookshelf debris next to the bazooka wallbuy and camp in the trench where it would lead to.",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [],
+      "loadscreen": null
+    }
+  },
+  "notes": "Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 77.2,
+    "addon_iwds": [],
+    "flags": [
+      "no_patch_ff"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": false,
+    "napalmblob": [
+      "nazi_zombie_tr.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

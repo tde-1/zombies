@@ -1,0 +1,182 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "zebba",
+  "title": "Zebba",
+  "source": "custom",
+  "author": "Sajeone",
+  "released": "2012-11-01",
+  "fs_game": "mods/zebba",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@zebba.iwd": "77668b98884b233dd91c60164f5fdc808ef6e4bf6956c37f1819921391631e53"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "teleport_trigger"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game",
+        "teleport_trigger"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game, teleport_trigger name an ending and are this map's own; script hardcodes cost 5000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 111,
+    "script_count": 111,
+    "entities": 422,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game",
+      "teleport_trigger"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "auto6"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "auto1"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "auto17"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "pf1097_auto1"
+      ],
+      [
+        750,
+        "zombie_debris",
+        "auto3"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "77668b98884b233dd91c60164f5fdc808ef6e4bf6956c37f1819921391631e53",
+    "map_specific_triggers": [
+      "beginning_obj",
+      "gear2trig",
+      "gear3trig",
+      "gear4trig",
+      "gear5trig",
+      "radio_trig",
+      "teleport_trigger",
+      "trig_multiple"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:29:56Z"
+    }
+  },
+  "archive": {
+    "original": "zebba.exe",
+    "original_sha256": "cc6dd98bdf4fcaea3d3089cca4660d79b54117c2a0df3b5f72e839049a3a0353",
+    "original_size": 89654094,
+    "source_url": "http://www.mediafire.com/file/imcjqzmie3y51ef/zebba.exe",
+    "source_page": "https://callofdutyrepo.com/2012/11/01/zebba/",
+    "fetched": "2026-09-26T16:29:16Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "no perks purchasable weapons purchased ammunition pickup weapon secret weapon box various bonuses new zombie skins goal: you need to get to an abandoned house and call for help on the radio teleport (wait 1 min.) final (it is necessary to find spare parts for the radio and fix it, waiting for the help plane 5 minutes)",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "zebba.iwd:images/zebba_background_menu.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 84.6,
+    "addon_iwds": [],
+    "flags": [],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "zebba.ff",
+      "zebba_patch.ff",
+      "zebba.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

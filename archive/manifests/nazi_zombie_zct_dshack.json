@@ -1,0 +1,123 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_zct_dshack",
+  "title": "Nazi Zombie ZCT Dshack",
+  "source": "custom",
+  "author": "ZCT Team",
+  "released": "2009-02-05",
+  "fs_game": "mods/nazi_zombie_zct_dshack",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_zct_dshack.ff": "72c3fa688c1409d23a5b060814180948aef9afac0641e45f15064321375cf2b0"
+  },
+  "badge": {
+    "main_finish": "round",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "round",
+    "why": "no easter egg or ending found; default Round 20",
+    "verdict_stock_baseline_only": "round",
+    "scripts": 46,
+    "script_count": 46,
+    "entities": 829,
+    "ee_candidates": [],
+    "ending_words": [],
+    "hardcoded_costs": [
+      1000,
+      1500
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [],
+    "zombiemode_sha256": "72c3fa688c1409d23a5b060814180948aef9afac0641e45f15064321375cf2b0",
+    "map_specific_triggers": [
+      "start_readme"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:56:17Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_zct_dshack.exe",
+    "original_sha256": "59e2e41c35c15d69623ac2c5cf28045771f2b3b1719e1bceb57d99806663f7e5",
+    "original_size": 75630893,
+    "source_url": "https://www.mediafire.com/file/gm5jiie6numv70b/nazi_zombie_zct_dshack.exe/file",
+    "source_page": "https://callofdutyrepo.com/2009/02/05/nazi-zombie-zct-dshack/",
+    "fetched": "2026-09-26T15:54:52Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_zct_bsmnt",
+        "loadscreen_nazi_zombie_zct_bunker",
+        "loadscreen_nazi_zombie_zct_dshack",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "ZombieChickenTaco.iwd:images/loadscreen_nazi_zombie_zct_bsmnt.iwi",
+        "ZombieChickenTaco.iwd:images/loadscreen_nazi_zombie_zct_bunker.iwi",
+        "ZombieChickenTaco.iwd:images/loadscreen_nazi_zombie_zct_dshack.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_zct_dshack"
+    }
+  },
+  "notes": "Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). No finish found by name. Before accepting Round 20, someone should glance at this map's own triggers: start_readme. ",
+  "precheck": {
+    "map_zone_inflated_mb": 79.9,
+    "addon_iwds": [
+      {
+        "file": "ZombieChickenTaco.iwd",
+        "entries": 35,
+        "scripts": 0,
+        "bytes": 23665189
+      }
+    ],
+    "flags": [
+      "no_patch_ff"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": false,
+    "napalmblob": [
+      "nazi_zombie_zct_dshack.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

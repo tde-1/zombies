@@ -1,0 +1,171 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_umbra",
+  "title": "Nazi Zombie Umbra",
+  "source": "custom",
+  "author": "hexzombies",
+  "released": "2013-11-26",
+  "fs_game": "mods/nazi_zombie_umbra",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_umbra.iwd": "6c7e1e8e6f2d828e1348778f40a6068861884b7c01418792b0c68b0305604b14"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000,
+        20000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 20000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 96,
+    "script_count": 96,
+    "entities": 3759,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      20000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_5"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_4"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_3"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_2"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_1"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "6c7e1e8e6f2d828e1348778f40a6068861884b7c01418792b0c68b0305604b14",
+    "map_specific_triggers": [
+      "end_game"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:14:55Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_umbra.exe",
+    "original_sha256": "16ab553e27dc02575996c5b75bc887b7903a982383388b9105ed859474a7b9d6",
+    "original_size": 62232908,
+    "source_url": "http://www.mediafire.com/file/jcswhj424xn88ix/nazi_zombie_umbra.exe/file",
+    "source_page": "https://callofdutyrepo.com/2013/11/26/nazi-zombie-umbra/",
+    "fetched": "2026-09-26T16:12:26Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Umbra (shadow) in latin \u2013 is a horror / twilight zone themed map. Basically it is complete darkness and your only source of light are the various lamp post in the map. Watch out as zombies come through the shadows in every direction \u2013 remember to stay in the light! This map was made purely for fun and was made in a day \u2013 I thought this would be an original take on a standard box map but in a larger and scarier scale \u2013 hope you enjoy your visit to the twilight zone! Features Re skinned PaP, Mystery box and starter pistol (Little Devil) 4 standard perks quizz\u2019s instant grenades Instant runners complete darkness buyable ending Bo2 Shaders No DOGS! 5 Box Locations -Massive Darkness with few light zones",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [
+        "nazi_zombie_umbra.iwd:images/specialty_fastreload_zombies.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 87.0,
+    "addon_iwds": [],
+    "flags": [],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_umbra.ff",
+      "nazi_zombie_umbra_patch.ff",
+      "nazi_zombie_umbra.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

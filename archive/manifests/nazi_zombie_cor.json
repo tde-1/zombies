@@ -1,0 +1,132 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_cor",
+  "title": "Nazi Zombie Core",
+  "source": "custom",
+  "author": "deleon78",
+  "released": "2010-03-16",
+  "fs_game": "mods/nazi_zombie_cor",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_cor.ff": "ea64427b016dd94dd79b0ab95417aa1ef8a4ce63cc6983a63814a280780f09f9"
+  },
+  "badge": {
+    "main_finish": "round",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "round",
+    "why": "no easter egg or ending found; default Round 20",
+    "verdict_stock_baseline_only": "round",
+    "scripts": 39,
+    "script_count": 39,
+    "entities": 2497,
+    "ee_candidates": [],
+    "ending_words": [],
+    "hardcoded_costs": [
+      1000,
+      1500
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "waydown"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "twinpassage"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "trick"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "sneaky"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "skull"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [],
+    "zombiemode_sha256": "ea64427b016dd94dd79b0ab95417aa1ef8a4ce63cc6983a63814a280780f09f9",
+    "map_specific_triggers": [
+      "music_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:07:12Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_cor-final.exe",
+    "original_sha256": "f56ec863dc916fcf02210dd98ebc596bdce71a6842c49e6ec2a34f268541d31e",
+    "original_size": 242001330,
+    "source_url": "http://www.mediafire.com/file/rmdy5kie98w8ysc/nazi_zombie_cor-final.exe/file",
+    "source_page": "https://callofdutyrepo.com/2010/03/16/nazi-zombie-core/",
+    "fetched": "2026-09-26T16:05:56Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "This is my 1st map. Been playing zombie mods since the start so thought it\u2019s about time I created one of my own. This map will be a very different visually with many unique visual elements. Inspired by zct basement.. and influences from science fiction and horror films; and a pretty creative imagination. It will be in the original Nacht Der Untoten. So It can be used with the tower defence and modern weapons and zct mods\u2026 The map also has custom music triggered by player in game, so you can choose to use it or not. Also custom blocker/doors & custom breakable blockers. All zombies are currently sprinters. Also you\u2019ll have to to hunt for many entries into new areas as I\u2019ve blended buyable blockers into the walls etc. Brief description of map style: I\u2019m trying to give off a sci fi/horror/claustrophobic edge. A lot to explore. On multi-levels. One of the largest maps I\u2019ve seen in Nazi Zombies. It\u2019s likely to be one of a kind.",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [],
+      "loadscreen": null
+    }
+  },
+  "notes": "Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). No finish found by name. Before accepting Round 20, someone should glance at this map's own triggers: music_trigger. ",
+  "precheck": {
+    "map_zone_inflated_mb": 175.5,
+    "addon_iwds": [],
+    "flags": [
+      "client_memory_risk",
+      "no_patch_ff"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": false,
+    "napalmblob": [
+      "nazi_zombie_cor.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

@@ -1,0 +1,186 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_aufgegeben",
+  "title": "Aufgegeben (Abandoned)",
+  "source": "custom",
+  "author": "iNSANiTY3241",
+  "released": "2013-08-25",
+  "fs_game": "mods/nazi_zombie_aufgegeben",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_aufgegeben.iwd": "ab658cb56159043adc4acfee82794e59914fa7f17b110281811b0e098b891cad"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "crawler_round_ending"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000,
+        9000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 9000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 98,
+    "script_count": 98,
+    "entities": 586,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      9000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_door",
+        "auto60"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto58"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto55"
+      ],
+      [
+        1250,
+        "zombie_door",
+        "auto59"
+      ],
+      [
+        1250,
+        "zombie_door",
+        "auto56"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "ab658cb56159043adc4acfee82794e59914fa7f17b110281811b0e098b891cad",
+    "map_specific_triggers": [
+      "moon_teleporter_a_trigger",
+      "moon_teleporter_b_trigger",
+      "trig1",
+      "trig2",
+      "trig3"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:06:17Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_aufgegeben.exe",
+    "original_sha256": "aa6921ac72982d33d86f849d2c23f2cd37ebb6e7b0534b5af1c23e704c46d0d4",
+    "original_size": 97994065,
+    "source_url": "https://www.mediafire.com/file/zb5was31rgp1t7i/nazi_zombie_aufgegeben.exe/file",
+    "source_page": "https://callofdutyrepo.com/2013/08/25/nazi-zombie-aufgegeben/",
+    "fetched": "2026-09-26T16:04:42Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Hello Guys! This is by far my best map no-lie! This is Probably going to be my last map since the summer is almost over! But dont worry I will be back with great maps! So anyway here are the features\u2026 //////FEATURES/////////////// -Starting Pistol as always iNSANiTYS LIL FRIEND (FULL AUTO COLT) -Black Ops Perks -Black Ops weapons -Fixed Juggernog -Fixed Solo Quick Revive -NEW*! Easter Eggs -Hidden Doors -Hidden Rooms ///////STORY////////////// Team 41 has already been killed by the infected and now Team 32 (YOU) is all that is left\u2026 You were sent of to see on an abandoned place, To see if anything \u201cweird\u201d Is going on. You reveal something really shocking\u2026\u2026\u2026",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_aufgegeben"
+      ],
+      "iwd_images": [
+        "nazi_zombie_aufgegeben.iwd:images/loadscreen_nazi_zombie_aufgegeben.iwi",
+        "nazi_zombie_aufgegeben.iwd:images/menu_map_nazi_zombie_aufgegeben.iwi",
+        "nazi_zombie_aufgegeben.iwd:images/weapon_red_cross_background.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_aufgegeben"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 80.4,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 123,
+        "scripts": 0,
+        "bytes": 333477
+      }
+    ],
+    "flags": [],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_aufgegeben.ff",
+      "nazi_zombie_aufgegeben_patch.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

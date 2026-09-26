@@ -1,0 +1,148 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "mp_firstday",
+  "title": "MULTIPLAYER - FIRST DAY",
+  "source": "custom",
+  "author": null,
+  "released": null,
+  "fs_game": "mods/mp_firstday",
+  "script_fingerprints": {},
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "grace_period_ending"
+        }
+      },
+      "candidates": [
+        "grace_period_ending",
+        "match_ending_pretty_soon",
+        "match_ending_soon",
+        "match_ending_very_soon"
+      ],
+      "hardcoded_costs": []
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "grace_period_ending, match_ending_pretty_soon, match_ending_soon, match_ending_very_soon name an ending and are this map's own",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 64,
+    "script_count": 64,
+    "entities": 3741,
+    "ee_candidates": [],
+    "ending_words": [
+      "grace_period_ending",
+      "match_ending_pretty_soon",
+      "match_ending_soon",
+      "match_ending_very_soon"
+    ],
+    "hardcoded_costs": [],
+    "orphan_end_triggers": [],
+    "top_costs": [],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [],
+    "zombiemode_sha256": null,
+    "map_specific_triggers": [
+      "bombtrigger",
+      "bombzone",
+      "breakablewalls_trigs",
+      "ctf_flag_pickup_trig",
+      "ctf_flag_zone_trig",
+      "electric_water_trig",
+      "flag_primary",
+      "flag_primary_linked",
+      "killstreaks_system_trigs",
+      "sab_bomb_allies",
+      "sab_bomb_axis",
+      "sab_bomb_defuse_allies",
+      "sab_bomb_defuse_axis",
+      "sab_bomb_pickup_trig",
+      "sd_bomb_pickup_trig",
+      "switchabledoors_trigs",
+      "train_dmg",
+      "wrong_positions_markers"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:51:49Z"
+    }
+  },
+  "archive": {
+    "original": "mp_firstday.exe",
+    "original_sha256": "0389009cf49522939005c513064ce62df76d26a3234f00c23c1bfe9b975affbe",
+    "original_size": 102384062,
+    "source_url": "https://www.mediafire.com/file/x623z9qze45aty6/mp_firstday.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T16:50:59Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [
+        "mp_firstday.iwd:images/background_streaks_hud.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 100.6,
+    "addon_iwds": [
+      {
+        "file": "mp_weapons.iwd",
+        "entries": 176,
+        "scripts": 0,
+        "bytes": 9875260
+      }
+    ],
+    "flags": [
+      "no_patch_ff"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": false,
+    "napalmblob": [
+      "mp_firstday.iwd:maps/mp/gametypes/_weapons.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

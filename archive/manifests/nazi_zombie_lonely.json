@@ -1,0 +1,129 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_lonely",
+  "title": "Nazi Zombie Lonely",
+  "source": "custom",
+  "author": "{eXg} Moochie",
+  "released": "2009-06-27",
+  "fs_game": "mods/nazi_zombie_lonely",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_lonely.ff": "ee9d26fb914fbdc79d9ae1ae7d4a1cbc4917b1dd3948285ded01a04a0d2e550f"
+  },
+  "badge": {
+    "main_finish": "round",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "round",
+    "why": "no easter egg or ending found; default Round 20",
+    "verdict_stock_baseline_only": "round",
+    "scripts": 55,
+    "script_count": 55,
+    "entities": 511,
+    "ee_candidates": [],
+    "ending_words": [],
+    "hardcoded_costs": [
+      1000,
+      1500
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "hide"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door4"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door3"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door2"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "pf877_auto1"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [],
+    "zombiemode_sha256": "ee9d26fb914fbdc79d9ae1ae7d4a1cbc4917b1dd3948285ded01a04a0d2e550f",
+    "map_specific_triggers": [],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:05:19Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_lonely.exe",
+    "original_sha256": "8ab65bc96591ffe13074a5202d61de9d1263762cd8f52b2ff116eabc9250cfef",
+    "original_size": 44326064,
+    "source_url": "http://www.mediafire.com/file/q7jhnbjmftngjyo/nazi_zombie_lonely.exe/file",
+    "source_page": "https://callofdutyrepo.com/2009/06/27/nazi-zombie-lonely/",
+    "fetched": "2026-09-26T16:02:42Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "The map starts in yard of a house, there it leads to three more possible rooms inside the house. Very tight fighting for survival in this map. It features wall buys and mystery box, along with few camping points to survive in. Overall intresting tense map! Thanks to Wakizashi for providing the map file and screenshots.",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [],
+      "loadscreen": null
+    }
+  },
+  "notes": "Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 76.8,
+    "addon_iwds": [],
+    "flags": [
+      "no_patch_ff"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": false,
+    "napalmblob": [
+      "nazi_zombie_lonely.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

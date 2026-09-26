@@ -1,0 +1,137 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_compounded",
+  "title": "Nazi Zombie Compounded",
+  "source": "custom",
+  "author": "baseball4ev",
+  "released": "2010-08-03",
+  "fs_game": "mods/nazi_zombie_compounded",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_compounded.iwd": "0fe1fe5d658c2dfbf7a539172ad56ee05d75d251baf1f101b05eb22c9625b4f6"
+  },
+  "badge": {
+    "main_finish": "round",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "round",
+    "why": "no easter egg or ending found; default Round 20",
+    "verdict_stock_baseline_only": "round",
+    "scripts": 49,
+    "script_count": 49,
+    "entities": 276,
+    "ee_candidates": [],
+    "ending_words": [],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        1250,
+        "zombie_debris",
+        "stove"
+      ],
+      [
+        1000,
+        "zombie_debris",
+        "couch"
+      ],
+      [
+        1000,
+        "zombie_debris",
+        "couch"
+      ],
+      [
+        1000,
+        "zombie_debris",
+        "bookshelf"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "pf119_auto1"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [],
+    "zombiemode_sha256": "0fe1fe5d658c2dfbf7a539172ad56ee05d75d251baf1f101b05eb22c9625b4f6",
+    "map_specific_triggers": [],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:17:23Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_compounded.exe",
+    "original_sha256": "be4cc12cc40b6c1d7e9136de8b883a6ad08b758bb57e3cac2a7fbddef26f93a4",
+    "original_size": 44345631,
+    "source_url": "http://www.mediafire.com/file/z1k4yki77abxwpf/nazi_zombie_compounded.exe/file",
+    "source_page": "https://callofdutyrepo.com/2010/08/03/nazi-zombie-compounded/",
+    "fetched": "2026-09-26T16:15:31Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Description This is version v1.1. It fixes several bugs and glitches. Fixes: 1. You can\u2019t get outside the map (as far as I know). 2. You can\u2019t walk through the stove upstairs. 3. The browning now has sound. 4. You can\u2019t walk on the ledge behind the hole upstairs. Story background: Welcome aboard marines. Your task today is to investigate some mysterious happenings at a local compound. You will take the train from here and find out what is going on. If all goes well you should be back having dinner with your families tonight, if not\u2026 Well, I wish you the best of luck. Semper Fi. Story real-time: Marine 1: Man this train sure is noisy. Marine 2: You\u2019re telling me man. Marine 3: Quiet marines we\u2019re almost there. Marine 4: I thought this was supposed to be an easy run sarge? Marine 3: You can never be too careful, soldier. *Brakes Screeching* Marine 2: Hey , we\u2019re slowing down. Marine 3: Sit tight till we fully stop, no use in jumping out of a moving train and spraining an ankle. Marine 1: OK we\u2019ve stopped. Marine 3: Open the door. Marine 4: O SHOOT!! WHAT IS THAT!! Marine 3: EVERYONE OUT! LET\u2019S MOVE! WE GOT COMPANY! Marine 2: MAN THEY GOT THE DRIVER AND ENGINEER ALREADY! Marine 3: Quickly, through this gate. Lock it tight. Marine 1: Man, they are coming over the freakin walls! Marine 3: C\u2019mon guys let\u2019s move! Into the house, lock the door! Marine 4: What do we do now, they are still coming over the walls. Marine 2: Sarge they are approaching the house! Marine 3: Weapons free, I ",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_compounded",
+        "loadscreen_nazi_zombie_oldtown"
+      ],
+      "iwd_images": [],
+      "loadscreen": "loadscreen_nazi_zombie_compounded"
+    }
+  },
+  "notes": "Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 76.0,
+    "addon_iwds": [],
+    "flags": [
+      "no_patch_ff"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": false,
+    "napalmblob": [
+      "nazi_zombie_compounded.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

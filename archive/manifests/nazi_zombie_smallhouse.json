@@ -1,0 +1,183 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_smallhouse",
+  "title": "Nazi Zombie House of Fun (Smallhouse)",
+  "source": "custom",
+  "author": "razzadaman",
+  "released": "2014-02-23",
+  "fs_game": "mods/nazi_zombie_smallhouse",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_smallhouse.iwd": "f24481316084db17a1ff6452c48e3c1a5568d000892bb6379bd31f0fc817f29e"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "crawler_round_ending"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        5000,
+        6500,
+        9000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 9000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 99,
+    "script_count": 99,
+    "entities": 465,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000,
+      6500,
+      9000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "zombie_door",
+        "pap_door"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "outside_door"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door4"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door3"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door2"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "f24481316084db17a1ff6452c48e3c1a5568d000892bb6379bd31f0fc817f29e",
+    "map_specific_triggers": [
+      "buy_powerup"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:00:56Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_smallhouse.exe",
+    "original_sha256": "bd708f3185f0ae1943ee0b794df26fb53ac9236fae6bbc72716eb1eae5dfed48",
+    "original_size": 79942634,
+    "source_url": "https://www.mediafire.com/file/ifzyyhgcwcfw44f/nazi_zombie_smallhouse.exe/file",
+    "source_page": "https://callofdutyrepo.com/2014/02/23/nazi-zombie-house-of-fun-smallhouse/",
+    "fetched": "2026-09-26T16:00:13Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Tons of Custom Features: Perk Drops Custom Starting Pistol Re-Named Weapons Mannable Auto Turret Re-Skinned Characters Re-Skinned Perk Machines (On 4 Original Perks) Custom Main Menu Background (Conflicts With Singleplayer Loadscreen Unfortunately.) Custom HUD Buyable Ammo Removed Dogs Black Ops Perks Re Skinned / Changed Perk Pictures (Bottom Left Hand Corner When Bought) Ascension Style Power (Black and White Before Power is On) All Standard Perks Rain, Thunder and Lightning Effects Custom Loadouts at Spawn Custom Loadscreen (Singleplayer and Multiplayer) Custom \u201cWhitty\u201d Message on Loadup Re-Skinned PaP Guns Re-Skinned Zombies Zombie Counter Bear in mind this is only my 3rd released map, I was working on a Family Guy map many months ago but had to give up due to PC problems. I WANT TO THANK EVERYONE AT ZM AND ALSO ZK (ZOMB1E-KLLR) FOR ALL THE HELP IN MAKING THIS MAP SO FAR! If you guys wanna play the map with me then add me on Skype: TheWelshManc Steam: TheWelshManc or CoD WaW: Simms",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_nazi_zombie_smallhouse"
+      ],
+      "iwd_images": [
+        "nazi_zombie_smallhouse.iwd:images/loadscreen_nazi_zombie_smallhouse.iwi",
+        "nazi_zombie_smallhouse.iwd:images/my_background.iwi",
+        "nazi_zombie_smallhouse.iwd:images/specialty_fastreload_zombies.iwi",
+        "nazi_zombie_smallhouse.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "nazi_zombie_smallhouse.iwd:images/zombie_vending_sleight_logo_c.iwi",
+        "nazi_zombie_smallhouse.iwd:images/zombie_vending_three_gun_logo_c.iwi",
+        "nazi_zombie_smallhouse.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "nazi_zombie_smallhouse.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_smallhouse"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 86.8,
+    "addon_iwds": [],
+    "flags": [],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_smallhouse.ff",
+      "nazi_zombie_smallhouse_patch.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

@@ -1,0 +1,230 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "suffering",
+  "title": "Suffering v1.0",
+  "source": "custom",
+  "author": null,
+  "released": "2025-06-03",
+  "fs_game": "mods/suffering",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@suffering.iwd": "9b9db4866ac059a02697b29d5539c05ec0c49bcce340db13806426e5e171ed26"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "endgame_trigger"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "endgame_trigger"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        3000,
+        5000,
+        100000,
+        200000,
+        300000,
+        500000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, endgame_trigger name an ending and are this map's own; script hardcodes cost 500000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 143,
+    "script_count": 143,
+    "entities": 432,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "endgame_trigger"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      5000,
+      100000,
+      200000,
+      300000,
+      500000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        500,
+        "treasure_chest_use",
+        "pf244_auto1"
+      ],
+      [
+        0,
+        "zombie_door",
+        "auto2"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "9b9db4866ac059a02697b29d5539c05ec0c49bcce340db13806426e5e171ed26",
+    "map_specific_triggers": [
+      "chaos_mode",
+      "double_trigger",
+      "endgame_trigger",
+      "gamble",
+      "hb1",
+      "hb2",
+      "hb3",
+      "hb4",
+      "hb5",
+      "jug_trigger",
+      "jukebox",
+      "left1",
+      "left2",
+      "left3",
+      "left4",
+      "quick_trigger",
+      "rb1",
+      "rb2",
+      "rb3",
+      "rb4",
+      "right1",
+      "right2",
+      "right3",
+      "right4",
+      "rv1",
+      "rv2",
+      "rv3",
+      "rv4",
+      "sb1",
+      "sb2",
+      "sb3",
+      "sb4",
+      "sb5",
+      "speed_trigger",
+      "tp_troll",
+      "troll_trigger_1",
+      "troll_trigger_2",
+      "troll_trigger_3",
+      "troll_trigger_4"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:56:24Z"
+    }
+  },
+  "archive": {
+    "original": "Suffering.exe",
+    "original_sha256": "b4b39b12d1fea2dd32b95f01d36e519f00e831b321e6ce05a992431c59f667d7",
+    "original_size": 513248390,
+    "source_url": "https://www.mediafire.com/file/qhcju9dd83ocn00/Suffering.exe/file",
+    "source_page": "https://callofdutyrepo.com/2025/06/03/suffering-v1-0/",
+    "fetched": "2026-09-26T16:55:02Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 93.1,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 67,
+        "scripts": 0,
+        "bytes": 176320
+      }
+    ],
+    "flags": [],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "suffering.ff",
+      "suffering_patch.ff",
+      "suffering.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "suffering.iwd:maps/tom_music_player_unl.gsc",
+        "menus": [],
+        "responses": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9"
+        ],
+        "note": "in game: a music player"
+      },
+      {
+        "script": "suffering.iwd:maps/ugx_jukebox.gsc",
+        "menus": [],
+        "responses": [],
+        "note": "in game: the jukebox"
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

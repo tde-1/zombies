@@ -1,0 +1,192 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_zombu",
+  "title": "ZOMBIE UNIT",
+  "source": "custom",
+  "author": "EmptyCell",
+  "released": "2013-08-07",
+  "fs_game": "mods/nazi_zombie_zombu",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_zombu.iwd": "217c910538168eaec7a6141755f302065f2a8c226a13f6869c5cad2762fca649"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000,
+        20000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 20000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 124,
+    "script_count": 124,
+    "entities": 1297,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      20000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "shortcut"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "secret"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "endsecdoor"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door5"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door3"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "217c910538168eaec7a6141755f302065f2a8c226a13f6869c5cad2762fca649",
+    "map_specific_triggers": [
+      "end_game",
+      "music_box_player"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:17:51Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_zombu.exe",
+    "original_sha256": "2ae7d46323c03db1bbdc0173bdfa6394f2abac992bb995b264fbf8be4d2f344f",
+    "original_size": 201115218,
+    "source_url": "http://www.mediafire.com/file/7cl1pjp0sprhvm9/nazi_zombie_zombu.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T16:16:15Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Description Hi, guys\u2026 This is my second map\u2026 Please, read all of Description, there are tips for hidden thingies Zombie Unit \u2014\u2014\u2014\u2014\u2014- You (and your mates, if you play coop) are going to Survivors Unit. They said it will be safe here, and you will get some rest. But you know, gates was abadoned and nobody was around here\u2026 You are went to main facility\u2026 But what happens Well, you don\u2019t get a rest again Improvements compared Tunnelrat \u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014 \u2013 Zombie Counter \u2013 Custom Menu Music \u2013 Custom Music in Music Player (finally) \u2013 There aren\u2019t stuckable doors (or debris)!!! \u2013 At start you have 8 nades (but if you get max ammo, you will have only 4!) \u2013 You can get bazooka (But hey\u2026 Try to get it) \u2013 Perks (PS: You don\u2019t have to turn power on, and vending machines, if you will prone before them, you will get little amount of money) \u2013 Aaaaand buyable ending \u2013 Actually I forgot about super last room support with PPSH Some Credits \u2014\u2014\u2014\u2014\u2014\u2014 JoeyBBB \u2013 For Help Tom_BMX \u2013 For Music Player ZM Community \u2013 For Help, too Known Bugs \u2014\u2014\u2014\u2014\u2014\u2013 \u2013 Before Admin Room, you can camp and they will not come for you\u2026 (But I hope you will play fairly) \u2013 Few another bugs, I forgot about them spanking1 , sorry I hope you enjoy this one\u2026 I know, its nothing extra, but I think its decent. (I hope) And again, I strongly recommend to play this with friends More friends = More fun Some fact: Write down at comments, if you found \u201dOWNED!\u201d sign\u2026 TIP: In last room, where are these soldiers, look under stairs, you will find ",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 116.5,
+    "addon_iwds": [],
+    "flags": [
+      "client_memory_risk"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_zombu.ff",
+      "nazi_zombie_zombu_patch.ff"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "nazi_zombie_zombu.iwd:maps/tom_music_player_unl.gsc",
+        "menus": [],
+        "responses": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9"
+        ],
+        "note": "in game: a music player"
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

@@ -1,0 +1,202 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_darklegion",
+  "title": "Nazi Zombie Darklegion",
+  "source": "custom",
+  "author": "Darklegion",
+  "released": "2011-12-31",
+  "fs_game": "mods/nazi_zombie_darklegion",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_darklegion.iwd": "a0b224c6981c78ab6fe31074c64dc8e0f416da074d978fbe354a92b5f9422ae9"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "crawler_round_ending"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 5000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 105,
+    "script_count": 105,
+    "entities": 758,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "weapon_upgrade",
+        "auto37"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "door4"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "door3"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "door2"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "door1"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "a0b224c6981c78ab6fe31074c64dc8e0f416da074d978fbe354a92b5f9422ae9",
+    "map_specific_triggers": [
+      "activate_mg",
+      "art_trig",
+      "buy_powerup",
+      "music_box_player"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:21:00Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_DARKLEGION.exe",
+    "original_sha256": "6eb19798ac751c7155f7cd8d9bd92d0206b63664d3022e56a9b03c945a07945e",
+    "original_size": 189033632,
+    "source_url": "https://www.mediafire.com/file/85htbvj2wqp7zmc/nazi_zombie_DARKLEGION.exe/file",
+    "source_page": "https://callofdutyrepo.com/2011/12/31/nazi-zombie-darklegion/",
+    "fetched": "2026-09-26T16:19:52Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Mapped by \u2013 DARKLEGION fixed corrupted \u2013 Tom-Bmx The map contains: _Auto_turrets dance1 _Zombie_counter dance1 _Wind dance1 _Menu_music_make_by_stig4532 dance1 _Music_box dance1 _All_the_powerups dance1 _Buyable_powerups dance1 _Zombie_uniforms_By_X_President dance1 _All_4_perks dance1 _Perk_HUD_ZM dance1 _Buyable_upgrade_weapons_only(the others in the box(not upgrade) dance1 _Buyable_airstrike dance1 mhhh i can\u2019t fix the errors on the map for what i deleted it( fight1) the weapon beretta not have aim and don\u2019t work the knife, I CAN\u2019T DISABLE THE CONSOLE( fight1) and others errors thanks to all for the help!!!!! in specialy: Towniy, Tom_Bmx, stig4532, Mrhankey91, npissoawsome, Cinnober, Paragalor and Darkflame(for the mods tools)",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_darklegion",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "nazi_zombie_darklegion.iwd:images/loadscreen_nazi_zombie_darklegion.iwi",
+        "nazi_zombie_darklegion.iwd:images/loadscreen_nazi_zombie_no_more.dds",
+        "nazi_zombie_darklegion.iwd:images/menu_map_nazi_zombie_darklegion.iwi",
+        "nazi_zombie_darklegion.iwd:images/specialty_fastreload_zombies.dds",
+        "nazi_zombie_darklegion.iwd:images/specialty_fastreload_zombies.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_darklegion"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 89.6,
+    "addon_iwds": [],
+    "flags": [],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_darklegion.ff",
+      "nazi_zombie_darklegion_patch.ff",
+      "nazi_zombie_darklegion.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "nazi_zombie_darklegion.iwd:maps/tom_music_player_unl.gsc",
+        "menus": [],
+        "responses": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9"
+        ],
+        "note": "in game: a music player"
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

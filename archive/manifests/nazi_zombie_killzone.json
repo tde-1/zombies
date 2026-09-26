@@ -1,0 +1,212 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_killzone",
+  "title": "Nazi Zombie Killzone Revisited",
+  "source": "custom",
+  "author": "Mr Hankey & Tom_bmx Version: 1.1",
+  "released": "2010-03-21",
+  "fs_game": "mods/nazi_zombie_killzone",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@mod.ff": "535735dffd418b1e14477e41ba32efcfdfd6fd89b7ae446c4288c29b142a6986"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "bunker_door_win"
+        }
+      },
+      "candidates": [
+        "bunker_door_win",
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        3500,
+        5000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "bunker_door_win, crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 5000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 102,
+    "script_count": 102,
+    "entities": 1349,
+    "ee_candidates": [],
+    "ending_words": [
+      "bunker_door_win",
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      3500,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        3500,
+        "zombie_debris_sewer",
+        "tunnel"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "train_gate_left"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "slidingdoor"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto2158"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "pf331_auto126"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "535735dffd418b1e14477e41ba32efcfdfd6fd89b7ae446c4288c29b142a6986",
+    "map_specific_triggers": [
+      "art_trig",
+      "buker_door_hint",
+      "dam_door_trigger",
+      "fuse_buy_location",
+      "garage_door_trigger",
+      "house_msg",
+      "pack_doort_trigger",
+      "power_door_player_check",
+      "power_door_trigger",
+      "power_room_lock",
+      "power_trap_damage",
+      "record_player",
+      "sewer_triggger_check",
+      "zapper_damage_bridge",
+      "zombie_debris_sewer"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:00:04Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_killzone_rev_1.1.exe",
+    "original_sha256": "5f7c7ef53d7b2b30588776cba0c492034527e921040aa222f70bbc9e60f33a16",
+    "original_size": 120069812,
+    "source_url": "http://www.mediafire.com/file/w30is20pta5p8os/nazi_zombie_killzone_rev_1.1.exe/file",
+    "source_page": "https://callofdutyrepo.com/2010/03/21/nazi-zombie-killzone-revisited/",
+    "fetched": "2026-09-26T15:59:06Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "You and your fellow illegal immigrant buddies have broken into a train yard and find yourself overwhelmed by undead German boarder patrol officers. Can you survive long enough to make it out of the country? Map unique features: * Lots of Der Riese style risers! * Power lights * Edited zone spawning with risers. * Realistic artillery * Hidden power-room of death * Realistic electric trap * Kick a*s Hell Hound round(s) (double the hounds, shorter spawn time) * Players can share guns from the random box (after 6 seconds wait time) * Tom_Bmx In game music player * New Zombie / Hell hound transverses * Win Water Wheel with zombie spawn * Win Pack-a-Punch * Tom_bmx menu Fixed/added in v1.1 * Fixed dog round never ending bug * You now need to find a fuse before the can open the room that leads to power * Ladder disabled during Hell Hound round (players also get removed from ladder) * Added more hints to map * Additional song added Special Notes: * Monky made less annoying (no sayings) * No light on random box (to make the map more challenging) * This map is very very difficult!",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_killzone",
+        "loadscreen_nazi_zombie_ver_ex",
+        "loadscreen_zom1"
+      ],
+      "iwd_images": [
+        "nazi_zombie_killzone.iwd:images/loadscreen_nazi_zombie_killzone.iwi",
+        "nazi_zombie_killzone.iwd:images/lobby_background.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_killzone"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 131.5,
+    "addon_iwds": [],
+    "flags": [
+      "client_memory_risk"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_killzone.ff",
+      "nazi_zombie_killzone_patch.ff"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "mod.ff:maps/tom_killzone_player.gsc",
+        "menus": [],
+        "responses": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5"
+        ],
+        "note": null
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

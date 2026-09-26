@@ -1,0 +1,199 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_testhouse",
+  "title": "Mental Testing Housed",
+  "source": "custom",
+  "author": "dominixer",
+  "released": "2014-07-03",
+  "fs_game": "mods/nazi_zombie_testhouse",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_testhouse.iwd": "a09444f77ceaed52f61cdf760f50960cd7516259bd1291eafcd0d7fad639f0fb"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "crawler_round_ending"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000,
+        9000,
+        100000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 100000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 114,
+    "script_count": 114,
+    "entities": 156,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      9000,
+      100000
+    ],
+    "orphan_end_triggers": [
+      "trigger_teleport_pad_0",
+      "trigger_teleport_pad_1",
+      "trigger_teleport_pad_2"
+    ],
+    "top_costs": [
+      [
+        1000,
+        "zombie_door",
+        "auto54"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_1"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_0"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "a09444f77ceaed52f61cdf760f50960cd7516259bd1291eafcd0d7fad639f0fb",
+    "map_specific_triggers": [],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:06:55Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_testhouse.exe",
+    "original_sha256": "d1e0049476725d80e0a7cedbf9c1c885e28e36204f1df78f463ab0c842534db7",
+    "original_size": 229367860,
+    "source_url": "https://www.mediafire.com/file/c8pheatxalcus2l/nazi_zombie_testhouse.exe/file",
+    "source_page": "https://callofdutyrepo.com/2014/07/03/mental-testing-housed/",
+    "fetched": "2026-09-26T16:05:35Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Description Test House will test your zombie skills, starting in a cramped house but then opening up into the streets for some great hold out locations, see how long you can last! ========= FEATURES: ========= Quiz\u2019s Impact Nades; Ascension power type; Black Ops Guns; Black Ops Perks; Max ammo buy; Typewriter intro text; No wonder weapons \u2013 sorry but they\u2019re too OP and just wreck the fun; Zombie counter; Full auto colt; can get more than 4 perks; Perk bottle drops; Changed drop animations; NO dogs; ================== PATCH FEATURES 1.1: ================== REMOVED perk drops; REMOVED PHD; ADDED more detail; ADDED buyable ending; INCREASED door prices; FIXED BO1 weapons, damage, names and clip size; FIXED glitch spots; CHANGED starting points slightly; NOW WORKS MUCH SMOOTHER MULTIPLAYER; Thankyou to all who made this map possible, taking nearly 4 months I hope to see The NGT crew playing this map and you guys browsing the forums downloading it and trying it too! Constructive criticism is always appreciated, if you have any suggestions on how to improve post them in the comments.",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [
+        "nazi_zombie_testhouse.iwd:images/weapon_red_cross_background.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 106.8,
+    "addon_iwds": [
+      {
+        "file": "DLC3_Weapons.iwd",
+        "entries": 123,
+        "scripts": 0,
+        "bytes": 333477
+      }
+    ],
+    "flags": [],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_youchoose.ff",
+      "nazi_zombie_youchoose_patch.ff",
+      "nazi_zombie_militarybase.ff",
+      "nazi_zombie_militarybase_patch.ff",
+      "nazi_zombie_testhouse.ff",
+      "nazi_zombie_testhouse_patch.ff",
+      "nazi_zombie_testhouse.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "nazi_zombie_testhouse.iwd:maps/tom_music_player_unl.gsc",
+        "menus": [],
+        "responses": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9"
+        ],
+        "note": "in game: a music player"
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

@@ -1,0 +1,169 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_tbm",
+  "title": "TBM",
+  "source": "custom",
+  "author": "MZslayer11",
+  "released": "2014-04-07",
+  "fs_game": "mods/nazi_zombie_tbm",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_tbm.iwd": "12cd69727ab7bc503e8c0ee3aace8c987438e90b6289daa5a979906ae90aaaf4"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "crawler_round_ending"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 5000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 90,
+    "script_count": 90,
+    "entities": 561,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        1500,
+        "zombie_door",
+        "door1"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_1"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_0"
+      ],
+      [
+        600,
+        "weapon_upgrade",
+        "ppsh"
+      ],
+      [
+        500,
+        "betty_purchase",
+        "betty"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "12cd69727ab7bc503e8c0ee3aace8c987438e90b6289daa5a979906ae90aaaf4",
+    "map_specific_triggers": [],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:26:53Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_tbm.exe",
+    "original_sha256": "ccc8ad1afd827c6e4ab02979ff935f952ac343db6bdccd5d3b6e6e427ed7ecbf",
+    "original_size": 62673078,
+    "source_url": "https://www.mediafire.com/file/m4b6ax8nym11hvb/nazi_zombie_tbm.exe/file",
+    "source_page": "https://callofdutyrepo.com/2014/04/07/nazi-zombie-tbm/",
+    "fetched": "2026-09-26T16:25:27Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Description This map is just a plain and simple box map. Sure, this map may be very small and basic, but it is still good fun to slay zombies with your three best friends. Please send me your comments and tell me if I screwed something up. This is my first map so dont worry! There will be loads more to come in my future maps. To tell you the truth, I dont expect a bunch of people to download this. But if you do, thanks for trying it out! \u2013Special thanks to ZK for the inspiration and the AWESOME tutorials!\u2013 Features -4 Perks -Mystery Box -Wall Guns -Pack A Punch -Imperial Zombies",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_nazi_zombie_TBM",
+        "loadscreen_nazi_zombie_tbm"
+      ],
+      "iwd_images": [
+        "nazi_zombie_tbm.iwd:images/loadscreen_nazi_zombie_tbm.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_TBM"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 81.2,
+    "addon_iwds": [],
+    "flags": [],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_tbm.ff",
+      "nazi_zombie_tbm_patch.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

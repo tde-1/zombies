@@ -1,0 +1,255 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_tworema",
+  "title": "PROJECT CONTAMINATION: AWAKENING",
+  "source": "custom",
+  "author": null,
+  "released": null,
+  "fs_game": "mods/nazi_zombie_tworema",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_tworema.iwd": "9407f0936c72dafcfd53ed1694bc7b64510947f4fe414cc5323afe6a1348daae"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "ee_trees_done",
+        "last_step_triggers"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "ee_trees_done, last_step_triggers look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 147,
+    "script_count": 147,
+    "entities": 2862,
+    "ee_candidates": [
+      "ee_trees_done",
+      "last_step_triggers"
+    ],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game",
+      "gersh_teleport",
+      "teleport_spot"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        1500,
+        "zombie_door",
+        "door_20"
+      ],
+      [
+        1500,
+        "zombie_door",
+        "door_14"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "new_area_kek"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "door_8"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "door_16"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "9407f0936c72dafcfd53ed1694bc7b64510947f4fe414cc5323afe6a1348daae",
+    "map_specific_triggers": [
+      "activation_trigger",
+      "baby_trig",
+      "box",
+      "c4_grab",
+      "console_trig",
+      "counter_trig",
+      "disable_dive",
+      "door_s1",
+      "dubstep_trigger",
+      "end_game",
+      "fade_black_trigger",
+      "fuse_trig",
+      "galva_trigger_share",
+      "galva_wall_buy",
+      "keycard_trigger",
+      "kill_trigger",
+      "last_panel",
+      "last_step_triggers",
+      "light_trigger",
+      "low_gravity_area",
+      "lsat_troll",
+      "machine",
+      "number_trigger1",
+      "number_trigger2",
+      "number_trigger3",
+      "number_trigger4",
+      "panels_trigg",
+      "pc_trig",
+      "pipe_trigg",
+      "place_sliqui_trig",
+      "power",
+      "rounds",
+      "rounds_trigger",
+      "scavenger_trig",
+      "vril_trig",
+      "vril_trig1",
+      "xplosion"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:53:17Z"
+    }
+  },
+  "archive": {
+    "original": "Project_Contamination.exe",
+    "original_sha256": "939cc5b4fcb435be3c6c626ce9e6687decaa25ab7805ece2cb0f381dca4f211b",
+    "original_size": 416444145,
+    "source_url": "http://www.mediafire.com/file/cral6f729il1jvc/Project_Contamination.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T16:52:58Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_ber1",
+        "loadscreen_ber2",
+        "loadscreen_ber3",
+        "loadscreen_ber3b",
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_asylum",
+        "loadscreen_nazi_zombie_factory_mini",
+        "loadscreen_nazi_zombie_prototype",
+        "loadscreen_nazi_zombie_sumpf_mini",
+        "loadscreen_nazi_zombie_tworema",
+        "loadscreen_oki2"
+      ],
+      "iwd_images": [
+        "nazi_zombie_tworema.iwd:images/frost_vending_logo_off.iwi",
+        "nazi_zombie_tworema.iwd:images/kva_hazmat_loadouts_col.iwi",
+        "nazi_zombie_tworema.iwd:images/loadscreen_nazi_zombie_tworema.iwi",
+        "nazi_zombie_tworema.iwd:images/marley_griffin_moving_logo_col.iwi",
+        "nazi_zombie_tworema.iwd:images/menu_background_mp_tank_blurred.iwi",
+        "nazi_zombie_tworema.iwd:images/menu_button_backing_right.iwi",
+        "nazi_zombie_tworema.iwd:images/menu_icon_invite.iwi",
+        "nazi_zombie_tworema.iwd:images/menu_icon_invite_small.iwi",
+        "nazi_zombie_tworema.iwd:images/specialty_fastreload_zombies.iwi",
+        "nazi_zombie_tworema.iwd:images/weapon_red_cross_background.iwi",
+        "nazi_zombie_tworema.iwd:images/weapon_red_cross_background_2.iwi",
+        "nazi_zombie_tworema.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "nazi_zombie_tworema.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "nazi_zombie_tworema.iwd:images/_-gzombie_vending_ads_logo_c_on.iwi",
+        "nazi_zombie_tworema.iwd:images/_-gzombie_vending_sleight_logo_c.iwi",
+        "nazi_zombie_tworema.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi",
+        "nazi_zombie_tworema.iwd:images/_-gzombie_vending_three_gun_logo_c_on.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_tworema"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 98.3,
+    "addon_iwds": [
+      {
+        "file": "nuketown.iwd",
+        "entries": 43,
+        "scripts": 7,
+        "bytes": 9753423
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_tworema_patch.ff",
+      "nazi_zombie_tworema.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "nazi_zombie_tworema.iwd:maps/_zombiemode.gsc",
+        "menus": [
+          "mc_loadscreen"
+        ],
+        "responses": [
+          "ads",
+          "attack",
+          "use"
+        ],
+        "note": null
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

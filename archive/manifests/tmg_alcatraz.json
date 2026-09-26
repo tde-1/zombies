@@ -1,0 +1,184 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "tmg_alcatraz",
+  "title": "Tmg Alcatraz Dw",
+  "source": "custom",
+  "author": null,
+  "released": null,
+  "fs_game": "mods/tmg_alcatraz",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@tmg_alcatraz.iwd": "b6db8d273c2dcabf26b2fac5222b3ebbb4cea6b5d8692d65d1ae7d4c32bc57ab"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": []
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "no easter-egg wording, but a numbered series lever1..6 (6 members) and 1 series overall - the shape of a collect-N quest; confirm",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 119,
+    "script_count": 119,
+    "entities": 3008,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      35000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "blocker20"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "blocker20"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "blocker1"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "blocker1"
+      ],
+      [
+        2000,
+        "weapon_upgrade",
+        "auto254"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "b6db8d273c2dcabf26b2fac5222b3ebbb4cea6b5d8692d65d1ae7d4c32bc57ab",
+    "map_specific_triggers": [
+      "cabinet_trig",
+      "call_lift_up",
+      "doubletap_pwr_lever",
+      "end_game",
+      "enter",
+      "hipade_pwr_lever",
+      "jugg_pwr_lever",
+      "nukemkill",
+      "nukemkill1",
+      "nukemtrap",
+      "nukemtrap1",
+      "pap_0_pwr_lever",
+      "power_fuel_loc",
+      "revive_pwr_lever",
+      "sleight_pwr_lever",
+      "sprint_pwr_lever",
+      "stoppower_pwr_lever",
+      "wincat"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:58:20Z"
+    }
+  },
+  "archive": {
+    "original": "TMG_Alcatraz_DW.exe",
+    "original_sha256": "438ccd6636ca437afcbc653305d69619d7074c8552fcc47630e3d589d42234f1",
+    "original_size": 343357347,
+    "source_url": "https://archive.org/download/tmg-castle/TMG_Alcatraz_DW.exe",
+    "source_page": "https://archive.org/details/tmg-castle",
+    "fetched": "2026-09-26T16:57:05Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "archive_file"
+    ],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_tmg_alcatraz",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "tmg_alcatraz.iwd:images/alcatraz_loadscreen.iwi",
+        "tmg_alcatraz.iwd:images/loadscreen_tmg_alcatraz.iwi",
+        "tmg_alcatraz.iwd:images/menu_background_coop.iwi",
+        "tmg_alcatraz.iwd:images/menu_map_tmg_alcatraz.iwi",
+        "tmg_alcatraz.iwd:images/weapon_red_cross_background - Copy.iwi",
+        "tmg_alcatraz.iwd:images/weapon_red_cross_background.iwi"
+      ],
+      "loadscreen": "loadscreen_tmg_alcatraz"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 176.9,
+    "addon_iwds": [],
+    "flags": [
+      "client_memory_risk"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "tmg_alcatraz.ff",
+      "tmg_alcatraz_patch.ff",
+      "tmg_alcatraz.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

@@ -1,0 +1,167 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_447",
+  "title": "447",
+  "source": "custom",
+  "author": "risukasa5",
+  "released": "2012-06-16",
+  "fs_game": "mods/nazi_zombie_447",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_447.iwd": "b3667df4e1b6e9e07e9e8257db51d1c3059be10690a895d5e745921ab8e0309b"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "crawler_round_ending"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 5000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 97,
+    "script_count": 97,
+    "entities": 149,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        1500,
+        "zombie_debris",
+        "door3"
+      ],
+      [
+        1000,
+        "zombie_debris",
+        "door2"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_1"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_0"
+      ],
+      [
+        750,
+        "zombie_debris",
+        "door1"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "b3667df4e1b6e9e07e9e8257db51d1c3059be10690a895d5e745921ab8e0309b",
+    "map_specific_triggers": [
+      "kino_mainframe_trigger",
+      "kino_teleporter_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:06:54Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_447.exe",
+    "original_sha256": "a7fe140c2d37466ee95106fe74bf2825324dafc0aa4709737335e359b71dc69b",
+    "original_size": 60001829,
+    "source_url": "https://www.mediafire.com/file/t5o7l9loky5hjcv/nazi_zombie_447.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T16:05:46Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Okay, MY SECOND MAP IS OUT!! YAY The map design isn\u2019t mine, it\u2019s by my 9 year old little brother Size: Small Difficulty: Medium \u2013 Co-Op, Hard \u2013 Solo The map includes: All Perk-A-Colas, FIXED JUGGERNOG TO 5 HITS! Kino style teleporter Pack-A-Punch 2 Mystery Box locations NO DOGS Buyable weapons: \u2013 Kar98k -M1A1 Carbine \u2013 Double Barreled Shotgun \u2013 Thompson \u2013 STG-44 \u2013 PPSh \u2013 Bouncing Betty\u2019s \u2013 Bowie Knife Hopefully somebody wants to play this with me :3 Here is a gameplay video: [HORRIBLE QUALITY] I PLAYED AT 5 FPS SO DON\u2019T CALL ME NOOB PLAYER xD",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 78.3,
+    "addon_iwds": [],
+    "flags": [],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_447.ff",
+      "nazi_zombie_447_patch.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

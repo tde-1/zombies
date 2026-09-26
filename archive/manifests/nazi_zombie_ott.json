@@ -1,0 +1,227 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_ott",
+  "title": "ZOMBIE OTTAWA",
+  "source": "custom",
+  "author": "Darkrapture",
+  "released": "2010-08-26",
+  "fs_game": "mods/nazi_zombie_ott",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@ZCT_mod.iwd": "b5d675cf92b264f326886c58c16eeaac8223615cc4f99ce6d3158caeee696e1b"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "hell_exit_door_parts",
+        "zombie_spawner_init_boss"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "hell_exit_door_parts, zombie_spawner_init_boss look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 65,
+    "script_count": 65,
+    "entities": 3943,
+    "ee_candidates": [
+      "hell_exit_door_parts",
+      "zombie_spawner_init_boss"
+    ],
+    "ending_words": [
+      "teleport_fx_hell"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "stair1"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "shed1"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "room1"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "roof"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "living"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc"
+    ],
+    "zombiemode_sha256": "b5d675cf92b264f326886c58c16eeaac8223615cc4f99ce6d3158caeee696e1b",
+    "map_specific_triggers": [
+      "buy_autoturrets",
+      "buy_powerup",
+      "catacombs_personality",
+      "enter",
+      "fall_death",
+      "fart_sound",
+      "hanging_sound",
+      "hell_blocker_trigger",
+      "hell_blockers",
+      "hell_chest",
+      "multiperk",
+      "own_powerups",
+      "pap_chest",
+      "record_player",
+      "sex_sound",
+      "spawn_zoning",
+      "steal_money",
+      "stop_stealing",
+      "tom_music",
+      "trigger_one",
+      "trigger_two",
+      "tunnel_health",
+      "zombie_perks"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:54:21Z"
+    }
+  },
+  "archive": {
+    "original": "Zombie_Ottawa.exe",
+    "original_sha256": "1ead038ee0f42eeb687ef6a17b32fa0f1169f797c388ec3870d68290dd58e4dc",
+    "original_size": 189102258,
+    "source_url": "http://www.mediafire.com/file/gmc85aufl2gjc9g/Zombie_Ottawa.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T15:52:18Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "31st December 1999 \u2013 3am \u2013 Michael\u2019s Home \u2013 London, England You\u2019ve awoken to the sounds of loud screams and moans coming from the walls to find mysterious fire holes have appeared through out your home along with an army of undead creatures desperately trying to break through and tear the flesh from your bones! This is not the big New Years Eve everyone had planned! Fortunately for you there appears to be powers at here work other than the forces of evil and a glimmer of hope has emerged in the form of bright lights on the roof, eerie messages scribbled on walls and a mysterious wooden box has magically appeared in one of the upstairs bedrooms. Your mission is clear; fight your way through the zombie hoards and make your way up to the roof and stop this hellish invasion before it\u2019s too late! In this map, salvation truly lies above.",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_factory",
+        "loadscreen_nazi_zombie_maze",
+        "loadscreen_nazi_zombie_maze2",
+        "loadscreen_nazi_zombie_maze3",
+        "loadscreen_nazi_zombie_maze4",
+        "loadscreen_nazi_zombie_maze5",
+        "loadscreen_nazi_zombie_mp2_1",
+        "loadscreen_nazi_zombie_ott",
+        "loadscreen_nazi_zombie_subway",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "ZCT_mod.iwd:images/loadscreen_nazi_zombie_ott.iwi",
+        "ZCT_mod.iwd:images/menu_map_nazi_zombie_ott.iwi",
+        "ZCT_mod.iwd:images/menu_zct_mod.iwi",
+        "ZCT_mod.iwd:images/menu_zct_mod_wide.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_ott"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 132.9,
+    "addon_iwds": [
+      {
+        "file": "ZCT_mod.iwd",
+        "entries": 255,
+        "scripts": 31,
+        "bytes": 18155703
+      },
+      {
+        "file": "ott_music.iwd",
+        "entries": 16,
+        "scripts": 0,
+        "bytes": 96166029
+      }
+    ],
+    "flags": [
+      "client_memory_risk",
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "nazi_zombie_ott.ff"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "nazi_zombie_ott.ff:maps/_tom_ott_player.gsc",
+        "menus": [],
+        "responses": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "note": null
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

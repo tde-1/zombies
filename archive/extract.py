@@ -96,6 +96,43 @@ def run_innoextract(path, outdir):
     return r.returncode, (r.stdout or "") + (r.stderr or "")
 
 
+def run_unar(path, outdir):
+    """RAR (incl. RAR5) where the 7-Zip build has no RAR codec (Debian's 7zip is dfsg)."""
+    exe = shutil.which("unar")
+    if not exe:
+        return None, "unar not installed"
+    r = subprocess.run([exe, "-q", "-f", "-D", "-o", outdir, path],
+                       capture_output=True, text=True, errors="replace")
+    return r.returncode, (r.stdout or "") + (r.stderr or "")
+
+
+def fix_names(root):
+    """Rename entries whose names are not UTF-8 (old zips/rars store cp1252/cp437 bytes,
+    e.g. `FluchtF\xfcrdieToten`): the bucket key and extract.json need real text."""
+    if os.name == "nt":
+        return 0
+    n = 0
+    for d, dirs, files in os.walk(root, topdown=False):
+        for name in files + dirs:
+            try:
+                name.encode("utf-8")
+                continue
+            except UnicodeEncodeError:
+                pass
+            raw = os.fsencode(name)
+            for enc in ("cp1252", "cp437", "latin-1"):
+                try:
+                    good = raw.decode(enc)
+                    break
+                except UnicodeDecodeError:
+                    continue
+            src, dst = os.path.join(d, name), os.path.join(d, good)
+            if not os.path.exists(dst):
+                os.rename(src, dst)
+                n += 1
+    return n
+
+
 def walk(root):
     for dirpath, _dirs, files in os.walk(root):
         for f in files:
@@ -235,9 +272,21 @@ def process(norm, original, report):
                 out["errors"].append("7-Zip rc=%d and innoextract rc=%d" % (rc, rc2))
             else:
                 rc, log = 0, log2
+        elif rc != 0 and kind in ("rar", "zip", "7z"):
+            shutil.rmtree(exdir, ignore_errors=True)
+            rc2, log2 = run_unar(original, exdir)
+            if rc2 == 0:
+                rc, log = 0, "7-Zip rc=%d; unar ok" % rc
+            else:
+                out["errors"].append("7-Zip rc=%d and unar %s: %s" % (
+                    rc, rc2 if rc2 is not None else log2, log.strip()[:300]))
         elif rc != 0:
             out["errors"].append("7-Zip rc=%d: %s" % (rc, log.strip()[:400]))
     out["extract_log"] = log.strip()[-1500:]
+    if os.path.isdir(exdir):
+        renamed = fix_names(exdir)
+        if renamed:
+            out["renamed_non_utf8"] = renamed
 
     if not os.path.isdir(exdir):
         out["errors"].append("nothing extracted")

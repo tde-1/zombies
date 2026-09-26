@@ -1,0 +1,196 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "train_dead_v2",
+  "title": "Train Dead V2",
+  "source": "custom",
+  "author": "Avalebor",
+  "released": "2020-09-16",
+  "fs_game": "mods/train_dead_v2",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@train_dead_v2.iwd": "6a90c69084fcf35d1b0c206d28009e1aedebd3c421ef9cc931d9c56bc88654c2"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "teleport_zombies"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game",
+        "teleport_zombies"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        5000,
+        55000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game, teleport_zombies name an ending and are this map's own; script hardcodes cost 55000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 112,
+    "script_count": 112,
+    "entities": 2171,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game",
+      "teleport_zombies"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000,
+      55000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "zombie_door",
+        "d_vagon1"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_0"
+      ],
+      [
+        500,
+        "betty_purchase",
+        "betty"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "6a90c69084fcf35d1b0c206d28009e1aedebd3c421ef9cc931d9c56bc88654c2",
+    "map_specific_triggers": [
+      "art_trig",
+      "buy_powerup",
+      "enter",
+      "hankey_slidedoor",
+      "rails",
+      "shoot_trig",
+      "teleport_zombies",
+      "trig_b1",
+      "trig_b2",
+      "trig_b3",
+      "trig_b4",
+      "trig_b5",
+      "vector_door_trig_z1",
+      "vector_door_trig_z2",
+      "vector_door_trig_z3",
+      "vector_door_trig_z4",
+      "vector_door_trig_z5",
+      "vector_door_trig_z6",
+      "veh_trig"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:57:27Z"
+    }
+  },
+  "archive": {
+    "original": "train_dead_v2.exe",
+    "original_sha256": "39cc19cbf5d3b47f58b9cc2a82587c639e24dc8304e71e570af2fba0e35e0ba6",
+    "original_size": 162048680,
+    "source_url": "http://www.mediafire.com/file/ls6vzhlu76qd8te/train_dead_v2.exe/file",
+    "source_page": "https://callofdutyrepo.com/2020/09/16/train-dead-v2/",
+    "fetched": "2026-09-26T16:56:35Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "challenge",
+      "buyable_ending"
+    ],
+    "catalogue_description": "Lite version of the Train_Dead map. Now you can go to the roof of the car. If you fell off the car, you will appear on the respawn (8th car). The Vogon restaurant has a hint for earning bonus points. The task is the same \u2013 to get to the locomotive and call artillery support. Features: \u2013 zombie counter; \u2013 7 perks; \u2013 buyable game ending (THE END); \u2013 Infinite Warfare weapons; \u2013 no dogs; \u2013 no teleports; \u2013 no boxes with weapons (all weapons on the walls); Credits: MrDunlop4 \u2013 Nuketown 2025 Character; drdan1959 \u2013 Shunting diesel locomotive model; asus89 \u2013 p6_blk_fluorescent_light models; ugx-mods.com \u2013 ugx_weapon_box model; shippuden1592 \u2013 weapon models: Kendall&Hornet, X-Eon, G-Rail, Atlas, zm_mp5; Ricos \u2013 weapon model Dingo; Rorke \u2013 weapons m60; nukem \u2013 easy_teleporter scripts; Mrhankey91, Gogeta \u2013 SlideDoors script; Tom_Bmx \u2013 artillery script; SpyroScope \u2013 Text type Typewriter.",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_train_dead_v2",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "train_dead_v2.iwd:images/display_train_dead_menu.iwi",
+        "train_dead_v2.iwd:images/display_train_dead_menu2.iwi",
+        "train_dead_v2.iwd:images/display_train_dead_menu3.iwi",
+        "train_dead_v2.iwd:images/loadscreen_train_dead_v2.iwi",
+        "train_dead_v2.iwd:images/menu_map_train_dead_v2.iwi",
+        "train_dead_v2.iwd:images/specialty_fastreload_zombies.iwi",
+        "train_dead_v2.iwd:images/weapon_red_cross_background.iwi"
+      ],
+      "loadscreen": "loadscreen_train_dead_v2"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 77.4,
+    "addon_iwds": [],
+    "flags": [],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "train_dead_v2_patch.ff",
+      "train_dead_v2.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

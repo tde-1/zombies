@@ -1,0 +1,146 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_bas",
+  "title": "Nazi Zombie Bas",
+  "source": "custom",
+  "author": "rickb",
+  "released": "2010-02-14",
+  "fs_game": "mods/nazi_zombie_bas",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@mod.ff": "01310faa8d270e38dab2f00311787e5a866f03ec92587d6d52d3631a031824f5"
+  },
+  "badge": {
+    "main_finish": "round",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "round",
+    "why": "no easter egg or ending found; default Round 20",
+    "verdict_stock_baseline_only": "round",
+    "scripts": 42,
+    "script_count": 42,
+    "entities": 1163,
+    "ee_candidates": [],
+    "ending_words": [],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "mydoor9"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "mydoor3"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "mydoor3"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "mydoor14"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "mydoor12"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [],
+    "zombiemode_sha256": "01310faa8d270e38dab2f00311787e5a866f03ec92587d6d52d3631a031824f5",
+    "map_specific_triggers": [],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:00:06Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_bas.exe",
+    "original_sha256": "fd47be2bccf79d0c7c0e8d527c6b84f559bb99b2973ec0869927fd16aedf02ba",
+    "original_size": 73310931,
+    "source_url": "https://www.mediafire.com/file/kjq3r9s8tsng54m/nazi_zombie_bas.exe/file",
+    "source_page": "https://callofdutyrepo.com/2010/02/14/nazi-zombie-bas/",
+    "fetched": "2026-09-26T15:59:19Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "My first map and it\u2019s sort of based around Okinawa_Castle, it\u2019s quite a fairly big map so i took the juggernaut out. \u2013 Destructible vehicles & glass \u2013 perk-a-Cola machines(3) \u2013 Custom Electroshock Defense \u2013 Mounted machine gun\u2019s \u2013 Bouncing Betty \u2013 Zombie risers \u2013 Free hidden walther hand gun \u2013 moving random box",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_ber1",
+        "loadscreen_ber2",
+        "loadscreen_ber3",
+        "loadscreen_ber3b",
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_asylum",
+        "loadscreen_nazi_zombie_ver_ex",
+        "loadscreen_oki1",
+        "loadscreen_oki2",
+        "loadscreen_oki3",
+        "loadscreen_pby_fly"
+      ],
+      "iwd_images": [],
+      "loadscreen": null
+    }
+  },
+  "notes": "Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 127.6,
+    "addon_iwds": [],
+    "flags": [
+      "client_memory_risk",
+      "no_patch_ff"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": false,
+    "napalmblob": [
+      "nazi_zombie_bas.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

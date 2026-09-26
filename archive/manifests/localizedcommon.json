@@ -1,0 +1,101 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "localizedcommon",
+  "title": "Localized Common",
+  "source": "custom",
+  "author": null,
+  "released": null,
+  "fs_game": "mods/localizedcommon",
+  "script_fingerprints": {},
+  "badge": {
+    "main_finish": "round",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "round",
+    "why": "no easter egg or ending found; default Round 20",
+    "verdict_stock_baseline_only": "round",
+    "scripts": 27,
+    "script_count": 27,
+    "entities": 0,
+    "ee_candidates": [],
+    "ending_words": [],
+    "hardcoded_costs": [],
+    "orphan_end_triggers": [],
+    "top_costs": [],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": null,
+    "map_specific_triggers": [],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:49:04Z"
+    }
+  },
+  "archive": {
+    "original": "localized_common.ff",
+    "original_sha256": "53cfc29698c22541bc14d779157c8def13157b3ae5372b77178d4a9c5ef47c39",
+    "original_size": 44130848,
+    "source_url": "https://archive.org/download/nazi_zombie_school/czm_fnaf4/localized_common.ff",
+    "source_page": "https://archive.org/details/nazi_zombie_school",
+    "fetched": "2026-09-26T16:48:58Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "fastfile",
+    "shipped_executables": [],
+    "catalogue_tags": [
+      "archive_file"
+    ],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_loadout.gsc); re-verify the generic down/revive/score events on it. ",
+  "precheck": {
+    "map_zone_inflated_mb": null,
+    "addon_iwds": [],
+    "flags": [
+      "no_patch_ff",
+      "no_map_ff"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": false,
+    "napalmblob": [
+      "localized_common.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud run: a loose fastfile from an archive.org dump (load/localized/patch zone of another map), not a map",
+  "not_a_map": true
+}

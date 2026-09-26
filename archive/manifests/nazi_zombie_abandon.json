@@ -1,0 +1,185 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_abandon",
+  "title": "Nazi Zombie Abandon",
+  "source": "custom",
+  "author": "HOGRampage",
+  "released": "2010-02-27",
+  "fs_game": "mods/nazi_zombie_abandon",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_abandon.iwd": "6b22d9f2e5737ade1f52939ef350c2d2e6f71f99a9d346703181721c8dbee67c",
+    "maps/back/_zombiemode.gsc@nazi_zombie_abandon.iwd": "08eded4202b3c6b636afbb555fee8031d571083214bdf8a559a3a87b6c4b91bf"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "crawler_round_ending"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 5000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 111,
+    "script_count": 111,
+    "entities": 854,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2500,
+        "weapon_upgrade",
+        "?"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "auto35"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "auto34"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "auto33"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "auto31"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "6b22d9f2e5737ade1f52939ef350c2d2e6f71f99a9d346703181721c8dbee67c",
+    "map_specific_triggers": [
+      "dead_trig_dam",
+      "dead_trig_look",
+      "radio_1_trig",
+      "radio_2_trig",
+      "radio_3_trig",
+      "radio_4_trig"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:55:03Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_abandoned_1.1.exe",
+    "original_sha256": "edce3bd23902ec0f7ee601ba79756be2d7b3ab364d1bbaa62a8db8f62345a775",
+    "original_size": 73545436,
+    "source_url": "https://www.mediafire.com/file/u7ywj7zq0u9al2z/nazi_zombie_abandoned_1.1.exe/file",
+    "source_page": "https://callofdutyrepo.com/2010/02/27/nazi-zombie-abandon/",
+    "fetched": "2026-09-26T15:53:46Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Storyline After Bravo team escaped the underground research facility, they headed east to an abandoned farm to look for any survivors \u2013 there were none \u2013 it was dead silent. As they were about to leave it, however, they heard growling of some sort and then all hell broke loose. The zombies didn\u2019t appear to have anything similar to that of the research facility (flaming and shocking), but they were very fast and very strong. They managed to hold off a few attacks and put up barriers around the abandoned farm. Now, it\u2019s up to you and your friends to finish this! Features \u2013 Hell Hounds \u2013 A lot of zombies! \u2013 Many secrets (some are very important that you get them to make the game easier) \u2013 4 magic box locations \u2013 Several buyable weapons \u2013 Buyable Bowie Knife \u2013 The rest is for you to find out",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_abandon",
+        "loadscreen_nazi_zombie_demise"
+      ],
+      "iwd_images": [
+        "nazi_zombie_abandon.iwd:images/loadscreen_nazi_zombie_abandon.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_abandon"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 101.1,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 123,
+        "scripts": 0,
+        "bytes": 333483
+      }
+    ],
+    "flags": [],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_abandon.ff",
+      "nazi_zombie_abandon_patch.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

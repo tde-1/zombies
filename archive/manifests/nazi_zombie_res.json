@@ -1,0 +1,297 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_res",
+  "title": "CZ MAP PACK 5",
+  "source": "custom",
+  "author": null,
+  "released": null,
+  "fs_game": "mods/nazi_zombie_res",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@research_of_the_damned.iwd": "c13d2c776e0ec9153044b43fdb406ae7ca21a36afaedafdbc47e27c11bc2bca2"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "boss_respawn_origin",
+        "boss_respawn_trig",
+        "boss_room",
+        "boss_spawn",
+        "boss_tele",
+        "boss_trigger",
+        "desk_meteor",
+        "lab_meteor_door_hallway",
+        "lab_meteor_door_hellhole",
+        "meteor_area",
+        "meteor_done",
+        "meteor_room_1_area",
+        "meteor_room_2_area",
+        "meteor_room_3_area",
+        "meteor_room_clip",
+        "meteor_room_door",
+        "near_boss_trig",
+        "ritual_table",
+        "tesla_meteor",
+        "zone_boss",
+        "zone_boss_spawners",
+        "zone_boss_spawners_rise"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "boss_respawn_origin, boss_respawn_trig, boss_room, boss_spawn, boss_tele, boss_trigger look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 129,
+    "script_count": 129,
+    "entities": 1715,
+    "ee_candidates": [
+      "boss_respawn_origin",
+      "boss_respawn_trig",
+      "boss_room",
+      "boss_spawn",
+      "boss_tele",
+      "boss_trigger",
+      "desk_meteor",
+      "lab_meteor_door_hallway",
+      "lab_meteor_door_hellhole",
+      "meteor_area",
+      "meteor_done",
+      "meteor_room_1_area",
+      "meteor_room_2_area",
+      "meteor_room_3_area",
+      "meteor_room_clip",
+      "meteor_room_door",
+      "near_boss_trig",
+      "ritual_table",
+      "tesla_meteor",
+      "zone_boss",
+      "zone_boss_spawners",
+      "zone_boss_spawners_rise"
+    ],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "pf148_auto1",
+        "?"
+      ],
+      [
+        3000,
+        "pf2562_auto1",
+        "?"
+      ],
+      [
+        2500,
+        "pf441_auto1",
+        "?"
+      ],
+      [
+        2000,
+        "pf502_auto1",
+        "?"
+      ],
+      [
+        2000,
+        "pf143_auto1",
+        "?"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "c13d2c776e0ec9153044b43fdb406ae7ca21a36afaedafdbc47e27c11bc2bca2",
+    "map_specific_triggers": [
+      "115_trig",
+      "activate_by_touch",
+      "boss_respawn_trig",
+      "boss_room",
+      "boss_tele",
+      "boss_trigger",
+      "code_doors",
+      "elevator_cell_trig",
+      "fan1_trig",
+      "fan2_trig",
+      "fan3_trig",
+      "fan4_trig",
+      "free_tesla",
+      "harrybo21_perk_trigger",
+      "hole_trigger",
+      "intro_trigger",
+      "key2_trig",
+      "key3_trig",
+      "key_cell_trig",
+      "key_trig",
+      "knife_trigger",
+      "meteor_area",
+      "meteor_room_1_area",
+      "meteor_room_2_area",
+      "meteor_room_3_area",
+      "moon_teleporter_a_trigger",
+      "near_boss_trig",
+      "panel1_trig",
+      "panel2_trig",
+      "poison_room_panel",
+      "poison_trigger",
+      "rotating_door",
+      "soul_chest_area",
+      "soul_chest_reward",
+      "tesla1",
+      "tesla2",
+      "tesla_meteor",
+      "toilet1",
+      "toilet2",
+      "toilet3"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:44:21Z"
+    }
+  },
+  "archive": {
+    "original": "CZ_MAPS_vol-5.rar",
+    "original_sha256": "945dd8f5e367543550ebef28aea2dd440188598436ef79b6f5411229095558ba",
+    "original_size": 3781176642,
+    "source_url": "http://www.mediafire.com/file/xatc3heebj57wgy/CZ_MAPS_vol-5.rar",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T16:42:24Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "rar",
+    "shipped_executables": [
+      "Das Herrenhaus 1.2.exe",
+      "Nuketown Remastered 1.2.exe",
+      "Pokemon Kanto Carnage V1.31.exe",
+      "Ragnarok.exe",
+      "Research_of_the_Damned.exe",
+      "Town of the Dead v1.1 - Final Release UGX.exe",
+      "_inner/$PLUGINSDIR/System.dll",
+      "_inner/$PLUGINSDIR/nsDialogs.dll",
+      "nazi_zombie_Inferno.exe",
+      "nazi_zombie_cph_1.2zm.exe",
+      "nazi_zombie_iplay_2.5.0_zm.exe"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [
+        "harrybo21_perks v3.0.7.iwd:images/p6_zm_al_vending_ads_logo_m.iwi",
+        "harrybo21_perks v3.0.7.iwd:images/p6_zm_al_vending_three_gun_logo_m.iwi",
+        "harrybo21_perks v3.0.7.iwd:images/p6_zm_al_vending_three_gun_logo_n.iwi",
+        "harrybo21_perks v3.0.7.iwd:images/specialty_fastreload_zombies.iwi",
+        "harrybo21_perks v3.0.7.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "harrybo21_perks v3.0.7.iwd:images/ugx_mod_menu_template.iwi",
+        "harrybo21_perks v3.0.7.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "harrybo21_perks v3.0.7.iwd:images/_-gp6_zm_al_vending_ads_logo_c.iwi",
+        "harrybo21_perks v3.0.7.iwd:images/_-gzombie_vending_sleight_logo_c.iwi",
+        "harrybo21_perks v3.0.7.iwd:images/~__-gzombie_vending_ads_logo_~7aa94a54.iwi",
+        "research_of_the_damned.iwd:images/keypad_menu.iwi",
+        "research_of_the_damned.iwd:images/menu_mp_weapons_attach_masterkey.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 11 executable(s): Das Herrenhaus 1.2.exe, Nuketown Remastered 1.2.exe, Pokemon Kanto Carnage V1.31.exe, Ragnarok.exe, Research_of_the_Damned.exe, Town of the Dead v1.1 - Final Release UGX.exe. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 97.2,
+    "addon_iwds": [
+      {
+        "file": "harrybo21_perks v3.0.7.iwd",
+        "entries": 279,
+        "scripts": 1,
+        "bytes": 45675188
+      },
+      {
+        "file": "nsz_hb21_motd_wolves_v1.0.0.iwd",
+        "entries": 40,
+        "scripts": 0,
+        "bytes": 4939411
+      },
+      {
+        "file": "research_of_the_damned.iwd",
+        "entries": 889,
+        "scripts": 47,
+        "bytes": 170038605
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_res.ff",
+      "nazi_zombie_res_patch.ff",
+      "research_of_the_damned.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "research_of_the_damned.iwd:maps/dukip_door.gsc",
+        "menus": [
+          "dukip_door_code"
+        ],
+        "responses": [
+          "door",
+          "enter_passcode",
+          "passcode_quit",
+          "reset_passcode"
+        ],
+        "note": "in game: a door keypad"
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

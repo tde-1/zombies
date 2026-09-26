@@ -1,0 +1,179 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_fe1",
+  "title": "Nazi Zombie FE1 (Fenix Estate)",
+  "source": "custom",
+  "author": "jokergh2",
+  "released": "2013-09-28",
+  "fs_game": "mods/nazi_zombie_fe1",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_fe1.iwd": "9300f811f3772fc69bd326a2a442aae5a858e5defb6c84094ac99cc32842cee4"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "crawler_round_ending"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000,
+        9000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 9000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 98,
+    "script_count": 98,
+    "entities": 2137,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      9000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "pap_door"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "hedgehog"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door1"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "juggdoor"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "barrels"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "9300f811f3772fc69bd326a2a442aae5a858e5defb6c84094ac99cc32842cee4",
+    "map_specific_triggers": [
+      "music",
+      "zapper1_damage",
+      "zapper1_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T16:19:11Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_fe1.exe",
+    "original_sha256": "45888bb04281e84f99a1ea22f20246424de3d1668d6483efd9f75b403d944cee",
+    "original_size": 106540206,
+    "source_url": "https://www.mediafire.com/file/n2ubhbsy9k7q8tg/nazi_zombie_fe1.exe/file",
+    "source_page": "https://callofdutyrepo.com/2013/09/28/nazi-zombie-fe1-fenix-estate/",
+    "fetched": "2026-09-26T16:17:56Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Description Nazi Zombie Fe1 (Fenix Estate) Description: large der riese styled map with many features from 1.4 mod as well as new features brought on by the community. This map is based on the Gears of War 1 (for Xbox 360) area in the campaign, Fenix Estate, toward the end of the game. Backstory: 3 years after your team crushed the locust in GoW, you decide to revisit Marcus\u2019s Fathers Estate one last time. driving up the fog rolls in heavy, as you enter your entrance is sealed behind you and you are face to face with zombies! lol came up with it on the spot Features: buyable ray gun (hidden) zappers black ops perks imported cod4 and black ops guns courtsey of rollonmath and frd, as well as tombmx for xmodel mover edited weapons \u2013 PaP\u2019d semi-autos now fire full auto!, and others including upgraded browning turned into a MINIGUN! and many others. health counter, courtesy of frd many fx\u2019s no dogs moving random boxes NOTE: I got lazy with the weapon chalks so here is the key: STG44 weapon chalk is for AK47 FG42 chalk is for Stoner 63 lmg kar98k chalk at spawn location is for the g3 semi auto only known glitch/bug(s) is \u2013 un cliped random boxes (you can walk through them) \u2013 reload sounds for hs10 do not work",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_fe1",
+        "loadscreen_nazi_zombie_oldtown"
+      ],
+      "iwd_images": [
+        "nazi_zombie_fe1.iwd:images/weapon_red_cross_background.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_fe1"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 128.8,
+    "addon_iwds": [],
+    "flags": [
+      "client_memory_risk"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_fe1.ff",
+      "nazi_zombie_fe1_patch.ff",
+      "nazi_zombie_fe1.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}
