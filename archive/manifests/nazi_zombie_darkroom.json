@@ -1,0 +1,178 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_darkroom",
+  "title": "CONSUMED SOULS",
+  "source": "custom",
+  "author": "BRO_MAHO_101",
+  "released": "2015-01-10",
+  "fs_game": "mods/nazi_zombie_darkroom",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_darkroom.iwd": "f91e92b4f05aab98dc8cef780c16d964f6a0ddc5aa7b2622bbd96f40ddf4499d"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        1750,
+        2750,
+        3000,
+        5000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 5000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 100,
+    "script_count": 100,
+    "entities": 279,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      1750,
+      2750,
+      3000,
+      5000
+    ],
+    "orphan_end_triggers": [
+      "end_game"
+    ],
+    "top_costs": [
+      [
+        1500,
+        "zombie_debris",
+        "debris_two"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "debris_one"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_3"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_2"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_1"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "f91e92b4f05aab98dc8cef780c16d964f6a0ddc5aa7b2622bbd96f40ddf4499d",
+    "map_specific_triggers": [
+      "end_game"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:38:03Z"
+    }
+  },
+  "archive": {
+    "original": "Consumed_Souls_v1.0.exe",
+    "original_sha256": "bcbebb15c3fbfcc4f024223b7534061ca1029a0efaa7c1d9d92ba0b399f39035",
+    "original_size": 58964059,
+    "source_url": "https://www.mediafire.com/file/znth1m8pt4jkk38/Consumed_Souls_v1.0.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T15:36:57Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Description Hello there, welcome to consumed souls! (My first of hopefully many custom zombie maps) This map uses the basic world at war zombie stuff, including the 4 original perks: \u2013 Juggernog [ 5 Hit Fix] \u2013 Doubletap Rootbear 1.0 \u2013 Quickrevive [NOT black ops version] \u2013 Sleight of Hand And of course, all of the guns of der riese, except SOME guns have been changed and improved!.. Just don\u2019t pack a punch the Thompson if you know what I mean\u2026 The story is basic, the 4 characters, after teleporting in the NBT, find themselves standard in a small building, no way out, and with constant hordes of the undead coming at them. They find what is easily identified as all of the perks, and moving magic box. They find their familiar guns and notice some are altered. Only you can decide their fate! I really hope you enjoy it, I have been working on it continuously for the past 5 days, my deadline was the 10th of January, as it was my birthday, but I was busy so today (the 11th) is the day I finally get to upload! ENJOY!",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 77.6,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 67,
+        "scripts": 0,
+        "bytes": 176320
+      }
+    ],
+    "flags": [],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_darkroom.ff",
+      "nazi_zombie_darkroom_patch.ff",
+      "nazi_zombie_darkroom.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

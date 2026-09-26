@@ -1,0 +1,196 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "apex_home",
+  "title": "Apex Home",
+  "source": "custom",
+  "author": "gtlad (Apex)",
+  "released": "2013-04-03",
+  "fs_game": "mods/apex_home",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@apex_home.iwd": "34050e78e0274b0c73391cd596117d06d47c11be2a9aa89990b1b5bf0e52ce91"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "ending_trigger"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game",
+        "endgame_on",
+        "ending_on",
+        "ending_trigger"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        5000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game, endgame_on, ending_on, ending_trigger name an ending and are this map's own; script hardcodes cost 5000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 111,
+    "script_count": 111,
+    "entities": 1111,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game",
+      "endgame_on",
+      "ending_on",
+      "ending_trigger"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_door",
+        "back_garden11"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "attic11"
+      ],
+      [
+        1250,
+        "zombie_door",
+        "bedroom21"
+      ],
+      [
+        1000,
+        "zombie_door",
+        "stairs11"
+      ],
+      [
+        1000,
+        "zombie_door",
+        "bedroom11"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "common_scripts/utility.gsc",
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc",
+      "maps/_utility.gsc"
+    ],
+    "zombiemode_sha256": "34050e78e0274b0c73391cd596117d06d47c11be2a9aa89990b1b5bf0e52ce91",
+    "map_specific_triggers": [
+      "ending_trigger",
+      "power_trigger_attic",
+      "power_trigger_ground",
+      "power_trigger_middle",
+      "radio_pickup_trigger",
+      "radio_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:10:50Z"
+    }
+  },
+  "archive": {
+    "original": "apex_home.exe",
+    "original_sha256": "c1b9121c428c26afbd41c274fadbd670e1a190ae6076c5493866c7c6c70825a9",
+    "original_size": 193035234,
+    "source_url": "https://www.mediafire.com/file/an6s984c6s7wrkk/apex_home.exe/file",
+    "source_page": "https://callofdutyrepo.com/2013/04/03/apex-home/",
+    "fetched": "2026-09-26T15:08:24Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Description Hello ZM, this map is called Apex Home which was mapped by me, gtlad (Apex). This the version 2 of the map and was edited quite a bit from the old version. Features: BO/BO2 solo quick revive BO2 perk bottles Apex Perk And Powerup Shaders 8 Perks \u2013 2 Unavailable to get Buyable/Winnable ending Jug is 5 hits Wonderwaffle is fixed Doubled the amout of points for nuke and carpenter when double points is active 5 new gamemodes New weapons from cod4 and black ops 2 Timed Gameplay No Dogs Song is active by pressing [use] on 3 teddy bears The song is copyrighted so if you recording for Youtube: Do not active the song or Turn your music down. Special Thanks: Rollonmath42 (Apex) Elfenlied (Apex) Jake (Apex) Tom-Bmx Beta Testers: Rollonmath42 (Apex) Elfenlied (Apex) SoloCustomZombies Dust1031 There is most likely other people for both the Special Thanks and the Beta Testers but I can\u2019t remember. But thanks to anyone who did help.",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_apex_home",
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "apex_home.iwd:images/loadscreen_apex_home.iwi",
+        "apex_home.iwd:images/menu_map_apex_home.iwi",
+        "apex_home.iwd:images/specialty_fastreload_zombies.iwi",
+        "apex_home.iwd:images/zombie_vending_three_gun_logo_c.iwi",
+        "apex_home.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "apex_home.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi"
+      ],
+      "loadscreen": "loadscreen_apex_home"
+    }
+  },
+  "notes": "Replaces common scripts (common_scripts/utility.gsc, maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc, maps/_utility.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 117.7,
+    "addon_iwds": [],
+    "flags": [
+      "client_memory_risk"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "apex_home_patch.ff",
+      "mod.ff",
+      "apex_home.iwd:maps/_loadout.gsc",
+      "apex_home.iwd:maps/_zombiemode_audio.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

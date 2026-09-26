@@ -1,0 +1,168 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_vac",
+  "title": "Zombie Vacant",
+  "source": "custom",
+  "author": "[HOG]Rampage Version: 3",
+  "released": "2009-08-07",
+  "fs_game": "mods/nazi_zombie_vac",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_vac.iwd": "9c2df486ede2f2bd5a582c36a851683d80d2472cf4fac6c2917e8d192b6e477b",
+    "maps/backup/_zombiemode.gsc@nazi_zombie_vac.iwd": "9d441760d36260c001bda7f56b4e1209331fc897c045b4ec4ec083395ddaa7bf"
+  },
+  "badge": {
+    "main_finish": "round",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "round",
+    "why": "no easter egg or ending found; default Round 20",
+    "verdict_stock_baseline_only": "round",
+    "scripts": 118,
+    "script_count": 118,
+    "entities": 2223,
+    "ee_candidates": [],
+    "ending_words": [],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      20000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        4000,
+        "weapon_upgrade",
+        "?"
+      ],
+      [
+        2500,
+        "weapon_upgrade",
+        "?"
+      ],
+      [
+        2500,
+        "weapon_upgrade",
+        "?"
+      ],
+      [
+        2200,
+        "weapon_upgrade",
+        "?"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "auto202"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "9c2df486ede2f2bd5a582c36a851683d80d2472cf4fac6c2917e8d192b6e477b",
+    "map_specific_triggers": [
+      "30cal_upgrade",
+      "activate_mg",
+      "give_double_points",
+      "give_insta_kill",
+      "give_key",
+      "give_perk",
+      "satchel_purchase",
+      "secret_money"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:47:01Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_vac.exe",
+    "original_sha256": "faf30a6c4962b0bf9d5843406631d38b43c03af278813b5fe091f0d60d4316df",
+    "original_size": 77893728,
+    "source_url": "https://www.mediafire.com/file/06l8fed1veo1qdd/nazi_zombie_vac.exe/file",
+    "source_page": "https://callofdutyrepo.com/2009/08/07/zombie-vacant/",
+    "fetched": "2026-09-26T15:45:45Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Website: Hog-hq.com Release Date: 2009/08/05 Details: Zombie Vacant v3 contains several new features and changes: \u2013 Outside playable area (find the key first to be able to open the main door) \u2013 Two mounted Type 92 machine guns to outside area \u2013 New zombie types: Shock zombies and Flame zombies \u2013 Hell hounds and zombies in same rounds! \u2013 Lots of secrets throughout the map \u2013 Perks dropped by zombies will now only give you that perk for a random time of 30-60 seconds \u2013 Buyable satchel charges \u2013 New secret weapon: Advanced 30Cal + Bipod (requires you have a 30Cal + bipod before you can upgrade to it) \u2013 And More! Game: Call of Duty: World at War Gametypes Supported: Single Player, CO-OP Special Thanks to: ediedi3 WoO sniperbolt [HOG]BOOMSTICK Inferno Special Notes: Please report any bugs to: [email protected] ::SINGLE PLAYER:: Once in the main menu, select \u201cmods\u201d> \u201cnazi_zombie_vac\u201d > \u201cLaunch\u201d. Once the game loads again in mods, you can select the level from the Co-op menu or play singleplayer by typing: /map nazi_zombie_vac In the console. ::Cooperative:: Launch \u201cmods\u201d > \u201cnazi_zombie_vac\u201d. Then go to co-op and select the nazi_zombie_vac from the maplist. (all players wishing to connect must load the same mod\u201d)",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_ber1",
+        "loadscreen_ber2",
+        "loadscreen_ber3",
+        "loadscreen_ber3b",
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_asylum",
+        "loadscreen_nazi_zombie_china",
+        "loadscreen_nazi_zombie_vac",
+        "loadscreen_oki1",
+        "loadscreen_oki2",
+        "loadscreen_oki3"
+      ],
+      "iwd_images": [
+        "nazi_zombie_vac.iwd:images/loadscreen_nazi_zombie_vac.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_vac"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). No finish found by name. Before accepting Round 20, someone should glance at this map's own triggers: 30cal_upgrade, activate_mg, give_double_points, give_insta_kill, give_key, give_perk, satchel_purchase, secret_money. ",
+  "precheck": {
+    "map_zone_inflated_mb": 115.5,
+    "addon_iwds": [],
+    "flags": [
+      "client_memory_risk",
+      "no_patch_ff"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": false,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_vac.ff",
+      "nazi_zombie_vac.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

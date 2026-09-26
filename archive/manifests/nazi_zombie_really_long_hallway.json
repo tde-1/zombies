@@ -1,0 +1,216 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_really_long_hallway",
+  "title": "Boneheads Really Long Hallway",
+  "source": "custom",
+  "author": "Clemsonpack16",
+  "released": "2014-11-23",
+  "fs_game": "mods/nazi_zombie_really_long_hallway",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_really_long_hallway.iwd": "eef2c3716340a53c6452334e563e18de1044cf420042e7afcfd6bd248eebb042"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000,
+        10000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 10000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 105,
+    "script_count": 105,
+    "entities": 149,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      10000
+    ],
+    "orphan_end_triggers": [
+      "trigger_teleport_pad_0",
+      "trigger_teleport_pad_1",
+      "trigger_teleport_pad_2"
+    ],
+    "top_costs": [
+      [
+        1500,
+        "weapon_cabinet_use",
+        "pf139_auto2"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_1"
+      ],
+      [
+        600,
+        "weapon_upgrade",
+        "ppsh"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "eef2c3716340a53c6452334e563e18de1044cf420042e7afcfd6bd248eebb042",
+    "map_specific_triggers": [
+      "end_game",
+      "jukebox",
+      "music_box_player",
+      "pap_box_trig"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:09:37Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_really_long_hallway.exe",
+    "original_sha256": "a4615a7d532be2a16ec45a63c00367c75ca296655bdce924670b72016cc88c02",
+    "original_size": 101788345,
+    "source_url": "https://www.mediafire.com/file/bnu5dnkf62c3gqm/nazi_zombie_really_long_hallway.exe/file",
+    "source_page": "https://callofdutyrepo.com/2014/11/23/boneheads-really-long-hallway/",
+    "fetched": "2026-09-26T15:07:16Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Description NO PERKS(It is a challenge) Credit to my Map: Bonehead Soviet(I did all of it, these people had tutorials i didn\u2019t know how to do myself so credit)) ZK\u2019s Tutorials(everything that is not below this) TheMightDud(PAP Box) UGX Wiki Tom BMX Scripts MakeCents(zombie counter) bamskater33(MOTD Zombies) Allanwj(Changing weapon attributes) BM(Black Mamba)231(Mini Text Intro)",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 78.2,
+    "addon_iwds": [
+      {
+        "file": "DLC3_Weapons.iwd",
+        "entries": 67,
+        "scripts": 0,
+        "bytes": 176320
+      },
+      {
+        "file": "motd_zombie_images.iwd",
+        "entries": 30,
+        "scripts": 0,
+        "bytes": 8573564
+      },
+      {
+        "file": "nazi_zombie_asylum.iwd",
+        "entries": 6,
+        "scripts": 6,
+        "bytes": 2722
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_really_long_hallway.ff",
+      "nazi_zombie_really_long_hallway_patch.ff",
+      "nazi_zombie_really_long_hallway.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "nazi_zombie_really_long_hallway.iwd:maps/tom_music_player_unl.gsc",
+        "menus": [],
+        "responses": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9"
+        ],
+        "note": "in game: a music player"
+      },
+      {
+        "script": "nazi_zombie_really_long_hallway.iwd:maps/ugx_jukebox.gsc",
+        "menus": [],
+        "responses": [],
+        "note": "in game: the jukebox"
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

@@ -1,0 +1,181 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_cabin",
+  "title": "Nazi Zombie Cabin",
+  "source": "custom",
+  "author": "Custom Ham",
+  "released": "2014-08-14",
+  "fs_game": "mods/nazi_zombie_cabin",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_Cabin.iwd": "64d3e81a05fae2acbc0cabb30fe51f870814d9ebed93c639e77a0d8e20b3ee88"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000,
+        50000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 50000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 106,
+    "script_count": 106,
+    "entities": 911,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      50000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "buy_powerup",
+        "?"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "doorintobasement"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "doorintoeatingarea"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "doorintoeatingarea"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "5door"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "64d3e81a05fae2acbc0cabb30fe51f870814d9ebed93c639e77a0d8e20b3ee88",
+    "map_specific_triggers": [
+      "buy_powerup",
+      "end_game"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:26:34Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_Cabin.exe",
+    "original_sha256": "6f3514d4d1aa18793662c8e702f38c16eadea2fe1c1f8c845c1d931bbdd5d6c0",
+    "original_size": 116661470,
+    "source_url": "http://www.mediafire.com/file/2fi4wzp4t9wa36o/nazi_zombie_Cabin.exe/file",
+    "source_page": "https://callofdutyrepo.com/2014/08/14/nazi-zombie-cabin/",
+    "fetched": "2026-09-26T15:25:13Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Cabin \u2013 CustomHam Features: -Custom Scripts -Detailed Map -Custom CO-OP loading screen -Clip size increased for all weapons -Knifing speed increased with spawn weapon -Original Four Perks (Quick revive, Speed cola, Jugernaut, Double Tap) -PaP -Buy-able ending (It is a Flamethrower on a wall in the spawn room) -Buy-able Power-ups (Max Ammo and Double Points) -Hell-Hounds are Disabled -Starting Points 750 Thanks For the Custom Loading Screen : -Reboot Thanks For Tutorials and Help : -DarkLord987 -BM231 -ZOMB1E-KLLR -Tom-BMX -Cinnober -YaPh1l -Mrhankey91",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_nazi_zombie_cabin"
+      ],
+      "iwd_images": [
+        "nazi_zombie_Cabin.iwd:images/loadscreen_nazi_zombie_cabin.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_cabin"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 92.0,
+    "addon_iwds": [
+      {
+        "file": "z_hud.iwd",
+        "entries": 3,
+        "scripts": 0,
+        "bytes": 8133
+      }
+    ],
+    "flags": [],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_cabin.ff",
+      "nazi_zombie_cabin_patch.ff",
+      "nazi_zombie_pub.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

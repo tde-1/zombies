@@ -1,0 +1,211 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_company",
+  "title": "BEVERAGE COMPANY",
+  "source": "custom",
+  "author": "CodeJaKla",
+  "released": "2019-09-10",
+  "fs_game": "mods/nazi_company",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_company.iwd": "76567d39a479c2cb8687257e832d1ab0e2e5c8aadea0c746a4f8aaf0e2db5900"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "crawler_round_ending"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        5000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 5000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 112,
+    "script_count": 112,
+    "entities": 2777,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        3000,
+        "zombie_debris",
+        "gasdoor"
+      ],
+      [
+        2500,
+        "zombie_door",
+        "autotel"
+      ],
+      [
+        2500,
+        "zombie_door",
+        "auto78"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "staydoor"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "speeddoor"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "76567d39a479c2cb8687257e832d1ab0e2e5c8aadea0c746a4f8aaf0e2db5900",
+    "map_specific_triggers": [
+      "activate_mg",
+      "jukebox",
+      "kino_mainframe_trigger",
+      "kino_teleporter_trigger",
+      "zapper_1",
+      "zapper_1_tg",
+      "zapper_2",
+      "zapper_2_tg",
+      "zapper_fire_1",
+      "zapper_fire_1_tg"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:24:15Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_company.exe",
+    "original_sha256": "eb112f9ea7e6d91d137ac0441be235dd93ac9b22ca19b47152f1246061bc35a1",
+    "original_size": 262166438,
+    "source_url": "https://www.mediafire.com/file/kf6vmae7buadzsl/nazi_company.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T15:21:37Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Features: \u2013 Custom main menu \u2013 Custom main menu music \u2013 a Map in the pause screen \u2013 JukeBox by UGX \u2013 Zombie Area Spawn not only near to the player \u2013 Custom Traps \u2013 Kino Style Teleporter with Item Room Custom Mix Rounds Every \u2013 5th Round the zombies are \u201cVerr\u00fcckt\u201d \u2013 10th Boss Zombie \u2013 Hellhound \u2013 Mix Rounds Best weapons from: \u2013 Cod 5 WaW \u2013 Cod Black ops 1 & Thundergun with custom skin Perks \u2013 Juggernog (4 Hit) \u2013 SpeedCola \u2013 Staimnup \u2013 PHD Flopper \u2013 Deathshot \u2013 DoubleTap \u2013 MuleKick Thanks to: \u2013 Bamskater33\u2019s for the buggy perks \u2013 BluntStuffy for the Boss zombie tutorial \u2013 Aidan for the Kino Style Tutorial without item room \u2013 MakeCents for the custom main menu tutorial \u2013 zombie madness for the ported weapons \u2013 tom-crowley for his tools \u2013 Harry Bo21 for not finished scripts for the thunder gun Spezial Thanks to: \u2013 StikNMuvE for placing Models in the map \u2013 L.C.F. for the painting of the map \u2013 UGX Mods for the Wiki and the forum",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [
+        "nazi_company.iwd:images/custom_zombies_menu.iwi",
+        "nazi_company.iwd:images/custom_zombies_menu2.iwi",
+        "nazi_company.iwd:images/custom_zombies_menu3.iwi",
+        "nazi_company.iwd:images/menu_map_custom_zombies_menu.iwi",
+        "nazi_company.iwd:images/menu_map_nazi_company.iwi",
+        "nazi_company.iwd:images/specialty_fastreload_zombies.iwi",
+        "nazi_company.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "nazi_company.iwd:images/zombie_vending_three_gun_logo_c.iwi",
+        "nazi_company.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "nazi_company.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 135.6,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 67,
+        "scripts": 0,
+        "bytes": 176320
+      }
+    ],
+    "flags": [
+      "client_memory_risk"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_company.ff",
+      "nazi_company_patch.ff",
+      "nazi_company.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "nazi_company.iwd:maps/ugx_jukebox.gsc",
+        "menus": [],
+        "responses": [],
+        "note": "in game: the jukebox"
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

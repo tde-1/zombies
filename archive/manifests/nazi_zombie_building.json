@@ -1,0 +1,211 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_building",
+  "title": "Nazi Zombie Building",
+  "source": "custom",
+  "author": "sonicnine1",
+  "released": "2014-05-28",
+  "fs_game": "mods/nazi_zombie_building",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_building.iwd": "7a2522f0d1244a7060e0a044673132109b9ae75e7a572d794e82b0e74e1463f3"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        5000,
+        60000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 60000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 104,
+    "script_count": 104,
+    "entities": 1725,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000,
+      60000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        1000,
+        "zombie_debris",
+        "tractor"
+      ],
+      [
+        1000,
+        "zombie_debris",
+        "door"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_0"
+      ],
+      [
+        600,
+        "weapon_upgrade",
+        "ppsh"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "7a2522f0d1244a7060e0a044673132109b9ae75e7a572d794e82b0e74e1463f3",
+    "map_specific_triggers": [
+      "end_game",
+      "music_box_player",
+      "pap_box_trig"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:39:29Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_building.exe",
+    "original_sha256": "a0897654fa39a3ebb85e1c7acc9a07e2d2f312b7bb7cd0f1b3c295b13232916d",
+    "original_size": 227491034,
+    "source_url": "http://www.mediafire.com/file/cj3vhp9tjdyi5o1/nazi_zombie_building.exe/file",
+    "source_page": "https://callofdutyrepo.com/2014/05/28/nazi-zombie-building/",
+    "fetched": "2026-09-26T15:38:46Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Feedback would be nice. All songs are copyrighted Updated! Size -100MB. I took out the extra sound files so it\u2019s smaller. Also i fixed a little glitch on one of the walls Credits: All of ZK \u2018s tuts on youtube Mrhankey91 : zombie counter Bamskater : black ops perks Tom-bmx : buyable ending, music box ConvictioNDR : 16 song music box edit TheMightyDud : Pack a Punch mystery box JBird632 , YaPh1l , elfenlied : Help with problems on my map Caboose : Testing, Weapon names Features: All 8 perks Buyable ending Open map Working solo quick revive Stationary box Pack a Punch Pack a Punch box 16 song music box All PAP weapons renamed DP28 and Type 99 Note: If you PAP with Mule kick, you lose a weapon. I put a colt next to it so you can buy it when you put the gun in the PAP and trade that for the PAP weapon when you grab it",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [
+        "_bam_bo1_perks_mod.iwd:images/specialty_fastreload_zombies.iwi",
+        "_bam_bo1_perks_mod.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "_bam_bo1_perks_mod.iwd:images/zombie_vending_three_gun_logo_c.iwi",
+        "_bam_bo1_perks_mod.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "_bam_bo1_perks_mod.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 88.2,
+    "addon_iwds": [
+      {
+        "file": "_bam_bo1_perks_mod.iwd",
+        "entries": 58,
+        "scripts": 3,
+        "bytes": 2985211
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_building.ff",
+      "nazi_zombie_building_patch.ff"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "nazi_zombie_building.iwd:maps/tom_music_player_unl.gsc",
+        "menus": [],
+        "responses": [
+          "1",
+          "10",
+          "11",
+          "12",
+          "13",
+          "14",
+          "15",
+          "16",
+          "17",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9"
+        ],
+        "note": "in game: a music player"
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

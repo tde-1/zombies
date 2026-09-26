@@ -1,0 +1,212 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "winterspecial",
+  "title": "Gympie's & Bear's Winter Special",
+  "source": "custom",
+  "author": "Gympie & Bear",
+  "released": "2022-12-25",
+  "fs_game": "mods/winterspecial",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@winterspecial.iwd": "5853236d43ad4dc3925ac632586f92b06ddabbe79b5d678849a6a3e882404d9a"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "crawler_round_ending"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000,
+        50000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 50000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 118,
+    "script_count": 118,
+    "entities": 650,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      50000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "debris9"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "debris8"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "debris11"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "debris10"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_2"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "5853236d43ad4dc3925ac632586f92b06ddabbe79b5d678849a6a3e882404d9a",
+    "map_specific_triggers": [
+      "acid_build_trigger",
+      "blunder_trigg",
+      "dig_site",
+      "install_item",
+      "pistol_auto_upgrade",
+      "scarf",
+      "snowball_trigger",
+      "switch_fov",
+      "winterhat"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:11:59Z"
+    }
+  },
+  "archive": {
+    "original": "_2Gympies_7_1Bears_2Winter_1Special.exe",
+    "original_sha256": "9393a0633398229704c4858e50bf024f382915ae55cf233dbcf03b7b2e002b47",
+    "original_size": 462944743,
+    "source_url": "https://www.mediafire.com/file/fwwgk1bimdaze9r/%255E2Gympie%2527s_%255E7%2526_%255E1Bear%2527s_%255E2Winter_%255E1Special.exe/file",
+    "source_page": "https://callofdutyrepo.com/2022/12/25/gympies-bears-winter-special/",
+    "fetched": "2026-09-26T15:09:05Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "G y m p i e \u2018s & B e a r \u2018s W i n t e r S p e c i a l No T4M Required! Includes EasterEgg Ending with Ted! Patch Notes \u2013 January 2023: Clipping fixes Added missing spawn point Used menu HUD for perk shaders Fixed Primo Victoria unable to be bought after buying Deadshot Features: 3 Custom Perks make their return: (Chainbind, Primo Victoria and Rewind Time Barcardi) Black Ops 1 & 2 Perks Black Ops 1 Call of the Dead zombies Black Ops 2 HUD Black Ops 3 Shader for perks and powerups Advanced Warfare Weapons Ghost Weapons BO1 Weapons BO2 Wunder Weapons WAW Weapons 4 Wonder weapons Custom Powerup/Box Fx Unlimited Ammo Powerup (Shoot infinite ammo until time runs out) DogHunter Powerup (Dogs will hunt down zombies) Presents (Inside a present is a weapon, this can be a wonder weapon) Rush Rounds make their return (Instead of dog rounds, zombies will rush very fast towards players) Small EasterEgg EasterEgg Ending with Ted. Weapons: W A W PPSH RayGun Mk.1 B O 1 MP5/MP5K Stakeout HK21 Python BO1 Colt M1911 (Auto) M72 Law Stakeout Sickle (Damage is doubled) G h o s t s Mk14 EBR MTS 225 SC2010 K7 PP-19 Bizon L115a3 Venom-X M27IAR Ameli CBJ-MS Vepr Lynx Maverick MR28 SA805 B O 2 RayGun Mk.2 BlunderGat (With Frostgat upgrade) O t h e r Mors schockhammer Perks: No perk limit! W A W Quick Revive (With self revive) Juggenaut (250 health) SpeedCola Doubletap 2.0 B O 1 PHD MuleKick StaminUp Deadshot (Steady aim & increased headshot damage) B O 2 Electric Cherry C u s t o m Chain of Fools Primo ",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak",
+        "loadscreen_winterspecial"
+      ],
+      "iwd_images": [
+        "gympie6_perks.iwd:images/~p7_zm_vending_ads_logo_spc-r~301c48c1.iwi",
+        "gympie6_perks.iwd:images/p7_zm_vending_ads_logo_col.iwi",
+        "gympie6_perks.iwd:images/specialty_fastreload_zombies.iwi",
+        "winterspecial.iwd:images/dukip_menu.iwi",
+        "winterspecial.iwd:images/dukip_menu2.iwi",
+        "winterspecial.iwd:images/loadscreen_winterspecial.iwi",
+        "winterspecial.iwd:images/menu_map_winterspecial.iwi",
+        "winterspecial.iwd:images/weapon_shotgun_speedloader_col.iwi",
+        "winterspecial.iwd:images/weapon_shotgun_speedloader_nml.iwi",
+        "winterspecial.iwd:images/~~weapon_shotgun_speedloader_~4a9289c2.iwi",
+        "winterspecial.iwd:images/~~weapon_shotgun_speedloader_~973fda74.iwi"
+      ],
+      "loadscreen": "loadscreen_winterspecial"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 72.3,
+    "addon_iwds": [
+      {
+        "file": "call_of_dead.iwd",
+        "entries": 36,
+        "scripts": 7,
+        "bytes": 7498269
+      },
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 14,
+        "scripts": 0,
+        "bytes": 26982
+      },
+      {
+        "file": "gympie6_perks.iwd",
+        "entries": 285,
+        "scripts": 7,
+        "bytes": 100288619
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "winterspecial_patch.ff",
+      "winterspecial.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

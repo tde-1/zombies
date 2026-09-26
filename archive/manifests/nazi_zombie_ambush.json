@@ -1,0 +1,169 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_ambush",
+  "title": "AMBUSH",
+  "source": "custom",
+  "author": "ArmyRope115",
+  "released": "2013-11-16",
+  "fs_game": "mods/nazi_zombie_ambush",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_ambush.iwd": "0b83567cee08a3bf2f8dc0176e1ea54ad89acc064b95ba963081f404c47a1fa1"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "crawler_round_ending"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 5000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 96,
+    "script_count": 96,
+    "entities": 193,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "door5"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door1"
+      ],
+      [
+        1250,
+        "zombie_debris",
+        "door4"
+      ],
+      [
+        1000,
+        "zombie_debris",
+        "door3"
+      ],
+      [
+        1000,
+        "zombie_debris",
+        "door2"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "0b83567cee08a3bf2f8dc0176e1ea54ad89acc064b95ba963081f404c47a1fa1",
+    "map_specific_triggers": [],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:25:04Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_ambush.exe",
+    "original_sha256": "94c8fd58904ccb579da510e7565c775a02277be637662c170389a8224ec292ab",
+    "original_size": 66071161,
+    "source_url": "http://www.mediafire.com/file/i55jysslemcu4jz/nazi_zombie_ambush.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T15:23:14Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Description warning this is just a test map to see if i like map making. I did not try to make this a very good map because i wasn\u2019t sure if i wanted to map or not. I will be making a proper map soon now that i know i enjoy doing this. Thank you HEY GUYS, this is my first map and since I like them so much, I decided to make it a box styled map! it is still in beta stage and will only be getting better features bowie knife 4 original perks pap! just 4 windows making the 4 player lobby essential and optimal tiny layout meaning hectic gameplay! 3 hit jugernog to make it harder hidden doors throughout the map, hence the no images of door locations custom gun names hypermole80 easter eggs melee points bonus increased by 40 points spiderbite easter eggs increased number of zombies for solo",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_nazi_zombie_ambush"
+      ],
+      "iwd_images": [
+        "nazi_zombie_ambush.iwd:images/loadscreen_nazi_zombie_ambush.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_ambush"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 77.5,
+    "addon_iwds": [],
+    "flags": [],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_ambush.ff",
+      "nazi_zombie_ambush_patch.ff",
+      "nazi_zombie_ambush.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

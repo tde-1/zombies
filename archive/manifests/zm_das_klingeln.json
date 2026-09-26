@@ -1,0 +1,170 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "zm_das_klingeln",
+  "title": "Das KlingeIn",
+  "source": "custom",
+  "author": "NGcaudle",
+  "released": "2021-04-30",
+  "fs_game": "mods/zm_das_klingeln",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@zm_das_klingeln.iwd": "b9c9e04b3f9ce25a84cb6be915e8a4c7d860a696a6f9337d33ded5ad27ef99bf"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        5000,
+        52000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 52000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 104,
+    "script_count": 104,
+    "entities": 250,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000,
+      52000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_0"
+      ],
+      [
+        600,
+        "weapon_upgrade",
+        "ppsh"
+      ],
+      [
+        500,
+        "betty_purchase",
+        "betty"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "b9c9e04b3f9ce25a84cb6be915e8a4c7d860a696a6f9337d33ded5ad27ef99bf",
+    "map_specific_triggers": [
+      "ammo_trig",
+      "end_game",
+      "kinorock1",
+      "spawn_carpenter",
+      "spawn_doublepoints",
+      "spawn_instakill"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:08:49Z"
+    }
+  },
+  "archive": {
+    "original": "Das_Klingeln.exe",
+    "original_sha256": "1880d4c408e196bf4a0d2c53b0e31e7d7c3f1f4fc96b62373550ca30a4bf76f4",
+    "original_size": 87231041,
+    "source_url": "https://www.mediafire.com/file/qzyx4kcwyw85x1d/Das_Klingeln.exe/file",
+    "source_page": "https://callofdutyrepo.com/2021/04/30/das-klingein/",
+    "fetched": "2026-09-26T15:06:36Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "exe-unknown",
+    "shipped_executables": [],
+    "catalogue_tags": [],
+    "catalogue_description": "Today I bring to you the best tribute map for the fan favourite M1 Garand! This map is loaded with feartures and is all around amazing and you\u2019ll love every second of it! Features! Custom WaW weapons files Custom Perk Jingles Custom Player Voxes Custom Round Change Sound Shootable Easter Egg Buyable Ending Bo2 Knifing Bosses Secret Free Weapon (By PaP) Credit NG Caudle Mod Tools 2020 Team",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak",
+        "loadscreen_sp_makin",
+        "loadscreen_zm_das_klingeln"
+      ],
+      "iwd_images": [
+        "zm_das_klingeln.iwd:images/loadscreen_zm_das_klingeln.iwi"
+      ],
+      "loadscreen": "loadscreen_zm_das_klingeln"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 77.4,
+    "addon_iwds": [],
+    "flags": [
+      "no_patch_ff"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": false,
+    "napalmblob": [
+      "mod.ff",
+      "zm_das_klingeln.ff",
+      "zm_das_klingeln.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

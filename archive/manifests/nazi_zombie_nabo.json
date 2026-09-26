@@ -1,0 +1,263 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_nabo",
+  "title": "Beverstedt Zombies",
+  "source": "custom",
+  "author": "GimmCity",
+  "released": "2022-10-31",
+  "fs_game": "mods/nazi_zombie_nabo",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nabo.iwd": "4271526a3dce51340d05a29503e75d7e55cfe5561fc67c9b1cfe145d5aafb433"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "activate_ee",
+        "clip_ee",
+        "ee_church_origin",
+        "ee_fire_origin1",
+        "ee_fire_origin2",
+        "ee_fire_origin3",
+        "ee_script_origin",
+        "plane_ee",
+        "rock_ee"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "activate_ee, clip_ee, ee_church_origin, ee_fire_origin1, ee_fire_origin2, ee_fire_origin3 look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 126,
+    "script_count": 126,
+    "entities": 5437,
+    "ee_candidates": [
+      "activate_ee",
+      "clip_ee",
+      "ee_church_origin",
+      "ee_fire_origin1",
+      "ee_fire_origin2",
+      "ee_fire_origin3",
+      "ee_script_origin",
+      "plane_ee",
+      "rock_ee"
+    ],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      20000,
+      25000
+    ],
+    "orphan_end_triggers": [
+      "trigger_teleport_pad_0",
+      "trigger_teleport_pad_1",
+      "trigger_teleport_pad_2"
+    ],
+    "top_costs": [
+      [
+        3000,
+        "zombie_debris",
+        "debris6"
+      ],
+      [
+        3000,
+        "zombie_debris",
+        "debris6"
+      ],
+      [
+        3000,
+        "zombie_debris",
+        "debris6"
+      ],
+      [
+        3000,
+        "zombie_debris",
+        "debris6"
+      ],
+      [
+        3000,
+        "zombie_debris",
+        "debris5"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "4271526a3dce51340d05a29503e75d7e55cfe5561fc67c9b1cfe145d5aafb433",
+    "map_specific_triggers": [
+      "activate_ee",
+      "activate_ubahn",
+      "auto_door_trig",
+      "bear1",
+      "bear2",
+      "bear3",
+      "bild1_trigger",
+      "bild2_trigger",
+      "bild3_trigger",
+      "bild4_trigger",
+      "car1_alarm",
+      "door_power_1",
+      "door_power_2",
+      "door_power_3",
+      "enter_end_zone",
+      "freezegun_pick_trigg",
+      "out_of_order",
+      "out_of_order2",
+      "pack_kreuz_trig",
+      "phone1_trig",
+      "phone2_trig",
+      "phone3_trig",
+      "radio_kirche_trig",
+      "rock_trigger",
+      "rotating_door",
+      "rotating_door_2",
+      "s_triggers",
+      "teddy1_lion_trigger",
+      "trig_baby",
+      "trig_out_amb",
+      "trigger_clip",
+      "trigger_key",
+      "ubahn_run_trig",
+      "ubahn_trigger_inside"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:04:55Z"
+    }
+  },
+  "archive": {
+    "original": "Beverstedt_Zombies_V1.3.exe",
+    "original_sha256": "bf0e4d2e2897a7e97cb7f19244917901a79868eef2909c61c353b3e5d9bb9822",
+    "original_size": 570868939,
+    "source_url": "https://www.mediafire.com/file/l8zcsl5msdjmvth/Beverstedt_Zombies_V1.3.exe/file",
+    "source_page": "https://callofdutyrepo.com/2022/10/31/beverstedt-zombies/",
+    "fetched": "2026-09-26T15:01:35Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_nabo",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "nabo.iwd:images/loadscreen_nazi_zombie_nabo.iwi",
+        "nabo.iwd:images/logo-mobile.iwi",
+        "nabo.iwd:images/logo-mobile_nonglow.iwi",
+        "nabo.iwd:images/logo.iwi",
+        "nabo.iwd:images/logo_alpha_weiss.iwi",
+        "nabo.iwd:images/logo_nonglow.iwi",
+        "nabo.iwd:images/marley_griffin_moving_logo_dmg_col.iwi",
+        "nabo.iwd:images/menu_map_nazi_zombie_nabo.iwi",
+        "nabo.iwd:images/menu_nabo.iwi",
+        "nabo.iwd:images/p7_zm_vending_ads_logo_col.iwi",
+        "nabo.iwd:images/sparkasse_logo.iwi",
+        "nabo.iwd:images/specialty_fastreload_zombies.iwi",
+        "nabo.iwd:images/weapon_red_cross_background.iwi",
+        "nabo.iwd:images/~p7_zm_vending_ads_logo_spc-r~301c48c1.iwi",
+        "nabo.iwd:images/~sparkasse_logo_spec-rgb&$white-l-11.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_nabo"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 143.2,
+    "addon_iwds": [
+      {
+        "file": "electric_cherry.iwd",
+        "entries": 11,
+        "scripts": 2,
+        "bytes": 955274
+      },
+      {
+        "file": "motd_zombie_images.iwd",
+        "entries": 30,
+        "scripts": 0,
+        "bytes": 8573564
+      },
+      {
+        "file": "nabo.iwd",
+        "entries": 1770,
+        "scripts": 74,
+        "bytes": 431198896
+      },
+      {
+        "file": "nazi_zombie_asylum.iwd",
+        "entries": 6,
+        "scripts": 6,
+        "bytes": 2722
+      }
+    ],
+    "flags": [
+      "client_memory_risk",
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_nabo_patch.ff",
+      "nabo.iwd:animscripts/death.gsc",
+      "nabo.iwd:maps/_loadout.gsc",
+      "nabo.iwd:maps/_zombiemode_utility.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

@@ -1,0 +1,203 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_935base",
+  "title": "Nazi Zombie 935 Base",
+  "source": "custom",
+  "author": "joeybbb",
+  "released": "2012-06-30",
+  "fs_game": "mods/nazi_zombie_935base",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_935base.iwd": "a7e1ac4a444c7bc72c282837fa3bdbda6f18a37aca1bed163ef0a1b36fe46242"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "win"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game",
+        "win",
+        "win_hurt"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        1999,
+        2000,
+        2500,
+        3000,
+        4000,
+        5000,
+        7000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game, win, win_hurt name an ending and are this map's own; script hardcodes cost 7000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 99,
+    "script_count": 99,
+    "entities": 640,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game",
+      "win",
+      "win_hurt"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      1999,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000,
+      7000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "west_wing"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "roof_top"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "restricted_door"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "parking"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "office_door"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "a7e1ac4a444c7bc72c282837fa3bdbda6f18a37aca1bed163ef0a1b36fe46242",
+    "map_specific_triggers": [
+      "115_clearance",
+      "air_lock",
+      "air_lock_mid",
+      "custom_perk",
+      "exec",
+      "get_charges",
+      "kick",
+      "lander_command",
+      "lobby_keycard",
+      "lockdown_button",
+      "pap",
+      "plant_charges",
+      "prompt_charges",
+      "story",
+      "trap3_hurt",
+      "ugb",
+      "win",
+      "win_hurt"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:41:13Z"
+    }
+  },
+  "archive": {
+    "original": "Install_935_Base.exe",
+    "original_sha256": "e958139f8f468e967c2b6b90e4b1156eaadf926fa63cc8f38aecee76f10a08fe",
+    "original_size": 85385542,
+    "source_url": "https://www.mediafire.com/file/o7vlqorq8zj46jc/Install_935_Base.exe/file",
+    "source_page": "https://callofdutyrepo.com/2012/06/30/nazi-zombie-935-base/",
+    "fetched": "2026-09-26T15:40:47Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Storyline: Top secret level 5 For your eyes only! Classified Adam is a CISO agent (central intelligence special operations agent), working undercover with group 935. Group 935 is suspected of creating and possessing biological weapons, including the fabled \u201celement 115.\u201d Adam recently found evidence of 115 synthesis and projects involving the substance. But we lost contact with him last week. He was supposed to take down the secret base and evac out yesterday. The illuminati are ruthless, and we suspect the worst. Your Mission: Infiltrate group 935\u2019s base, locate Adam if he is still alive. If Adams mission was not successful, finish it for him. The removal of the threat codenamed \u201cyellow meteor\u201d is essential. There also may be a chance that Adam has gone rogue. If he gets in the way of the mission, remove him. Most of all, stop the shipment of element 115. Burn every last bit of it. Good luck soldiers. Map Features: Sprinters from beginning Custom point system Skins **Custom models **Lander scripted by me Easter egg Detailed areas **BEATABLE, NOT BUYABLE ending **Custom perks including speed boost and anti gravity destructible **objective based gameplay- campaign ish style",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_935base",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "nazi_zombie_935base.iwd:images/935_load.iwi",
+        "nazi_zombie_935base.iwd:images/loadscreen_nazi_zombie_935base.iwi",
+        "nazi_zombie_935base.iwd:images/menu_background_coop.iwi",
+        "nazi_zombie_935base.iwd:images/menu_map_nazi_zombie_935base.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_935base"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 106.2,
+    "addon_iwds": [],
+    "flags": [],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_935base.ff",
+      "nazi_zombie_935base_patch.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

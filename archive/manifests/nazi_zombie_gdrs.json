@@ -1,0 +1,182 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_gdrs",
+  "title": "G.D.R.S.",
+  "source": "custom",
+  "author": "Erebus",
+  "released": "2012-07-05",
+  "fs_game": "mods/nazi_zombie_gdrs",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_gdrs.iwd": "ffd79e6dc20ec74006a5464cc27b2c491946963d12b04ddebd6a31bce672910a"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "crawler_round_ending"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 5000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 109,
+    "script_count": 109,
+    "entities": 1970,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000
+    ],
+    "orphan_end_triggers": [
+      "trigger_teleport_pad_0",
+      "trigger_teleport_pad_1",
+      "trigger_teleport_pad_2"
+    ],
+    "top_costs": [
+      [
+        2000,
+        "zombie_door",
+        "auto99"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto114"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto113396"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto113384"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto113368"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "ffd79e6dc20ec74006a5464cc27b2c491946963d12b04ddebd6a31bce672910a",
+    "map_specific_triggers": [
+      "eledoor_trig",
+      "elevator_trig",
+      "zapper1_damage",
+      "zapper1_trigger",
+      "zapper2_damage",
+      "zapper2_trigger",
+      "zapper3_damage",
+      "zapper3_trigger",
+      "zapper4_damage",
+      "zapper4_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:38:23Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_gdrs_2_.zip",
+    "original_sha256": "31124aff4336d3f3c356cb67d35e55e370bebf2d2049594595740e7a05e1e54b",
+    "original_size": 78694973,
+    "source_url": "http://www.mediafire.com/file/5a8z9rqd5xzmat1/nazi_zombie_gdrs%25282%2529.zip/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T15:37:28Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "zip",
+    "shipped_executables": [],
+    "catalogue_tags": [],
+    "catalogue_description": "The Basics: This one is an older map but one that shouldn\u2019t be ignored just because it\u2019s got a few miles on it. It takes place in a mental hospital or something like that complete with sinister looking laboratory and plenty of blood stains and body parts just so you are aware that these doctors don\u2019t really have their patient\u2019s best interests in mind. What We Like: Right away you can tell that the mapper cared a lot about the detail in the map and made sure that he built a creepy atmosphere and stayed true to it. He detailed outside the playable area as much as inside so you never get that \u201cedge of the world\u201d feeling when you see giant unmapped sections. There are two different ways to leave the starting area which adds replay value as you may want see if it would be more advantageous to unlock the other way instead. There are lots of doors to open and places to go with no room to train so it\u2019s going to keep you on your toes. You really get the feeling like there is a story here to be told, but there aren\u2019t really any clues so you just have to use your imagination. What We Didn\u2019t Like: There aren\u2019t really any of the modern \u201cfeatures\u201d that we expect maps to have now days, so if having custom weapons and 35 perks are a requirement for you enjoying a map then you probably won\u2019t find much here to interest you. Also, I never found an ending to the map other than just having no more doors to unlock so it kinda feels like you don\u2019t get any closure. Final Word: Having played hundreds",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_nazi_zombie_gdrs"
+      ],
+      "iwd_images": [
+        "nazi_zombie_gdrs.iwd:images/loadscreen_nazi_zombie_gdrs.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_gdrs"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 119.4,
+    "addon_iwds": [],
+    "flags": [
+      "client_memory_risk"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_gdrs.ff",
+      "nazi_zombie_gdrs_patch.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

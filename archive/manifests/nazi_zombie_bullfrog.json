@@ -1,0 +1,176 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_bullfrog",
+  "title": "FunTime",
+  "source": "custom",
+  "author": "Unknown",
+  "released": "2013-12-10",
+  "fs_game": "mods/nazi_zombie_bullfrog",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_bullfrog.iwd": "172eb0c6b380a73f23f59b7179ad105d1fe0bd06c4fb7c4e901051d6a8204020"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "crawler_round_ending"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000,
+        9000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 9000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 97,
+    "script_count": 97,
+    "entities": 1180,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      9000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_door",
+        "fridge"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "door8"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "door7"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "door6"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "door5"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "172eb0c6b380a73f23f59b7179ad105d1fe0bd06c4fb7c4e901051d6a8204020",
+    "map_specific_triggers": [
+      "zk_eggtrig"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:29:01Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_Bullfrog.exe",
+    "original_sha256": "220b548696be33321830541edb469c4783ad7f4a08f1b15c4b24988ca4625d88",
+    "original_size": 97566908,
+    "source_url": "https://www.mediafire.com/file/8sp77lcg5wlslqh/nazi_zombie_Bullfrog.exe/file",
+    "source_page": "https://callofdutyrepo.com/2013/12/10/funtime/",
+    "fetched": "2026-09-26T15:27:13Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_nazi_zombie_bullfrog"
+      ],
+      "iwd_images": [
+        "nazi_zombie_bullfrog.iwd:images/bullfroglogo.iwi",
+        "nazi_zombie_bullfrog.iwd:images/loadscreen_nazi_zombie_bullfrog.iwi",
+        "nazi_zombie_bullfrog.iwd:images/testlogo.iwi",
+        "nazi_zombie_bullfrog.iwd:images/zombie_vending_sleight_logo_c.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_bullfrog"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 81.8,
+    "addon_iwds": [],
+    "flags": [],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_bullfrog.ff",
+      "nazi_zombie_bullfrog_patch.ff",
+      "nazi_zombie_bullfrog.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

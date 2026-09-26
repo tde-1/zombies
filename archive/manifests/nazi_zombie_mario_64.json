@@ -1,0 +1,174 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_mario_64",
+  "title": "Nazi Zombie Mario 64",
+  "source": "custom",
+  "author": "Jake (Apex)",
+  "released": "2012-08-26",
+  "fs_game": "mods/nazi_zombie_mario_64",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@zct_mod2_mw.iwd": "165d0148a745292399624f34ea217e8c95ec8fad074130bdf35a62448f68ad70"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        4500,
+        5000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game name an ending and are this map's own; script hardcodes cost 5000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 71,
+    "script_count": 71,
+    "entities": 272,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      4500,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        950,
+        "treasure_chest_use",
+        "pf21_auto1"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "165d0148a745292399624f34ea217e8c95ec8fad074130bdf35a62448f68ad70",
+    "map_specific_triggers": [
+      "spawn_zoning"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:07:03Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_mario_64.exe",
+    "original_sha256": "aa4dcfca13650821325aba06dace4950a7b727a3ee19d264d15962e5d17089b5",
+    "original_size": 128254439,
+    "source_url": "https://www.mediafire.com/file/3iiqgzqd8oc46d3/nazi_zombie_mario_64.exe/file",
+    "source_page": "https://callofdutyrepo.com/2012/08/26/nazi-zombie-mario-64/",
+    "fetched": "2026-09-26T15:04:19Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "This is another map i was working on before my PC Died. Thanks to MRQuick i have a copy of the beta of this map which i can now release so anyone who wants to play it, can. Description: This Is a one room map, Ported directly from Super Mario 64. It is not a \u201cremake\u201d. The Map is a model ported to WAW by me. I hadn\u2019t gotten around to adding any more Rooms, so thats why its one room. Map Uses the ZCT MW Mod. I have also added a model of dead Mario, and dead Yoshi. Features: Custom Models ZCT MW Mod Custom Mystery Box So yeah, It\u2019s not much, but it\u2019s something playable that i have managed to recover with the hep of Mr Quick.",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_factory",
+        "loadscreen_nazi_zombie_mario_64",
+        "loadscreen_nazi_zombie_maze",
+        "loadscreen_nazi_zombie_maze2",
+        "loadscreen_nazi_zombie_maze3",
+        "loadscreen_nazi_zombie_maze4",
+        "loadscreen_nazi_zombie_maze5",
+        "loadscreen_nazi_zombie_mp2_1",
+        "loadscreen_nazi_zombie_mp2_3",
+        "loadscreen_nazi_zombie_ott"
+      ],
+      "iwd_images": [
+        "nazi_zombie_mario_64.iwd:images/loadscreen_nazi_zombie_mario_64.iwi",
+        "zct_mod2_mw.iwd:images/menu_zct_mod.iwi",
+        "zct_mod2_mw.iwd:images/menu_zct_mod_wide.iwi",
+        "zct_mod2_mw.iwd:images/weapon_red_cross_background.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_mario_64"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 71.1,
+    "addon_iwds": [
+      {
+        "file": "zct_mod2_mw.iwd",
+        "entries": 236,
+        "scripts": 27,
+        "bytes": 53099295
+      }
+    ],
+    "flags": [
+      "no_patch_ff",
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": false,
+    "napalmblob": [
+      "nazi_zombie_mario_64.ff",
+      "zct_mod2_mw.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

@@ -1,0 +1,213 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_mckays_box",
+  "title": "Mckay's Box",
+  "source": "custom",
+  "author": "Geek008",
+  "released": "2012-09-12",
+  "fs_game": "mods/nazi_zombie_mckays_box",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_mckays_box.iwd": "3252e63e08270a089a9ad42564af620fc773c6b8ef2996b2805e151f5afd2d9d"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        1750,
+        2000,
+        2500,
+        3000,
+        4500,
+        5000,
+        10000,
+        50000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 50000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 102,
+    "script_count": 102,
+    "entities": 296,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      1750,
+      2000,
+      2500,
+      3000,
+      4500,
+      5000,
+      10000,
+      50000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_0"
+      ],
+      [
+        500,
+        "betty_purchase",
+        "betty"
+      ],
+      [
+        500,
+        "betty_purchase",
+        "betty"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "3252e63e08270a089a9ad42564af620fc773c6b8ef2996b2805e151f5afd2d9d",
+    "map_specific_triggers": [
+      "end_game",
+      "enter",
+      "gas",
+      "gasmask",
+      "joey_crouch",
+      "joeybbb",
+      "music_box_player",
+      "power_player",
+      "secret_trigger",
+      "teddy1",
+      "teddy2",
+      "teddy3",
+      "trem_bank_trig",
+      "trig",
+      "trig1",
+      "trig2",
+      "trig3"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:36:48Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_mckays_box.exe",
+    "original_sha256": "2343ff575c2fe5fa2d73e3bdabcbb919c14919a0e90effd779d039a936627862",
+    "original_size": 102209344,
+    "source_url": "https://www.mediafire.com/file/yrqf2b65qt0eejr/nazi_zombie_mckays_box.exe/file",
+    "source_page": "https://callofdutyrepo.com/2012/09/12/mckays-box/",
+    "fetched": "2026-09-26T15:34:45Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Hey Guys So It Is Geek008 / Dr-Mckay Back For The 5th Installment Of My Mapping Series: Nazi_Zombie_Mckays_Box. This Mapping Idea Was Inspired When My Friend Told Me There Was A New Category Devoted to Box Maps. So I Had To Make The BEST Box Map Ever! So Here It Is. I Started This Map Shortly After I Had To Cancel Work On My Map Nazi_zombie_555, So That Map Will Not Be Released By Me, But I Used The Textures and Custom Scripts From There and Put Them In This Map. I Hope You Guys Enjoy This Map I Know It Was Tons of Fun To Make and Test, There Are A Couple Videos Out Already Of Us Playing The Betas. THIS MAP DOES HAVE A BUYABLE ENDING! Features: Custom Zombie Skins. Custom Player Skins. Custom Images. Custom Door Scripts. Buy Able Weapons, Including Ray Gun, Monkeys and WanderWuffe. Shootable Easter Egg. Tom_BMX\u2019s Music Box. Treminaor\u2019s Bank. Into Text, Pre Game Messages and Mission Objectives. Modified Quick Revive. Spinning Boxes You Can Interact With. Gas Mask and Section Cut Off By Gas. Portals. All 4 Perk Machines. Power On From The Start. and Loads More You must Find Out\u2026",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_nazi_zombie_mckays_box"
+      ],
+      "iwd_images": [
+        "nazi_zombie_mckays_box.iwd:images/loadscreen_nazi_zombie_mckays_box.iwi",
+        "nazi_zombie_mckays_box.iwd:images/menu_map_nazi_zombie_mckays_box.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_mckays_box"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 84.9,
+    "addon_iwds": [],
+    "flags": [],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_mckays_box.ff",
+      "nazi_zombie_mckays_box_patch.ff",
+      "nazi_zombie_mckays_box.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "nazi_zombie_mckays_box.iwd:maps/tom_music_player_unl.gsc",
+        "menus": [],
+        "responses": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9"
+        ],
+        "note": "in game: a music player"
+      },
+      {
+        "script": "nazi_zombie_mckays_box.iwd:maps/trem_bank_2.gsc",
+        "menus": [],
+        "responses": [],
+        "note": "in game: the bank"
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

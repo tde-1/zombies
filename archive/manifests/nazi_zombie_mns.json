@@ -1,0 +1,133 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_mns",
+  "title": "Nazi Zombie Mines",
+  "source": "custom",
+  "author": "TinMan",
+  "released": "2008-12-27",
+  "fs_game": "mods/nazi_zombie_mns",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_mns.ff": "0fe1fe5d658c2dfbf7a539172ad56ee05d75d251baf1f101b05eb22c9625b4f6"
+  },
+  "badge": {
+    "main_finish": "round",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "round",
+    "why": "no easter egg or ending found; default Round 20",
+    "verdict_stock_baseline_only": "round",
+    "scripts": 39,
+    "script_count": 39,
+    "entities": 247,
+    "ee_candidates": [],
+    "ending_words": [],
+    "hardcoded_costs": [
+      1000,
+      1500
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "rock3"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "rock2"
+      ],
+      [
+        1250,
+        "zombie_debris",
+        "rock1"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "pf260_auto1"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [],
+    "zombiemode_sha256": "0fe1fe5d658c2dfbf7a539172ad56ee05d75d251baf1f101b05eb22c9625b4f6",
+    "map_specific_triggers": [],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:48:19Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_mns.exe",
+    "original_sha256": "1fc7000ff7688a7932fc5a17d8eac13121359d8372ed6e267c20ea5b169e8790",
+    "original_size": 44502307,
+    "source_url": "https://www.mediafire.com/file/twwxskqx3svfko3/nazi_zombie_mns.exe/file",
+    "source_page": "https://callofdutyrepo.com/2008/12/27/nazi-zombie-mns/",
+    "fetched": "2026-09-26T15:47:05Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "leaderboard"
+    ],
+    "catalogue_description": "Features -Mystery Box -Wall Guns -MG Wall Guns -Raygun from wall 10 000 points Map Reviewer: 4/10 This map has almost game-breaking bugs. Otherwise, it\u2019s a mediocre mineshaft map with good ambition but failed to execute the good ambition. Little detail Bugs: Zombie AI pathing is awful because of the ladders. The ladders make it so the zombies in the spawn room can\u2019t go anywhere because the 2nd section of the map it is accessed by ladders. Some visual bugs and lighting without props. Zombie animations will sometime be twice as fast. Strats: Camp by Raygun wall-buy until no more zombies come from the 2nd portion of the map. Afterward, jump down to spawn and train to kill rest of zombies trapped in spawn.",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_mns",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "nazi_zombie_mns.iwd:images/loadscreen_nazi_zombie_mns.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_mns"
+    }
+  },
+  "notes": "Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 73.2,
+    "addon_iwds": [],
+    "flags": [
+      "no_patch_ff"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": false,
+    "napalmblob": [
+      "nazi_zombie_mns.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

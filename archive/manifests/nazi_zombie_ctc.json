@@ -1,0 +1,271 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_ctc",
+  "title": "Nazi Zombie CTC",
+  "source": "custom",
+  "author": "Dark-Inv4d3r",
+  "released": "2013-11-19",
+  "fs_game": "mods/nazi_zombie_ctc",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_ctc.iwd": "dbed1d5cba27f51a8dd5480904880ffd3eb9d647bc3bfa4c9afb5e0c18b3e0ae"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "crawler_round_ending"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        3500,
+        5000,
+        10000,
+        50000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 50000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 113,
+    "script_count": 113,
+    "entities": 1087,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      3500,
+      5000,
+      10000,
+      50000
+    ],
+    "orphan_end_triggers": [
+      "trigger_teleport_pad_0",
+      "trigger_teleport_pad_1",
+      "trigger_teleport_pad_2"
+    ],
+    "top_costs": [
+      [
+        2000,
+        "zombie_door",
+        "auto84"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto82"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto80"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto80"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto63"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "dbed1d5cba27f51a8dd5480904880ffd3eb9d647bc3bfa4c9afb5e0c18b3e0ae",
+    "map_specific_triggers": [
+      "hurt_away",
+      "hurt_home",
+      "music_box_player",
+      "teddy1",
+      "teddy2",
+      "teddy3",
+      "use_lander_1",
+      "use_lander_2"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:34:33Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_ctc.exe",
+    "original_sha256": "52ec07d655d29de6d85087c85c525461a112d149fc4fe4334a7193398985bdae",
+    "original_size": 168657124,
+    "source_url": "https://www.mediafire.com/file/41sqw3cwul8rtgx/nazi_zombie_ctc.exe/file",
+    "source_page": "https://callofdutyrepo.com/2013/11/19/nazi-zombie-ctc/",
+    "fetched": "2026-09-26T15:32:06Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Description Okay, let\u2019s go!! The first map that i have made. Find your way to Control The City!!!! Have fun RFA Presents -Control The City- ====================================================== Features: Zipline lunar_lander tom_music_player Black Ops 2 Perk Shaders Magic box Teleporters All 4 perks",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_ctc",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "nazi_zombie_ctc.iwd:images/loadscreen_nazi_zombie_ctc.iwi",
+        "nazi_zombie_ctc.iwd:images/menu_map_nazi_zombie_realism_dr.iwi",
+        "nazi_zombie_ctc.iwd:images/rfa_menu.iwi",
+        "nazi_zombie_ctc.iwd:images/specialty_fastreload_zombies.iwi",
+        "nazi_zombie_ctc.iwd:images/tomx_menubackground.iwi",
+        "nazi_zombie_ctc.iwd:images/zombie_vending_sleight_logo_c.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_ctc"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 119.3,
+    "addon_iwds": [],
+    "flags": [
+      "client_memory_risk"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_ctc.ff",
+      "nazi_zombie_ctc_patch.ff"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "nazi_zombie_ctc.iwd:maps/menu_classes.gsc",
+        "menus": [],
+        "responses": [
+          "1",
+          "2",
+          "3",
+          "30cal_bipod",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9",
+          "a_engineer",
+          "a_medic",
+          "a_none",
+          "a_soldier",
+          "a_support",
+          "accept",
+          "ak47",
+          "ak74u",
+          "aperture",
+          "aperture_i",
+          "bar_bipod",
+          "bayonet",
+          "bayonet_i",
+          "bigammo",
+          "bigammo_i",
+          "cancel",
+          "custom",
+          "deserteagle",
+          "doublebarrel",
+          "dragunov",
+          "engineer",
+          "engineer_1",
+          "engineer_upgrade_other1",
+          "engineer_upgrade_other2",
+          "engineer_upgrade_other3",
+          "engineer_upgrade_other4",
+          "engineer_upgrade_weapon1",
+          "engineer_upgrade_weapon2",
+          "fg42_bipod",
+          "gewehr43"
+        ],
+        "note": null
+      },
+      {
+        "script": "nazi_zombie_ctc.iwd:maps/tom_music_player_unl.gsc",
+        "menus": [],
+        "responses": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9"
+        ],
+        "note": "in game: a music player"
+      },
+      {
+        "script": "nazi_zombie_ctc.iwd:maps/trem_bank_2.gsc",
+        "menus": [],
+        "responses": [],
+        "note": "in game: the bank"
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

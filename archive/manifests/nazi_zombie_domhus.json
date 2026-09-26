@@ -1,0 +1,194 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_domhus",
+  "title": "Domhus",
+  "source": "custom",
+  "author": "JayJiveCertified, Cleb",
+  "released": "2020-06-24",
+  "fs_game": "mods/nazi_zombie_domhus",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_domhus.iwd": "950e24c06cd9cc61d97d384f0fd2a88a894fa6349e46fb8da2277c31b4bc44e1"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "crawler_round_ending"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        3000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 3000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 113,
+    "script_count": 113,
+    "entities": 650,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        4000,
+        "pf660_auto1",
+        "?"
+      ],
+      [
+        3500,
+        "zombie_door",
+        "auto12"
+      ],
+      [
+        3000,
+        "pf607_auto1",
+        "?"
+      ],
+      [
+        2500,
+        "pf599_auto1",
+        "?"
+      ],
+      [
+        2500,
+        "pf583_auto1",
+        "?"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "950e24c06cd9cc61d97d384f0fd2a88a894fa6349e46fb8da2277c31b4bc44e1",
+    "map_specific_triggers": [
+      "end_game_switch",
+      "harrybo21_perk_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:47:29Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_domhus.exe",
+    "original_sha256": "c3e88a436847828a1c9645b4cd1f3bc5340d830b7ecc8c698acda3aabcb5ba3c",
+    "original_size": 254467330,
+    "source_url": "https://www.mediafire.com/file/i9yp6xx66w2lkus/nazi_zombie_domhus.exe/file",
+    "source_page": "https://callofdutyrepo.com/2020/06/24/domhus/",
+    "fetched": "2026-09-26T15:45:54Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "DO NOT CLICK \u201cRESTART LEVEL\u201d Features: \u2022 13 Perk-a-Colas o Jugger-Nog (WaW) o Double Tap 2.0 (BO2) o Speed Cola (WaW) o Quick Revive [Solo / Co-op] (BO1) o Mule Kick (BO1) o Stamin-Up (BO1) o PHD Flopper (BO1) o Deadshot Daiquiri (BO1) o Tombstone Soda (BO2) o Who\u2019s Who (BO2) o Vulture Aid (BO2) o Electric Cherry (BO2) o Widow\u2019s Wine (BO3) \u2022 No Perk Limit \u2022 Black Ops 1 Guns \u2022 Wunderfizz Machine (BO2) \u2022 NO PACK-A-PUNCH \u2022 Buyable Endgame Credits: UG Rorke \u2013 BO1 Weapons HarryBo21 \u2013 Perks alaurenc9 \u2013 Endgame Switch",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/p6_zm_al_vending_ads_logo_m.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/p6_zm_al_vending_three_gun_logo_m.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/p6_zm_al_vending_three_gun_logo_n.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/p7_zm_vending_ads_logo_col.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/specialty_fastreload_zombies.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/ugx_mod_menu_template.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/_-gp6_zm_al_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/_-gzombie_vending_sleight_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~-gp6_zm_al_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~-gp6_zm_al_vending_three_gun_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~p7_zm_vending_ads_logo_spc-r~301c48c1.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~__-gzombie_vending_ads_logo_~7aa94a54.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~~~-gzombie_vending_ads_logo_~54fdbc62.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 61.6,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 67,
+        "scripts": 0,
+        "bytes": 176320
+      },
+      {
+        "file": "harrybo21_bo1_2_3_perks_v5.0.0.iwd",
+        "entries": 609,
+        "scripts": 0,
+        "bytes": 132191594
+      }
+    ],
+    "flags": [],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_domhus.ff",
+      "nazi_zombie_domhus_patch.ff",
+      "nazi_zombie_domhus.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

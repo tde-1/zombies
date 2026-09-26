@@ -1,0 +1,234 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_buried",
+  "title": "Nazi Zombie Buried",
+  "source": "custom",
+  "author": "Hippy Lover 313",
+  "released": "2014-05-13",
+  "fs_game": "mods/nazi_zombie_buried",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_buried.iwd": "6f46c9e0fbc7b23aa7967f462672028712ec44267440472697e7d67f37bdd06c"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_trigger"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game",
+        "end_trigger"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        4500,
+        5000,
+        9000,
+        90000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game, end_trigger name an ending and are this map's own; script hardcodes cost 90000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 113,
+    "script_count": 113,
+    "entities": 1356,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game",
+      "end_trigger"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      4500,
+      5000,
+      9000,
+      90000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "23"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "22"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "20"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "20"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "18"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "6f46c9e0fbc7b23aa7967f462672028712ec44267440472697e7d67f37bdd06c",
+    "map_specific_triggers": [
+      "end_trigger",
+      "kino_mainframe_trigger",
+      "kino_teleporter_trigger",
+      "purchase",
+      "select",
+      "soul_chest_area",
+      "soul_chest_reward",
+      "support_spawn_button",
+      "wunderfizz_trigger",
+      "zapper_damage_bridge",
+      "zombie_perks"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:11:12Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_buried.exe",
+    "original_sha256": "5b5e9cb768db9bbecf710e048b84bb628ef74915c24def0197df0b9505c5329f",
+    "original_size": 113739825,
+    "source_url": "https://www.mediafire.com/file/y2xltdu5lfiw5st/nazi_zombie_buried.exe/file",
+    "source_page": "https://callofdutyrepo.com/2014/05/13/nazi-zombie-buried/",
+    "fetched": "2026-09-26T15:08:30Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Description Note- This map is quite buggy and the textures have an awful problem So i mapped for about 1 year now and came up with an idea to take BO2 Buried and force into WAW with a different style to it but still the same vibe. dont be afraid to run cause your not going to hide. Story- all 4 men find this underground site where both Russians and japs did there stake outs. The men find them selves at a death hole because they can get out!!! Help them TelePrompter plzz Sorry i dont know how to add pics off the map Map Contains 1 Glitch the Solo Quick Revive is like 3 or 4000 i dont know why sorry i tried to cahnge its. nice textured out tunnels drop downs Bo1 and 2 perks Bo2 soul chest reward collectable pap new perk near pap Classified till in game Bo2 shaders Buyable endding 90000 coustom name guns and streghth Boss Zombie Bo2 Mob of the dead zombies 1 Glitch the Solo Quick Revive is like 3 or 4000 i dont know why sorry i tried to cahnge its.",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [
+        "_bam_bo1_perks_mod.iwd:images/specialty_fastreload_zombies.iwi",
+        "_bam_bo1_perks_mod.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "_bam_bo1_perks_mod.iwd:images/zombie_vending_three_gun_logo_c.iwi",
+        "_bam_bo1_perks_mod.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "_bam_bo1_perks_mod.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi",
+        "nazi_zombie_buried.iwd:images/bar_menubackground.iwi",
+        "nazi_zombie_buried.iwd:images/specialty_fastreload_zombies.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 130.4,
+    "addon_iwds": [
+      {
+        "file": "_bam_bo1_perks_mod.iwd",
+        "entries": 58,
+        "scripts": 3,
+        "bytes": 2985211
+      },
+      {
+        "file": "electric_cherry.iwd",
+        "entries": 10,
+        "scripts": 1,
+        "bytes": 953424
+      },
+      {
+        "file": "motd_zombie_images.iwd",
+        "entries": 30,
+        "scripts": 0,
+        "bytes": 8573564
+      },
+      {
+        "file": "nazi_zombie_asylum.iwd",
+        "entries": 6,
+        "scripts": 6,
+        "bytes": 2722
+      },
+      {
+        "file": "vulture_aid.iwd",
+        "entries": 11,
+        "scripts": 1,
+        "bytes": 556980
+      },
+      {
+        "file": "wunderfizz.iwd",
+        "entries": 8,
+        "scripts": 1,
+        "bytes": 1019293
+      }
+    ],
+    "flags": [
+      "client_memory_risk",
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_buried.ff",
+      "nazi_zombie_buried_patch.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

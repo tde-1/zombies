@@ -1,0 +1,206 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "mineshaft_adventure",
+  "title": "Mineshaft Adventure",
+  "source": "custom",
+  "author": "Lava_Wills",
+  "released": "2024-07-13",
+  "fs_game": "mods/mineshaft_adventure",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@mineshaft_adventure.iwd": "18f0dc1d53c6c850c09ac28178feb77a242607601a4c0e095f783ece1b1a63aa"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "ee_tree_use",
+        "tomahawk_ee_area"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "ee_tree_use, tomahawk_ee_area look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 132,
+    "script_count": 132,
+    "entities": 4331,
+    "ee_candidates": [
+      "ee_tree_use",
+      "tomahawk_ee_area"
+    ],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      50000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "pf4810_auto1",
+        "?"
+      ],
+      [
+        5000,
+        "pf3704_auto1",
+        "?"
+      ],
+      [
+        4000,
+        "pf3717_auto1",
+        "?"
+      ],
+      [
+        3000,
+        "pf3690_auto1",
+        "?"
+      ],
+      [
+        2500,
+        "pf4816_auto1",
+        "?"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc",
+      "maps/_utility.gsc"
+    ],
+    "zombiemode_sha256": "18f0dc1d53c6c850c09ac28178feb77a242607601a4c0e095f783ece1b1a63aa",
+    "map_specific_triggers": [
+      "acid_build_trigger",
+      "blunder_trigg",
+      "demon_hitbox",
+      "dg4_powerup",
+      "ee_tree_use",
+      "end_game",
+      "harrybo21_perk_trigger",
+      "mc_cat",
+      "mc_water",
+      "mineshaft_weapons",
+      "nether_portal_main",
+      "nether_portal_main_use",
+      "nether_portal_nether",
+      "nether_protal_nether_use",
+      "pap_text",
+      "rotating_door",
+      "smithing_table_use",
+      "tomahawk_ee_area",
+      "tree_soul",
+      "villager_diamond",
+      "villager_farmer",
+      "villager_normal",
+      "villager_pap",
+      "villager_slot",
+      "vol_scale0",
+      "vol_scale1",
+      "vol_scale2",
+      "water_teleport1",
+      "water_teleport2",
+      "water_teleport3",
+      "water_teleport4",
+      "water_teleport5",
+      "water_teleport6",
+      "water_teleport7",
+      "weapon_locker"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:25:44Z"
+    }
+  },
+  "archive": {
+    "original": "Mineshaft_AdventureV1.3.2.exe",
+    "original_sha256": "0d8cad2af13ce84be837ddc14c167fba92da16b26038ee07d22a9f1625fa5728",
+    "original_size": 502844421,
+    "source_url": "https://www.mediafire.com/file_premium/uhsfd0mv4qodnwb/Mineshaft_AdventureV1.3.2.exe/file",
+    "source_page": "https://callofdutyrepo.com/2024/07/13/mineshaft-adventure/",
+    "fetched": "2026-09-26T15:23:59Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Hi everyone, I\u2019m bring you a huge minecraft map this time ! Both cod and minecraft are my favorite games, so I take my survival base in minecraft here. And this is my second map, just enjoy! Thanks to FirstBlood so that I can have smoe super cool weapons in my map. And at the same time, thanks to Klaudeh\u2019s kindly help, without him this map can\u2019t be so beautiful. Attention again\uff1a Remember zombies within 500 range of Brutus are immune to the effects of the wonderWeapon. So don\u2019t ask\u201d Why my thundergun/blackhole/mk3 doesn\u2019t work\u201d all the time. You can end this protection by knocking Brutus\u2019s hat off. Tips\uff1a 1.If you have deadshot-daiquiri, your headshot makes more damage 2.if you have double-tap, most of your weapons have increased damage 3.While in water, you are immune to fall damage 4.Tombstone-soda is a modified version that gives you a second chance whether single or multiplayer, so it is expensive 5.All wonder weapons can cause damage to bosses, they just can\u2019t kill the boss instantly. 6.Vulture mist is not wrong, it requires you to stand in it for a short while to take effect (not immediately), the zombies will not attack you, but will still follow you 7.Look at your friends and Press and hold F for a while to trade weapon or give them money!(Quickly tap F), so you can pool your points on one player to buy arena. Change log\uff1a V1.3.2: Don\u2019t mind my frequent updates. Save/load feature still have small bugs, so i fix them(They don\u2019t affect your gameplay a lot, but I can\u2019t stan",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [
+        "mineshaft_adventure.iwd:images/p6_zm_al_vending_ads_logo_m.iwi",
+        "mineshaft_adventure.iwd:images/p6_zm_al_vending_three_gun_logo_m.iwi",
+        "mineshaft_adventure.iwd:images/p6_zm_al_vending_three_gun_logo_n.iwi",
+        "mineshaft_adventure.iwd:images/specialty_fastreload_zombies.iwi",
+        "mineshaft_adventure.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "mineshaft_adventure.iwd:images/ugx_mod_menu_template.iwi",
+        "mineshaft_adventure.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "mineshaft_adventure.iwd:images/_-gp6_zm_al_vending_ads_logo_c.iwi",
+        "mineshaft_adventure.iwd:images/_-gzombie_vending_sleight_logo_c.iwi",
+        "mineshaft_adventure.iwd:images/~__-gzombie_vending_ads_logo_~7aa94a54.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc, maps/_utility.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 88.5,
+    "addon_iwds": [],
+    "flags": [],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mineshaft_adventure_patch.ff",
+      "mod.ff",
+      "mineshaft_adventure.iwd:animscripts/death.gsc",
+      "mineshaft_adventure.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

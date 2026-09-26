@@ -1,0 +1,159 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "shinda_numachi",
+  "title": "Shinda Numachi Beta",
+  "source": "custom",
+  "author": "long cut loser",
+  "released": "2015-07-15",
+  "fs_game": "mods/shinda_numachi",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@shinda_numachi.iwd": "17835aa2deaa1390355bc0eb5f5664471334fcc6f0e606798742f7d999eaaf8a"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "crawler_round_ending"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        5000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 5000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 167,
+    "script_count": 167,
+    "entities": 87,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        1500,
+        "weapon_upgrade",
+        "auto40"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "17835aa2deaa1390355bc0eb5f5664471334fcc6f0e606798742f7d999eaaf8a",
+    "map_specific_triggers": [],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:37:20Z"
+    }
+  },
+  "archive": {
+    "original": "Shinda_Numachi_Beta.exe",
+    "original_sha256": "7f367a42bdd826231a200b4fd855d748abf6f0337dbdef5a40261eebf7b05b96",
+    "original_size": 114567712,
+    "source_url": "http://www.mediafire.com/file/kx2ccmq2r0myk91/Shinda_Numachi_Beta.exe/file",
+    "source_page": "https://callofdutyrepo.com/2015/07/15/shinda-numachi-beta/",
+    "fetched": "2026-09-26T15:35:27Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Hey guys. After working on this map for a long time, I feel like I should release a beta version. The map is called Shinda Numachi. I would just release the full version but my hdd crashed and I wasn\u2019t able to get certain rooms recovered so I have some temporary fixes in place. This should give me more time to finish the map. The map layout overall is from Standoff on Black Ops 2 MP. This is my first map that I\u2019m releasing to the community and I am very proud of it. I hope you all like it too!! Features: Campaign Japanese Soldier Zombies!! No dogs Custom Pap Camo Black Ops guns Zappers Black Ops Perks Electric Cherry Glowing Zombie eyes Wind Lightning & Thunder Risers Awesome Gameplay!! Features to possibly add: Easter Egg(s) I will add to the features list as I add more to the map or if I forgot anything. Credits: Elfenlied \u2013 Weapon help. Helping me make first camo and for testing. Buttkicker845 \u2013 Script help, map help, testing. BWC66930 \u2013 Testing. Tom_BMX \u2013 For his sexy tools. MakeCents \u2013 Testing. (If I forget to add you to the crediting, which lets be honest happens, just send me a message of what it was and I\u2019ll add you to the list) Please let me know what you guys think! If you find any glitches please report them and describe them and the location as best as you can. Also if you have any suggestions let me know.",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [
+        "shinda_numachi.iwd:images/specialty_fastreload_zombies.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 121.0,
+    "addon_iwds": [
+      {
+        "file": "electric_cherry.iwd",
+        "entries": 10,
+        "scripts": 1,
+        "bytes": 953497
+      }
+    ],
+    "flags": [
+      "client_memory_risk",
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_climbtut.ff",
+      "shinda_numachi_patch.ff",
+      "shinda_numachi.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

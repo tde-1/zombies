@@ -1,0 +1,195 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_ndh",
+  "title": "Night Der Hospital",
+  "source": "custom",
+  "author": "Gamer9294",
+  "released": "2014-03-08",
+  "fs_game": "mods/nazi_zombie_ndh",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_ndh.iwd": "a1e79169bdeeb91c011cfb05996b086478338d568d312f78c404557882b51c75"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "crawler_round_ending"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000,
+        9000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 9000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 103,
+    "script_count": 103,
+    "entities": 7859,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      9000
+    ],
+    "orphan_end_triggers": [
+      "trigger_teleport_pad_0",
+      "trigger_teleport_pad_1",
+      "trigger_teleport_pad_2"
+    ],
+    "top_costs": [
+      [
+        5000,
+        "zombie_door",
+        "pap_door"
+      ],
+      [
+        5000,
+        "zombie_door",
+        "main_door"
+      ],
+      [
+        4000,
+        "zombie_door",
+        "exit_west_doors1"
+      ],
+      [
+        4000,
+        "zombie_door",
+        "exit_west_doors1"
+      ],
+      [
+        4000,
+        "zombie_door",
+        "exit_doors_east1"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "a1e79169bdeeb91c011cfb05996b086478338d568d312f78c404557882b51c75",
+    "map_specific_triggers": [
+      "buy_powerup",
+      "secret_trigger",
+      "secret_trigger3",
+      "secret_trigger4",
+      "ups",
+      "zapper1_damage",
+      "zapper1_trigger",
+      "zapper2_damage",
+      "zapper2_trigger",
+      "zapper3_damage",
+      "zapper3_trigger",
+      "zapper4_damage",
+      "zapper4_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:29:13Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_ndh.exe",
+    "original_sha256": "c26e7cc2f31195b2bd1227b322d249f9ce344204ddae5579684dc5fdf83f97d0",
+    "original_size": 170470554,
+    "source_url": "https://www.mediafire.com/file/eqlvwd47pvutv91/nazi_zombie_ndh.exe/file",
+    "source_page": "https://callofdutyrepo.com/2014/03/08/night-der-hospital/",
+    "fetched": "2026-09-26T15:27:24Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Description hello everyone, here is my zombie map: Nazi Zombie Night Der Hospital . Some people asked me if I could upload. nazi zombie night of my hospital again. it is a older zombie map then what i have uploaded in the previous map. okay let\u2019s begin about this map: Night Der Hospital It is a large zombie map, you mission is to find the secret teddybear that open the Pack A Punch room that you can upgrade your weapons, and there are 3 more teddybears to open a powerups box that you can buy powerups. little story: You come into a city, you need help because you are injured by the war in 1978. People have pointed out the path to where the hospital is. When you arrived you found it strange that the hospital was already empty. When you found out that the hospital was infected you must fight against the zombies in the hospital itself. Features: * Bo1 weapons. * 6 treasure chest boxes. * Random magic box start. * 4 perk machines. * Der riese style teleporters. * secret teddybears. * eletric traps. * power doors. * another start weapon. * fx\u2019s + custom powerup fx. * custom zombie textures * turrets useable and many more\u2026 Credits to: special thanks \u2013 YaPh1l \u2013 ( scripts ) \u2013 bamskater33 \u2013 ( tutorials ) \u2013 OnlineX420 \u2013 ( black ops models ) \u2013 Frd \u2013 ( tutorial = tito from openwarfaremod.com \u2013 for bo guns ) \u2013 MrHankey91 \u2013 Script placer program and another people from zombiemodding.com that posted a tutorials. so everyone with scripts, tutorials, models, or something else thank you very mu",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_ndh",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "nazi_zombie_ndh.iwd:images/loadscreen_nazi_zombie_ndh.iwi",
+        "nazi_zombie_ndh.iwd:images/weapon_red_cross_background.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_ndh"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 143.0,
+    "addon_iwds": [],
+    "flags": [
+      "client_memory_risk"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_ndh.ff",
+      "nazi_zombie_ndh_patch.ff",
+      "nazi_zombie_ndh.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

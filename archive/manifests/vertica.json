@@ -1,0 +1,212 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "vertica",
+  "title": "Vertica",
+  "source": "custom",
+  "author": "JayJiveCertified",
+  "released": "2020-07-08",
+  "fs_game": "mods/vertica",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@vertica.iwd": "149c6370a1ab4c96eb804787e65a1704492fa1dcbbd6c1e97c31bd6258e24e80"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "crawler_round_ending"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        3000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 3000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 122,
+    "script_count": 122,
+    "entities": 717,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "pf719_auto1",
+        "?"
+      ],
+      [
+        4000,
+        "pf651_auto1",
+        "?"
+      ],
+      [
+        3000,
+        "pf711_auto1",
+        "?"
+      ],
+      [
+        2500,
+        "pf668_auto1",
+        "?"
+      ],
+      [
+        2500,
+        "pf647_auto1",
+        "?"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "149c6370a1ab4c96eb804787e65a1704492fa1dcbbd6c1e97c31bd6258e24e80",
+    "map_specific_triggers": [
+      "end_game_switch",
+      "harrybo21_perk_trigger",
+      "mbox_bandr_build_trig",
+      "mbox_bandr_pick_trig",
+      "mbox_base_build_trig",
+      "mbox_base_pick_trig",
+      "mbox_lid_build_trig",
+      "mbox_lid_pick_trig"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:14:06Z"
+    }
+  },
+  "archive": {
+    "original": "Vertica.exe",
+    "original_sha256": "9b795bd3aec8ad15c8cf629179757e491b3ae744f2764baaeee0905cc2263cd4",
+    "original_size": 371634738,
+    "source_url": "https://www.mediafire.com/file/5ab714c2hcoubqt/Vertica.exe/file",
+    "source_page": "https://callofdutyrepo.com/2020/07/08/vertica/",
+    "fetched": "2026-09-26T15:11:30Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending",
+      "t4m_req"
+    ],
+    "catalogue_description": "A new map by a member of callofdutyrepo discord server. DO NOT CLICK \u201cRESTART LEVEL\u201d After a mysterious Nazi scientist\u2019s house and laboratory are taken over by hordes of the undead, four time-travelling operatives from the year 2025 are sent to contain the outbreak. You must now plays as these operatives to defeat the zombie horde and protect the future of Earth. Welcome to Vertica. Features: \u2022 Full Auto Colt \u2022 13 Perk-a-Colas o Jugger-Nog (WaW) o Double Tap 2.0 (BO2) o Speed Cola (WaW) o Quick Revive [Solo / Co-op] (BO1) o Mule Kick (BO1) o Stamin-Up (BO1) o PHD Flopper (BO1) o Deadshot Daiquiri (BO1) o Tombstone Soda (BO2) o Who\u2019s Who (BO2) o Vulture Aid (BO2) o Electric Cherry (BO2) o Widow\u2019s Wine (BO3) \u2022 No Perk Limit \u2022 Origins Pack-a-Punch \u2022 Double Pack-a-Punch \u2022 14 Custom Guns o XR2 (BO3) o ICR-1 (BO3) o KN-44 (BO3) o Dingo (BO3) o FFAR (BO3) o Sheiva (BO3) o VMP (BO3) o Vesper (BO3) o Bootlegger (BO3) o Weevil (BO3) o Pharo (BO3) o MR6 (BO3) o Apothican Servant (BO3) o Ray Gun Mark 2 (BO2) o Mustang and Sally (BO1) \u2022 Hitmarkers \u2022 \u201cFive\u201d Style Zombies \u2022 Zombie Counter \u2022 Buildable Mystery Box \u2022 Buyable Endgame \u2022 Nuketown 2025 Character Models \u2022 Verruckt Sprinters \u2022 No Dogs \u2022 Custom Font \u2022 Custom Powerups o Unlimited Ammo o God Mode o SPEED Credits: HarryBo21 \u2013 Perks, Pack-a-Punch, Ray Gun Mark 2, Mustang and Sally PROxFTW \u2013 Hitmarkers Dust \u2013 Zombie Counter alaurenc9 \u2013 Endgame Switch DidUknowiPwn \u2013 Custom Font shippuden1592 \u2013 \u201cFive\u201d Style Zombies, ICR-1, KN-44, Haymaker, ",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/p6_zm_al_vending_ads_logo_m.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/p6_zm_al_vending_three_gun_logo_m.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/p6_zm_al_vending_three_gun_logo_n.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/p7_zm_vending_ads_logo_col.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/specialty_fastreload_zombies.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/ugx_mod_menu_template.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/_-gp6_zm_al_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/_-gzombie_vending_sleight_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~-gp6_zm_al_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~-gp6_zm_al_vending_three_gun_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~p7_zm_vending_ads_logo_spc-r~301c48c1.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~__-gzombie_vending_ads_logo_~7aa94a54.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~~~-gzombie_vending_ads_logo_~54fdbc62.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 68.3,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 67,
+        "scripts": 0,
+        "bytes": 176320
+      },
+      {
+        "file": "harrybo21_bo1_2_3_perks_v5.0.0.iwd",
+        "entries": 609,
+        "scripts": 0,
+        "bytes": 132191594
+      },
+      {
+        "file": "zmb_five.iwd",
+        "entries": 31,
+        "scripts": 5,
+        "bytes": 5968487
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "vertica.ff",
+      "vertica_patch.ff",
+      "vertica.iwd:maps/_loadout.gsc",
+      "vertica.iwd:_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

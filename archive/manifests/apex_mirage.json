@@ -1,0 +1,202 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "apex_mirage",
+  "title": "APEX MIRAGE",
+  "source": "custom",
+  "author": "toomeyp1992 (Apex)",
+  "released": "2013-12-23",
+  "fs_game": "mods/apex_mirage",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@apex_mirage.iwd": "a2bf4241c8b82e6449171e630248eab4efe6d204d211a284cfeacdab932c88fd"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000,
+        75000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 75000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 102,
+    "script_count": 102,
+    "entities": 916,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      75000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "spiral_top"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "spiral_top"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "spiral_top"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "spiral_top"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "spiral_bottom"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "a2bf4241c8b82e6449171e630248eab4efe6d204d211a284cfeacdab932c88fd",
+    "map_specific_triggers": [
+      "buy_powerup",
+      "dt",
+      "end_game",
+      "inside_spawn_trig",
+      "trigs"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:18:15Z"
+    }
+  },
+  "archive": {
+    "original": "apex_mirage_v1.1.exe",
+    "original_sha256": "512dae75e979ca6f9f9a3a111916f28e1ca0d55dad6b13461e42b27ecec03aab",
+    "original_size": 87226279,
+    "source_url": "https://www.mediafire.com/file/cxvclxg7zgd0p18/apex_mirage_v1.1.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T15:15:11Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Description PREPARE YOUR ANUS! This map was a quick project that\u2019s been \u201cfinished\u201d for quite some time. This map is probably THE most challenging map out there. In my opinion. my goal with this was to make a map that is IMPOSSIBLE to train. mission success(hopefully). Features: B.O 2 shaders Buyable ending for 75,000 EE that unlocks buyable ending/ PAP Buyable max ammo Buyable 2x Zombie\u2019s that increase health twice the normal ammount Verruckt sprinters from ROUND 1 !!! edited gun scripts to help with uber strong zombies Loads of wall weapons PAP machine Buyable PPSH (though the thompson is the best gun with the new weapon scripts) High barrier prices Custom FX- Zombie don made the most win fog fx ever! Zombie transversals Random PERK locations Free perk powerup/drop- TY Gtlad for the wins Custom perk HUD Zombie skins- TY x-president PAP weapon skins- TY quizz the purple ammo can/2x is compliments of Slash SGT oh and ty slash sgt for win picture. known glitch: and this one really is not a glitch, but since zombies spawn right away and sprint, be prepared to run like hell to your suviving team mates. otherwise your dead again. Beta testers: Eric Engineer APEX crew deathclonic- found about every glitch/ bad spot EARTH Additional credits: Dave- for the pause screen, and menu screen Flame-for the beta testing, and EPIC WIN/video The zombie don, for helping me at 5 am a couple times. YAY insomnia TOM for buyable ending mxa for beta testing fails APEX crew for being so APEX",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_apex_mirage",
+        "loadscreen_apex_mirrage"
+      ],
+      "iwd_images": [
+        "apex_mirage.iwd:images/loadscreen_apex_mirrage.iwi",
+        "apex_mirage.iwd:images/specialty_fastreload_zombies.iwi"
+      ],
+      "loadscreen": "loadscreen_apex_mirage"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 113.6,
+    "addon_iwds": [],
+    "flags": [
+      "client_memory_risk"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "apex_mirage.ff",
+      "apex_mirage_patch.ff",
+      "mod.ff",
+      "apex_mirage.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "apex_mirage.iwd:maps/tom_music_player_unl.gsc",
+        "menus": [],
+        "responses": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9"
+        ],
+        "note": "in game: a music player"
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

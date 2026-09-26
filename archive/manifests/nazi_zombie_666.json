@@ -1,0 +1,168 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_666",
+  "title": "666",
+  "source": "custom",
+  "author": "djsintech",
+  "released": "2010-07-19",
+  "fs_game": "mods/nazi_zombie_666",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_666.iwd": "bf160bb64672adf1abad9fba03b63ef6af06fab27544f41f24bd036161f0b5ed"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "crawler_round_ending"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 5000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 100,
+    "script_count": 100,
+    "entities": 736,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        1250,
+        "zombie_debris",
+        "door6"
+      ],
+      [
+        1250,
+        "zombie_debris",
+        "door4"
+      ],
+      [
+        1250,
+        "zombie_debris",
+        "door3"
+      ],
+      [
+        1250,
+        "zombie_debris",
+        "door15"
+      ],
+      [
+        1250,
+        "zombie_debris",
+        "door1"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "bf160bb64672adf1abad9fba03b63ef6af06fab27544f41f24bd036161f0b5ed",
+    "map_specific_triggers": [
+      "kino_mainframe_trigger",
+      "kino_teleporter_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:35:40Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_666.exe",
+    "original_sha256": "052d668e45fd00d0831c571d81b9ab499280cfd93e8c8459d021e08f60dd1542",
+    "original_size": 69829828,
+    "source_url": "http://www.mediafire.com/file/580glj32y7h8040/nazi_zombie_666.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T15:33:12Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "So I have been working on this map for a while and think is time I threw it out as a beta. By the way this is my first map\u2026. Big thanks to tom_bmx for all his help, Mr Hankey for the script placer and all the good people here at custom cod that helped me a long the way. Thanks to the testers Burton, Found_you, Fragreaper, labratt and jefferoo. This is map is pretty big with lots of room and all the perk machines. Pack a punch and moving mystery box. Der reise style with shi no stuff too. Win-able ending Known bugs: Power ups: I didn\u2019t put them in too make the map harder\u2026 Did this on purpose Respawning: Now this need a little explanation. So if you are playing in co op and you get downed and die. When you respawn the next round you will have no guns. In order to get guns back you will need to buy them off the wall or from the box. If you buy a gun from the box it will get you 1 weapon slot back. If you buy off the wall you will get 2 weapon slots. So box = 1 weapon slot till you buy a gun off the wall then you will have 2. Wall = 2 weapon slots. Never could figure out what I did wrong but I like it. Make it a little more interesting. You might think so but just don\u2019 die Thats about it. I am sure you all are going to find more. Let me know what you find and I will looking into fixing. For the most part unless it really affects game play I will wait till I get a few of them for I fix the bugs just to save time in uploading the flie. With that all being said thanks for checking o",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 94.7,
+    "addon_iwds": [],
+    "flags": [
+      "no_patch_ff"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": false,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_666.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

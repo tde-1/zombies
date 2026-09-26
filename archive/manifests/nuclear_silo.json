@@ -1,0 +1,184 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nuclear_silo",
+  "title": "Nazi Zombie Nuclear Silo",
+  "source": "custom",
+  "author": "Nelwyn",
+  "released": "2009-10-31",
+  "fs_game": "mods/nuclear_silo",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@mod.ff": "c38382962e8802d4626d75ce6f7821a073cbaf6e721673aca31a078c37bf25ef"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "zombie_debris",
+          "zombie_cost": 10000
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 5000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 106,
+    "script_count": 106,
+    "entities": 1535,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000
+    ],
+    "orphan_end_triggers": [
+      "trigger_teleport_pad_0",
+      "trigger_teleport_pad_1",
+      "trigger_teleport_pad_2"
+    ],
+    "top_costs": [
+      [
+        10000,
+        "zombie_debris",
+        "underground"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "west_door"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "west_door"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "east_door"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "east_door"
+      ]
+    ],
+    "buyable_ending_candidate": {
+      "zombie_cost": 10000,
+      "targetname": "zombie_debris",
+      "target": "underground",
+      "next_highest": 2000
+    },
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "c38382962e8802d4626d75ce6f7821a073cbaf6e721673aca31a078c37bf25ef",
+    "map_specific_triggers": [
+      "record_player"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:28:26Z"
+    }
+  },
+  "archive": {
+    "original": "nuclear_silo.exe",
+    "original_sha256": "586e4ea147a40383d7beb2af6b7f08ac91e2907cf31ecd28d5801fe41068ff0e",
+    "original_size": 64378761,
+    "source_url": "https://www.mediafire.com/file/e192c93jnredplt/nuclear_silo.exe/file",
+    "source_page": "https://callofdutyrepo.com/2009/10/31/nazi-zombie-nuclear-silo/",
+    "fetched": "2026-09-26T15:26:44Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Rather large map, looks like Der riese, all sounds are present (teleport activation \u2026) in a missile launch silo. Undergrounds will lead you to music and a browning. A fairly nice map graphically.",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nuclear_silo",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "nuclear_silo.iwd:images/loadscreen_nuclear_silo.iwi",
+        "nuclear_silo.iwd:images/menu_map_nuclear_silo.iwi"
+      ],
+      "loadscreen": "loadscreen_nuclear_silo"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 93.4,
+    "addon_iwds": [],
+    "flags": [],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nuclear_silo.ff",
+      "nuclear_silo_patch.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

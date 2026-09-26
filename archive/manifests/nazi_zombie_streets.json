@@ -1,0 +1,145 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_streets",
+  "title": "Nazi Zombie Streets",
+  "source": "custom",
+  "author": "RabbiT",
+  "released": "2010-02-28",
+  "fs_game": "mods/nazi_zombie_streets",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_streets.ff": "0fe1fe5d658c2dfbf7a539172ad56ee05d75d251baf1f101b05eb22c9625b4f6"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": []
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "no easter-egg wording, but a numbered series book1..4 (4 members) and 1 series overall - the shape of a collect-N quest; confirm",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 43,
+    "script_count": 43,
+    "entities": 545,
+    "ee_candidates": [],
+    "ending_words": [],
+    "hardcoded_costs": [
+      1000,
+      1500
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "boxbook1"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "boxbook1"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "book3"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "book3"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "book2"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [],
+    "zombiemode_sha256": "0fe1fe5d658c2dfbf7a539172ad56ee05d75d251baf1f101b05eb22c9625b4f6",
+    "map_specific_triggers": [],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:48:30Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_streets.exe",
+    "original_sha256": "8b55b3cbcf1e96b58c42ade10e9813a8044ae7488cb4000c46eeca53add9776d",
+    "original_size": 45104698,
+    "source_url": "http://www.mediafire.com/file/l2tk6ka8chcn5e6/nazi_zombie_streets.exe/file",
+    "source_page": "https://callofdutyrepo.com/2010/02/28/nazi-zombie-streets/",
+    "fetched": "2026-09-26T15:47:12Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Features -Upper area and under area of catacombic tunnels -Mystery Box -Wall Buys",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_streets",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "nazi_zombie_streets.iwd:images/loadscreen_nazi_zombie_streets.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_streets"
+    }
+  },
+  "notes": "Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 74.0,
+    "addon_iwds": [],
+    "flags": [
+      "no_patch_ff"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": false,
+    "napalmblob": [
+      "nazi_zombie_streets.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

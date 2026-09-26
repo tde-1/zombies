@@ -1,0 +1,138 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_dv",
+  "title": "Death Valley",
+  "source": "custom",
+  "author": "Mike42081",
+  "released": "2009-07-24",
+  "fs_game": "mods/nazi_zombie_dv",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_dv.ff": "0fe1fe5d658c2dfbf7a539172ad56ee05d75d251baf1f101b05eb22c9625b4f6"
+  },
+  "badge": {
+    "main_finish": "round",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "round",
+    "why": "no easter egg or ending found; default Round 20",
+    "verdict_stock_baseline_only": "round",
+    "scripts": 41,
+    "script_count": 41,
+    "entities": 1254,
+    "ee_candidates": [],
+    "ending_words": [],
+    "hardcoded_costs": [
+      1000,
+      1500
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        1500,
+        "zombie_debris",
+        "smtable3"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "smtable3"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "sandbag1"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "sandbag1"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "rockwall3"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [],
+    "zombiemode_sha256": "0fe1fe5d658c2dfbf7a539172ad56ee05d75d251baf1f101b05eb22c9625b4f6",
+    "map_specific_triggers": [],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:25:04Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_dv.exe",
+    "original_sha256": "c77eb3aca482c1759e1e09b676c04f590c7b7bac6fafb831a7b4c3b4fe563bfc",
+    "original_size": 52813647,
+    "source_url": "http://www.mediafire.com/file/pjys7kg50icl51k/nazi_zombie_dv.exe/file",
+    "source_page": "https://callofdutyrepo.com/2009/07/24/death-valley/",
+    "fetched": "2026-09-26T15:23:21Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "leaderboard"
+    ],
+    "catalogue_description": "Fight your way through Death Valley! Navigate through the graveyards while avoiding the never ending swarms of undead. This is my first map, I used it to learn with so it\u2019s fairly simple. There are multiple paths to purchase and venture through, guns to buy and a mystery box. I hope you enjoy playing it as much as I did making it \ud83d\ude42",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_dv",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "nazi_zombie_dv.iwd:images/loadscreen_nazi_zombie_dv.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_dv"
+    }
+  },
+  "notes": "Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 90.7,
+    "addon_iwds": [],
+    "flags": [
+      "no_patch_ff"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": false,
+    "napalmblob": [
+      "nazi_zombie_dv.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

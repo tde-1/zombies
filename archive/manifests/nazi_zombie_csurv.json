@@ -1,0 +1,155 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_csurv",
+  "title": "CAPSULE SURVIVAL",
+  "source": "custom",
+  "author": "CreeperFace",
+  "released": "2013-09-15",
+  "fs_game": "mods/nazi_zombie_csurv",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_csurv.iwd": "f8e093ecb32f98a386f6e11f747a91d1a4bf586c4f65a1e51a0dc3fe9495514b"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000,
+        50000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 50000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 98,
+    "script_count": 98,
+    "entities": 278,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      50000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_0"
+      ],
+      [
+        600,
+        "weapon_upgrade",
+        "ppsh"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "f8e093ecb32f98a386f6e11f747a91d1a4bf586c4f65a1e51a0dc3fe9495514b",
+    "map_specific_triggers": [
+      "end_game",
+      "message"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:48:54Z"
+    }
+  },
+  "archive": {
+    "original": "Capsule_Survival_V3.0.exe",
+    "original_sha256": "5831954be2feead99b6b4decf61246c8c4e7efcbc8c174cfcba48b15f89bdc54",
+    "original_size": 76717612,
+    "source_url": "http://www.mediafire.com/file/a2fyupnxi3h4mw6/Capsule_Survival_V3.0.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T15:47:26Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Capsule Survival! This map is made for the box map competition. The story behind Capsule Survival: As you escape Der Riese, you find out that someone has disturbed the world\u2019s balance. You and your team need to restore it to stop the zombie apocalypse! Features (Version: V1): -Timed Gameplay -Random Box -Zombie Counter -3 Upgraded weapons active in the box -A customized MP40 -Thompson is replaced for the famous Chicago Typewriter -Green Zombie Eyes -2 Perks, hidden in the map Features (Version: V2): -Raygun Mark 2 -Added Weapon Prices so you wont need to run back to the capsule to check them -Risers (finally) Fixes V3: Fixed Raygun Mark 2 problem. ToDo: Add a new way to get perks Raygun Mark 2 Weapon Balancing Fix hintstrings Original Chicago Typewriter (MotD M1927) Some other stuff, like minor buggs and features which are secret. Map was made by CreeperFace Credits to: gtlad: Helped me with the scripts, big thanks to him! Tom_BMX (although I dont want to add him): For Timed Gameplay scripts (really didnt want him) Updates coming as I wanted to add more to it",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 94.6,
+    "addon_iwds": [],
+    "flags": [],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_csurv.ff",
+      "nazi_zombie_csurv_patch.ff",
+      "nazi_zombie_csurv.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

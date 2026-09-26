@@ -1,0 +1,192 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "englishmanor",
+  "title": "English Manor Hoos",
+  "source": "custom",
+  "author": "ToothSmasher",
+  "released": "2021-01-03",
+  "fs_game": "mods/englishmanor",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@EnglishManor.iwd": "9dce85b4e0b590bce6c9445a0a5b73a6296d9221d3e5fdca43033297748ba507"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000,
+        35000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 35000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 109,
+    "script_count": 109,
+    "entities": 1136,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      35000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        1750,
+        "zombie_door",
+        "auto21"
+      ],
+      [
+        1750,
+        "zombie_door",
+        "auto21"
+      ],
+      [
+        1750,
+        "zombie_door",
+        "auto20"
+      ],
+      [
+        1750,
+        "zombie_door",
+        "auto20"
+      ],
+      [
+        1750,
+        "zombie_door",
+        "auto19"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "9dce85b4e0b590bce6c9445a0a5b73a6296d9221d3e5fdca43033297748ba507",
+    "map_specific_triggers": [
+      "end_game",
+      "jukebox"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:09:48Z"
+    }
+  },
+  "archive": {
+    "original": "EnglishManor.exe",
+    "original_sha256": "b7309947502617fd4f0482dbc8abe17d3b4281d2752c8ab86e4118a7233e588c",
+    "original_size": 217539948,
+    "source_url": "https://www.mediafire.com/file/7le31vzz3qfjc8k/EnglishManor.exe/file",
+    "source_page": "https://callofdutyrepo.com/2021/01/03/english-manor-hoos/",
+    "fetched": "2026-09-26T15:07:15Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Description An amazing looking map with great detail you wont be disappointed amazing lighting a creepy looking manor house. Yes i have fixed the solo button im sorry but the rendering is bad at the spawn room the trees disappear then come back ive tried everything but the rest of the map is great. Add me and my buddy on discord as well as our discord server\u2026\u2026\u2026.. Any questions please ask me on discord add my name below If you dont have discord to contact me add me on steam (ToothSmasher) ToothSmasher#3408 Z0m3ie3e4ST798#0360 Buyable ending Double tap 2.0 fixed wunderwaffe juke box with custom songs ive added in T4M needed sprinting zombies from round 1 custom round sounds",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 114.2,
+    "addon_iwds": [
+      {
+        "file": "DLC3_Weapons.iwd",
+        "entries": 67,
+        "scripts": 0,
+        "bytes": 176320
+      }
+    ],
+    "flags": [
+      "client_memory_risk"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "englishmanor.ff",
+      "englishmanor_patch.ff",
+      "mod.ff",
+      "EnglishManor.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "EnglishManor.iwd:maps/ugx_jukebox.gsc",
+        "menus": [],
+        "responses": [],
+        "note": "in game: the jukebox"
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

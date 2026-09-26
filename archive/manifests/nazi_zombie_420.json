@@ -1,0 +1,170 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_420",
+  "title": "PROJECT 420",
+  "source": "custom",
+  "author": "localbabypoop",
+  "released": "2014-04-15",
+  "fs_game": "mods/nazi_zombie_420",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_420.iwd": "a3c7bf0f3c5de12129f3f591e266ff210910b44c90c278e111925bcef6711ca7"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "crawler_round_ending"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        7000,
+        9000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 9000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 100,
+    "script_count": 100,
+    "entities": 283,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      7000,
+      9000
+    ],
+    "orphan_end_triggers": [
+      "trigger_teleport_pad_0",
+      "trigger_teleport_pad_1",
+      "trigger_teleport_pad_2"
+    ],
+    "top_costs": [
+      [
+        1500,
+        "zombie_door",
+        "auto55"
+      ],
+      [
+        1500,
+        "zombie_door",
+        "auto139"
+      ],
+      [
+        1000,
+        "zombie_door",
+        "auto54"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_1"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_0"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "a3c7bf0f3c5de12129f3f591e266ff210910b44c90c278e111925bcef6711ca7",
+    "map_specific_triggers": [],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:33:18Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_pro420.exe",
+    "original_sha256": "c758e7a32dee1ac7fb2f5e6104a38d55f86c5a83b0414e0019d18a1173a73036",
+    "original_size": 74802115,
+    "source_url": "https://www.mediafire.com/file/52qcvb3sr05c71u/nazi_zombie_pro420.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T15:31:16Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Here it is, project_420 updated NO shooting zombie for some people lol, a small der riese map with a lot of craaazy textures! NOTE: This is my first released map, so hope you have a blast,and have fun. To load the old map for single player Nazi_zombie_420 download before this update made a new load name so you could keep old one too. If you are downloading this one new type Nazi_zombie_pro420 made a load screen for both in solo . Description: 420 is made for 420 lol and was a lot of fun making and playing , a map with 3 windows, 3 room and is wide open in case all goes wrong. FEATURES: custom Weapons and some free weapons yes free, you will see Y. One weapon put in just for one of the best spider bite just to make it a little harder lol all 8 Perks 2 New perks Dr.D and double dew ZK help Me with some script Custom Pack A Punch cheese names from are man Z.K c.cube ,Custom Weapon,skins,buyable ending and more by me.3 teleports that give you a escape and a high lol.",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 80.8,
+    "addon_iwds": [],
+    "flags": [],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_420.ff",
+      "nazi_zombie_420_patch.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

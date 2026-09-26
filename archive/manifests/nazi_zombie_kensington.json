@@ -1,0 +1,207 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_kensington",
+  "title": "KENSINGTON",
+  "source": "custom",
+  "author": "Sonic",
+  "released": "2013-06-10",
+  "fs_game": "mods/nazi_zombie_kensington",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_kensington.iwd": "31cb042732fc12e78f5daedb840c7bdf66471213a2c382a20410fc31f1b946c3"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000,
+        35000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 35000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 103,
+    "script_count": 103,
+    "entities": 661,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      35000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        6000,
+        "zombie_debris",
+        "auto13"
+      ],
+      [
+        6000,
+        "zombie_debris",
+        "auto11"
+      ],
+      [
+        4000,
+        "zombie_debris",
+        "auto9"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "auto7"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "auto6"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "31cb042732fc12e78f5daedb840c7bdf66471213a2c382a20410fc31f1b946c3",
+    "map_specific_triggers": [
+      "end_game",
+      "music_box_player"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:40:17Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_kensington.exe",
+    "original_sha256": "52fff3f02b9d225acbdd36c0aa7d40c6aa7bd70144435a5ff863585e57350fa5",
+    "original_size": 190162052,
+    "source_url": "https://www.mediafire.com/file/b7ujow6xbfsll4k/nazi_zombie_kensington.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T15:39:38Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Description Nazi Zombie Kensington This map is themed in West London South Kensington you start off in the some what famous london underground, barrelling through the zombies you need to push your way out of the tube station. Reluctantly you need to find the power and make your way to the secret underground launch facility base hmmm where you find a trigger to end the game. Features Medium size map Many Custom textures All Der Riese sounds Pack a Punch All four perks Der Riese script 1.6 Monkey Bombs Bouncing Bettie Rising Zombies Buyable Ending (Tombmx) Hellhounds Custom menu music (Paragalor) Custom loadscreen (Rampage_619) On the Wall Browning (Small percentage buff PaP\u2019d) Custom Zombie & Weapon Skins (X-President(Note:Check out PTRS)) Musicbox (Tombmx)5 tracks Bargain Price Bowie (X-President idea) Scrolling Texture (Quizz) Zombie Counter (Tombmx) Friendly AI Mystery Box Cheats Disabled All work done in radiant apart from xmodels (no access to maya) Please Note this isn\u2019t a fun map, so if you\u2019ve had a hard day and want to relax with some buddies and blast (Ze) zombies this probably isn\u2019t the map for you. However if you are up for a challenge this is a mildly testing map to evaluate your zombies skills. Also note with teamwork and the right strategy you should be able to breeze through it. Known Errors \u2013 Dogs come through the ceiling in the type100 room, no space to adjust the drop-down traverse. Crosshairs showing on the menu/loading screen (ops:)) Thanks to the everyone ",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_nazi_zombie_kensington"
+      ],
+      "iwd_images": [
+        "nazi_zombie_kensington.iwd:images/loadscreen_nazi_zombie_kensington.iwi",
+        "nazi_zombie_kensington.iwd:images/menu_map_nazi_zombie_kensington.iwi",
+        "nazi_zombie_kensington.iwd:images/title.iwi",
+        "nazi_zombie_kensington.iwd:images/titles.iwi",
+        "zm_drskins.iwd:images/zombie_vending_sleight_logo_c.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_kensington"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 116.8,
+    "addon_iwds": [
+      {
+        "file": "zm_drskins.iwd",
+        "entries": 146,
+        "scripts": 0,
+        "bytes": 19237623
+      }
+    ],
+    "flags": [
+      "client_memory_risk"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_kensington.ff",
+      "nazi_zombie_kensington_patch.ff"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "nazi_zombie_kensington.iwd:maps/tom_music_player_unl.gsc",
+        "menus": [],
+        "responses": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9"
+        ],
+        "note": "in game: a music player"
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

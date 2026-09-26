@@ -1,0 +1,191 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "tmg_carnage",
+  "title": "Tmg Carnage",
+  "source": "custom",
+  "author": "TMG Nukem",
+  "released": "2015-06-07",
+  "fs_game": "mods/tmg_carnage",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@tmg_carnage.iwd": "cda0d6efd708f698eb213fe89de991796ff6936e0b8a43e95e3444248965ef8c"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "meteor_models"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "meteor_models look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 126,
+    "script_count": 126,
+    "entities": 2117,
+    "ee_candidates": [
+      "meteor_models"
+    ],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_door",
+        "auto113388"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto113387"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto113386"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto113385"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "toproom"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "cda0d6efd708f698eb213fe89de991796ff6936e0b8a43e95e3444248965ef8c",
+    "map_specific_triggers": [
+      "bear_models",
+      "doubletap_pwr_lever",
+      "hipade_pwr_lever",
+      "jugg_pwr_lever",
+      "meteor_models",
+      "nukemkill",
+      "nukemkill1",
+      "nukemtrap",
+      "nukemtrap1",
+      "pap_0_pwr_lever",
+      "perk_models",
+      "power_fuel_loc",
+      "revive_pwr_lever",
+      "sleight_pwr_lever",
+      "sprint_pwr_lever",
+      "stoppower_pwr_lever",
+      "targets"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:30:12Z"
+    }
+  },
+  "archive": {
+    "original": "TMG_carnage.exe",
+    "original_sha256": "b94360202815a0b4aeeb623f5a2a26330cfd830074802b73b043b8f3133f5818",
+    "original_size": 360345706,
+    "source_url": "https://archive.org/download/tmg-castle/TMG_carnage.exe",
+    "source_page": "https://archive.org/details/tmg-castle",
+    "fetched": "2026-09-26T15:28:21Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "archive_file"
+    ],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_tmg_carnage",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "carnage_assests.iwd:images/carnage_menu1.iwi",
+        "carnage_assests.iwd:images/loadscreen_tmg_carnage.iwi",
+        "carnage_assests.iwd:images/menu_background_coop.iwi",
+        "carnage_assests.iwd:images/weapon_p2011_tf_logo.iwi",
+        "carnage_assests.iwd:images/weapon_red_cross_background_iw5.iwi"
+      ],
+      "loadscreen": "loadscreen_tmg_carnage"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 194.4,
+    "addon_iwds": [
+      {
+        "file": "carnage_assests.iwd",
+        "entries": 779,
+        "scripts": 0,
+        "bytes": 233894302
+      }
+    ],
+    "flags": [
+      "client_memory_risk"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "tmg_carnage_patch.ff",
+      "tmg_carnage.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

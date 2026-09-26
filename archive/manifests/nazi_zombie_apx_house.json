@@ -1,0 +1,207 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_apx_house",
+  "title": "APEX HOUSE",
+  "source": "custom",
+  "author": "Jake (Apex)",
+  "released": "2012-11-29",
+  "fs_game": "mods/nazi_zombie_apx_house",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_apx_house.iwd": "b96156ca156bacafb32f494ce3d8e75918378a82705f4909c5ac5c79b7fbc002"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "egg_gun_1",
+        "egg_gun_2",
+        "egg_gun_3",
+        "egg_gun_4",
+        "egg_gun_5",
+        "egg_gun_6",
+        "egg_gun_7",
+        "egg_gun_8",
+        "egg_trig_1",
+        "egg_trig_10",
+        "egg_trig_2",
+        "egg_trig_3",
+        "egg_trig_4",
+        "egg_trig_5",
+        "egg_trig_6",
+        "egg_trig_7",
+        "egg_trig_8",
+        "egg_trig_9"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "egg_gun_1, egg_gun_2, egg_gun_3, egg_gun_4, egg_gun_5, egg_gun_6 look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 99,
+    "script_count": 99,
+    "entities": 301,
+    "ee_candidates": [
+      "egg_gun_1",
+      "egg_gun_2",
+      "egg_gun_3",
+      "egg_gun_4",
+      "egg_gun_5",
+      "egg_gun_6",
+      "egg_gun_7",
+      "egg_gun_8",
+      "egg_trig_1",
+      "egg_trig_10",
+      "egg_trig_2",
+      "egg_trig_3",
+      "egg_trig_4",
+      "egg_trig_5",
+      "egg_trig_6",
+      "egg_trig_7",
+      "egg_trig_8",
+      "egg_trig_9"
+    ],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1250,
+      1500,
+      2000,
+      2350,
+      2500,
+      3000,
+      3250,
+      3500,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        950,
+        "treasure_chest_use",
+        "pf182_auto1"
+      ],
+      [
+        500,
+        "betty_purchase",
+        "betty"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "b96156ca156bacafb32f494ce3d8e75918378a82705f4909c5ac5c79b7fbc002",
+    "map_specific_triggers": [
+      "door_1_trig",
+      "door_2_trig",
+      "door_trig",
+      "egg_trig_1",
+      "egg_trig_10",
+      "egg_trig_2",
+      "egg_trig_3",
+      "egg_trig_4",
+      "egg_trig_5",
+      "egg_trig_6",
+      "egg_trig_7",
+      "egg_trig_8",
+      "egg_trig_9",
+      "fuse1_trig",
+      "fuse2_trig",
+      "phil_chest_use"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:26:14Z"
+    }
+  },
+  "archive": {
+    "original": "APEX_House.exe",
+    "original_sha256": "c399cb9bacc17f9b6a6c78315f1901447d76ed6278daff72eefe85248064f568",
+    "original_size": 62207076,
+    "source_url": "http://www.mediafire.com/file/dh5f7meyz6cm702/APEX_House.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T15:24:51Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Description First release from Team APEX Time to Make: 3 days Feautures: Three Rooms Easter Egg unlockable Vault Pack-a-Punch Box (custom made by YaPh1L, not Dud\u2019s version) Easter eggs All doors custom scripted Custom HUD TEAM APEX: RappiidZz xXINIIx gtlad Elfenlied Extra Credits: YaPh1l \u2013 Mystery Box",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_apx_house",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "nazi_zombie_apx_house.iwd:images/apex_house_menu_bg.iwi",
+        "nazi_zombie_apx_house.iwd:images/apex_logo.iwi",
+        "nazi_zombie_apx_house.iwd:images/loadscreen_nazi_zombie_apx_house.iwi",
+        "nazi_zombie_apx_house.iwd:images/menu_background_coop.iwi",
+        "nazi_zombie_apx_house.iwd:images/menu_map_nazi_zombie_apx_house.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_apx_house"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 81.9,
+    "addon_iwds": [],
+    "flags": [],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_apx_house.ff",
+      "nazi_zombie_apx_house_patch.ff",
+      "nazi_zombie_apx_house.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

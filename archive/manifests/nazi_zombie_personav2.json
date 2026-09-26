@@ -1,0 +1,205 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_personav2",
+  "title": "Persona (The ZomMapaganza)",
+  "source": "custom",
+  "author": "shakedelusion",
+  "released": "2019-06-06",
+  "fs_game": "mods/nazi_zombie_personav2",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_personav2.iwd": "dee290474d2c7d4792a228b52feff35f5cb2cbbbee13670e7391c0436df87fde"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "zombie_door",
+          "zombie_cost": 10000
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        5000,
+        100000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 100000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 109,
+    "script_count": 109,
+    "entities": 1973,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000,
+      100000
+    ],
+    "orphan_end_triggers": [
+      "trigger_teleport_pad_0",
+      "trigger_teleport_pad_1",
+      "trigger_teleport_pad_2"
+    ],
+    "top_costs": [
+      [
+        10000,
+        "zombie_door",
+        "auto37"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto8"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto6"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto35"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto19"
+      ]
+    ],
+    "buyable_ending_candidate": {
+      "zombie_cost": 10000,
+      "targetname": "zombie_door",
+      "target": "auto37",
+      "next_highest": 2000
+    },
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "dee290474d2c7d4792a228b52feff35f5cb2cbbbee13670e7391c0436df87fde",
+    "map_specific_triggers": [
+      "end_game",
+      "jukebox"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:16:32Z"
+    }
+  },
+  "archive": {
+    "original": "Persona_The_ZomMapaganzav2.exe",
+    "original_sha256": "2f2464b9d0b1d9dbbea81a6849c439fca89692baf8b8551fc78b75098a7f7fc7",
+    "original_size": 160238400,
+    "source_url": "https://www.mediafire.com/file/ihgsveppxlpc8as/Persona_The_ZomMapaganzav2.exe/file",
+    "source_page": "https://callofdutyrepo.com/2019/06/06/persona-the-zommapaganza/",
+    "fetched": "2026-09-26T15:13:44Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "So, I don\u2019t really make maps, but I\u2019ve loved WaW since release. Felt obligated to do something for my album Persona [05/18/19], but didn\u2019t wanna make music videos. Here\u2019s teh result. Some features: 100k buyable ending (Running) Call of the Dead Zombies Nuketown house BO Perks PPSH Pump Shotty god tier Kar98 PC Masterrace PTRS Generally Absurd/Quirky Weapons UGX Jukebox {no credit left unattributed intentionally, edits to be made}",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [
+        "nazi_zombie_personav2.iwd:images/specialty_fastreload_zombies.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 95.4,
+    "addon_iwds": [
+      {
+        "file": "call_of_dead.iwd",
+        "entries": 35,
+        "scripts": 6,
+        "bytes": 7497842
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_nazi_zombie_personav2_patch.ff",
+      "nazi_zombie_personav2.ff",
+      "nazi_zombie_personav2_patch.ff",
+      "nazi_zombie_personav2.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "nazi_zombie_personav2.iwd:maps/ugx_jukebox.gsc",
+        "menus": [],
+        "responses": [],
+        "note": "in game: the jukebox"
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

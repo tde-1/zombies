@@ -1,0 +1,142 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_dead_sand",
+  "title": "Nazi Zombie Dead Sand",
+  "source": "custom",
+  "author": "JacMac!",
+  "released": "2009-04-04",
+  "fs_game": "mods/nazi_zombie_dead_sand",
+  "script_fingerprints": {
+    "maps/dead_sand_zombiemode.gsc@nazi_zombie_dead_sand.iwd": "a93ff3521bbbde666d3a89d3570da952dc00c570c345bdb2b11dfa52f5727234"
+  },
+  "badge": {
+    "main_finish": "round",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "round",
+    "why": "no easter egg or ending found; default Round 20",
+    "verdict_stock_baseline_only": "round",
+    "scripts": 76,
+    "script_count": 76,
+    "entities": 1202,
+    "ee_candidates": [],
+    "ending_words": [],
+    "hardcoded_costs": [
+      1000,
+      1500
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        4000,
+        "zombie_door",
+        "auto43"
+      ],
+      [
+        3000,
+        "zombie_door",
+        "auto41"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto92"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto92"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto34"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_load.gsc"
+    ],
+    "zombiemode_sha256": null,
+    "map_specific_triggers": [
+      "gambler",
+      "kill_klaxxon",
+      "nebelwerfer_give"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:09:58Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_dead_sand.exe",
+    "original_sha256": "0e46aeef12585b5ce279f5c18cf796d5c58a4e4be81e47c683eb411e4a0b2969",
+    "original_size": 57525250,
+    "source_url": "http://www.mediafire.com/file/hdsjt2cy7ucuhwr/nazi_zombie_dead_sand.exe/file",
+    "source_page": "https://callofdutyrepo.com/2009/04/04/nazi-zombie-dead-sand/",
+    "fetched": "2026-09-26T15:07:39Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "The single player game consists of the user starting in the beach trenches and working up through a few tunnels and bunker rooms to the cliffs above. The co-op game splits the players up into two possible areas. Two starting points are above in the open area on the cliffs and two are in the beach trenches. As players get the points to open up blockers, they can eventually join up together.",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_dead_sand",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "nazi_zombie_dead_sand.iwd:images/loadscreen_nazi_zombie_dead_sand.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_dead_sand"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_load.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). No finish found by name. Before accepting Round 20, someone should glance at this map's own triggers: gambler, kill_klaxxon, nebelwerfer_give. ",
+  "precheck": {
+    "map_zone_inflated_mb": 98.9,
+    "addon_iwds": [],
+    "flags": [
+      "no_patch_ff"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": false,
+    "napalmblob": [
+      "nazi_zombie_dead_sand.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

@@ -1,0 +1,217 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "survivalhouse",
+  "title": "Survival House",
+  "source": "custom",
+  "author": "mczman",
+  "released": "2021-08-09",
+  "fs_game": "mods/survivalhouse",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@survivalhouse.iwd": "953d6e56da34b6a76103bacbc6628691f2d121d85c815304a37e0ba0cf973744"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000,
+        90000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 90000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 121,
+    "script_count": 121,
+    "entities": 877,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      90000
+    ],
+    "orphan_end_triggers": [
+      "trigger_teleport_pad_0",
+      "trigger_teleport_pad_1",
+      "trigger_teleport_pad_2"
+    ],
+    "top_costs": [
+      [
+        8000,
+        "zombie_door",
+        "auto2116"
+      ],
+      [
+        8000,
+        "zombie_door",
+        "auto11"
+      ],
+      [
+        8000,
+        "zombie_door",
+        "auto11"
+      ],
+      [
+        4000,
+        "zombie_door",
+        "auto210"
+      ],
+      [
+        4000,
+        "zombie_door",
+        "auto208"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "953d6e56da34b6a76103bacbc6628691f2d121d85c815304a37e0ba0cf973744",
+    "map_specific_triggers": [
+      "activate_promod",
+      "bomb_run_trig",
+      "desactivate_promod",
+      "end_game",
+      "jukebox",
+      "key_door",
+      "pap_door1_hintstring",
+      "power_door1_hintstring",
+      "secret_trigger",
+      "shoot_me",
+      "teddy1",
+      "teddy2",
+      "teddy3"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:20:16Z"
+    }
+  },
+  "archive": {
+    "original": "SurvivalHouse.exe",
+    "original_sha256": "56eb79983f69bb59b3707ca02341456b1cf3c99737a10f64a7f37d7943097b9a",
+    "original_size": 268705500,
+    "source_url": "https://www.mediafire.com/file/rrys4a2tqawbsoz/SurvivalHouse.exe/file",
+    "source_page": "https://callofdutyrepo.com/2021/08/09/survival-house/",
+    "fetched": "2026-09-26T15:17:40Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Description Note This Map Needs T4m To Work \u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014- Map Made By Garbage Gaming Tv ====================== This Map Has: \u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014 Bo1 Weapons And Bo2 Some Weapons From multiplayer Buyable Ending 2 Easter Eggs 3 Non Movable Boxes Key Door Custom Camos Custom Fx Custom View Hands Custom Player Models Custom Sounds Ugx Music Box \u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [
+        "survivalhouse.iwd:images/menu_button_backing_right.iwi",
+        "survivalhouse.iwd:images/weapon_red_cross_background.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 153.6,
+    "addon_iwds": [
+      {
+        "file": "ascencion_zombies.iwd",
+        "entries": 27,
+        "scripts": 6,
+        "bytes": 4714616
+      },
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 67,
+        "scripts": 0,
+        "bytes": 176320
+      }
+    ],
+    "flags": [
+      "client_memory_risk",
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "survivalhouse.ff",
+      "survivalhouse_patch.ff",
+      "survivalhouse.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "survivalhouse.iwd:maps/ugx_jukebox.gsc",
+        "menus": [],
+        "responses": [],
+        "note": "in game: the jukebox"
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

@@ -1,0 +1,156 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "mario",
+  "title": "Mario Patch",
+  "source": "custom",
+  "author": "MarcoastG",
+  "released": "2011-12-05",
+  "fs_game": "mods/mario",
+  "script_fingerprints": {},
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        100000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "end_game name an ending and are this map's own; script hardcodes cost 100000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 31,
+    "script_count": 31,
+    "entities": 1735,
+    "ee_candidates": [],
+    "ending_words": [
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      100000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        4000,
+        "zombie_debris",
+        "auto8"
+      ],
+      [
+        4000,
+        "zombie_debris",
+        "auto11"
+      ],
+      [
+        3000,
+        "zombie_debris",
+        "auto3"
+      ],
+      [
+        3000,
+        "zombie_debris",
+        "auto3"
+      ],
+      [
+        3000,
+        "zombie_debris",
+        "auto16"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [],
+    "zombiemode_sha256": null,
+    "map_specific_triggers": [
+      "end_game",
+      "kino_mainframe_trigger",
+      "kino_teleporter_trigger",
+      "music_box_player",
+      "painting_trigger",
+      "teleporterpartone_build_trig",
+      "teleporterpartone_pick_trig",
+      "teleporterpartthree_build_trig",
+      "teleporterpartthree_pick_trig",
+      "teleporterparttwo_build_trig",
+      "teleporterparttwo_pick_trig"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:09:09Z"
+    }
+  },
+  "archive": {
+    "original": "mario.ff",
+    "original_sha256": "19874b80c823706d388020a11f86cb084209cd9cce2223e4b208054b5eb5182b",
+    "original_size": 135260256,
+    "source_url": "https://archive.org/download/nazi_zombie_school/SuperMario64/mario.ff",
+    "source_page": "https://archive.org/details/nazi_zombie_school",
+    "fetched": "2026-09-26T15:07:09Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "fastfile",
+    "shipped_executables": [],
+    "catalogue_tags": [
+      "archive_file"
+    ],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [],
+      "loadscreen": null
+    }
+  },
+  "notes": "PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 170.4,
+    "addon_iwds": [],
+    "flags": [
+      "client_memory_risk",
+      "no_patch_ff"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": false,
+    "napalmblob": [
+      "mario.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

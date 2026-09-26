@@ -1,0 +1,220 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "zm_cottage",
+  "title": "Remagen",
+  "source": "custom",
+  "author": "stig4532_",
+  "released": "2026-03-18",
+  "fs_game": "mods/zm_cottage",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@zm_cottage.iwd": "f7ba4fa2ed3f9dbb7c9295ffdbe7b2f30e55f648ef946e1e5831b5d40cecd182"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "ee_papers"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "ee_papers look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 123,
+    "script_count": 123,
+    "entities": 3169,
+    "ee_candidates": [
+      "ee_papers"
+    ],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game",
+      "ending_available"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      5000,
+      10000,
+      50000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "weapon_upgrade",
+        "ppsh"
+      ],
+      [
+        4000,
+        "zombie_debris",
+        "rear_debris"
+      ],
+      [
+        2500,
+        "zombie_debris",
+        "basement_debris"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "rear_door"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "rear_door"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc",
+      "maps/_utility.gsc"
+    ],
+    "zombiemode_sha256": "f7ba4fa2ed3f9dbb7c9295ffdbe7b2f30e55f648ef946e1e5831b5d40cecd182",
+    "map_specific_triggers": [
+      "end_game",
+      "head_trig",
+      "stigmusic1",
+      "stigmusic2",
+      "stigmusic3",
+      "stigmusic4",
+      "stigmusic5",
+      "trig_ammomatic",
+      "trig_radio_papers",
+      "trigger_location"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:06:11Z"
+    }
+  },
+  "archive": {
+    "original": "zm_cottage.exe",
+    "original_sha256": "6f4724eeaefc87e37f38101e7b0c0c78704327ddd7c24c708962d83cf04eb57b",
+    "original_size": 480210824,
+    "source_url": "https://www.mediafire.com/file/xz4eowig0yq3r5r/zm_cottage.exe/file",
+    "source_page": "https://callofdutyrepo.com/2026/03/18/remagen/",
+    "fetched": "2026-09-26T15:03:37Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": ">>>;Difficulty: high (co-op highly recommended!) <<< You have been warned! ) (Buyable ending Easter Egg tutorial at the bottom of this page!) Remagen, Germany Late 1945 __________________________ Following Nazi Germany\u2019s surrender on 8th May 1945, the crew are sent to a British Army outpost in Remagen to investigate reports of a zombie outbreak led by the now-deceased Fuhrer, Adolf Hitler. The resurrection of Hitler at Remagen comes as no surprise, as he seeks revenge for the humiliating capture of the Ludendorff Bridge on the outskirts of Remagen by American forces in March 1945. At Hitler\u2019s disposal is a prototype Wunderwaffe DG-2 and while it seemingly does not pack the same punch as the final DG-2 model, the Fuhrer\u2019s pure anger and determination will be a challenge for the crew. __________________________ Base map file, ambient sounds, weapon sounds, textures ported from Medal of Honor: Allied Assault. Zombie Hitler boss every 9 rounds. Hitler model by B0hnez and scripted by Kroupa. Buyable ending for 50,000 points, which is unlocked once you have completed the Easter Egg. No pack-a-punch. Player weapons trading system by MakeCents. 4x songs, activated by pressing F on the four individual teddy bears across the map. Custom asset and most scripting done by Kroupa. Gympie\u2019s perks added: electric cherry, BO1 style quick revive, double tap 2.0, stamin up. New weapons added: CoD 2 Lee Enfield MKII and scoped variant, CoD 2 Bren, BO1 Sten, CoD 2 PPS42, Webley from BO4, Mauser C",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak",
+        "loadscreen_zm_cottage"
+      ],
+      "iwd_images": [
+        "gympie6_perks.iwd:images/~p7_zm_vending_ads_logo_spc-r~301c48c1.iwi",
+        "gympie6_perks.iwd:images/p7_zm_vending_ads_logo_col.iwi",
+        "gympie6_perks.iwd:images/specialty_fastreload_zombies.iwi",
+        "zm_cottage.iwd:images/ammo_matic_logo.iwi",
+        "zm_cottage.iwd:images/ammo_matic_side_logo.iwi",
+        "zm_cottage.iwd:images/ammo_matic_side_logo_2.iwi",
+        "zm_cottage.iwd:images/custom_zombies_menu.iwi",
+        "zm_cottage.iwd:images/i_t8_webly_loader_c.iwi",
+        "zm_cottage.iwd:images/i_t8_webly_loader_n.iwi",
+        "zm_cottage.iwd:images/loadscreen_zm_cottage.iwi",
+        "zm_cottage.iwd:images/menu_button_backing_right.iwi",
+        "zm_cottage.iwd:images/menu_map_custom_zombies_menu.iwi",
+        "zm_cottage.iwd:images/~i_t8_webly_loader_s-rgb&i_t8~2ca88709.iwi"
+      ],
+      "loadscreen": "loadscreen_zm_cottage"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc, maps/_utility.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 206.1,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 67,
+        "scripts": 0,
+        "bytes": 176320
+      },
+      {
+        "file": "gympie6_perks.iwd",
+        "entries": 285,
+        "scripts": 7,
+        "bytes": 100290596
+      },
+      {
+        "file": "gympie6_wunderfizz.iwd",
+        "entries": 31,
+        "scripts": 0,
+        "bytes": 5479386
+      },
+      {
+        "file": "trem_hintstrings.iwd",
+        "entries": 1,
+        "scripts": 1,
+        "bytes": 1108
+      },
+      {
+        "file": "zone_fixer.iwd",
+        "entries": 2,
+        "scripts": 1,
+        "bytes": 56131
+      }
+    ],
+    "flags": [
+      "client_memory_risk",
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "zm_cottage.ff",
+      "zm_cottage_patch.ff",
+      "zm_cottage.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

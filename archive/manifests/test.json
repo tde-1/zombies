@@ -1,0 +1,187 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "test",
+  "title": "Swamp Island (Unfinished)",
+  "source": "custom",
+  "author": "Quizz",
+  "released": "2016-07-11",
+  "fs_game": "mods/test",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@quizz_mod.iwd": "3bbcc6d59ca6005f32a69d8017f84c5413a812b5bcde99f43c506943781d7e7b"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "crawler_round_ending"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 5000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 110,
+    "script_count": 110,
+    "entities": 313,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_1"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_0"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "3bbcc6d59ca6005f32a69d8017f84c5413a812b5bcde99f43c506943781d7e7b",
+    "map_specific_triggers": [
+      "attachment_trig",
+      "hardpoint_loc",
+      "wallet_upgrade"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:25:27Z"
+    }
+  },
+  "archive": {
+    "original": "Swamp_Island_unfinished_.zip",
+    "original_sha256": "df85cfdf8387b7a18281bddd2c0e27566357f53d304b84fcdb52562892853b2b",
+    "original_size": 187904865,
+    "source_url": "https://archive.org/download/tmg-castle/Swamp%20Island%20%28unfinished%29.zip",
+    "source_page": "https://archive.org/details/tmg-castle",
+    "fetched": "2026-09-26T15:23:47Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "zip",
+    "shipped_executables": [],
+    "catalogue_tags": [
+      "archive_file"
+    ],
+    "catalogue_description": "\u201cSwamp Island\u201d includes 2 different game modes, Survival and Gun Game. Hardpoint is also a game mode, however it isn\u2019t really playable. The map itself is very small and only includes one area. This level was meant to just be a concept map to test some features like new perks, game modes, and zombie types. Features",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [
+        "quizz_mod_images.iwd:images/weapon_red_cross_background.iwi",
+        "quizz_mod_images.iwd:images/weapon_red_cross_background_max.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 42.4,
+    "addon_iwds": [
+      {
+        "file": "quizz_mod.iwd",
+        "entries": 146,
+        "scripts": 22,
+        "bytes": 6764043
+      },
+      {
+        "file": "quizz_mod_images.iwd",
+        "entries": 325,
+        "scripts": 0,
+        "bytes": 80535888
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "test_patch.ff"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "quizz_mod.iwd:maps/_gungame.gsc",
+        "menus": [],
+        "responses": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7"
+        ],
+        "note": null
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

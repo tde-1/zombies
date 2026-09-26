@@ -1,0 +1,213 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_shadowzone",
+  "title": "Shadow Zone Bloody Palace",
+  "source": "custom",
+  "author": "kielrgz",
+  "released": "2021-02-17",
+  "fs_game": "mods/nazi_zombie_shadowzone",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_shadowzone.iwd": "29d10f16b1e249f1a8358a9b5117c62209b655c92a3575c87bc1b72fe56adaeb"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000,
+        150000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 150000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 131,
+    "script_count": 131,
+    "entities": 3121,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      150000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "zonefloor"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "zone9"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "zone10"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "puerta6"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "autoice1"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "29d10f16b1e249f1a8358a9b5117c62209b655c92a3575c87bc1b72fe56adaeb",
+    "map_specific_triggers": [
+      "acid_build_trigger",
+      "amb_sound",
+      "blunder_trigg",
+      "c4_purchase",
+      "end_game"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:09:52Z"
+    }
+  },
+  "archive": {
+    "original": "Shadow_Zone_with_Revive_Fix.exe",
+    "original_sha256": "2bc6f64376619e03239a49795b58c3b432a03cb88da51adf14641025a67df5b6",
+    "original_size": 323630564,
+    "source_url": "https://www.mediafire.com/file/wqon5yvveieqbk9/Shadow_Zone_with_Revive_Fix.exe/file",
+    "source_page": "https://callofdutyrepo.com/2021/02/17/shadow-zone-bloody-palace/",
+    "fetched": "2026-09-26T15:07:29Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Hello fellow Custom Waw Zombies. Today I bring you my third map !!! Before continuing I clarify a couple of things to be able to play it. First of all my map requires (T4M) to be able to play it \u2026 I wanted to limit the FX and Sounds but I couldn\u2019t. I am something new in this, even so the map is quite good. It has some errors that you will surely notice and I apologize for that. I wanted to do a big project but every time there are few tutorials and it is difficult for me to learn to do something new. even so I surpassed my previous mpa (Omega Base). this map contains many weapons and things that i wanted to add. It does not have a large easter egg since they only have to look for pieces to assemble the acid gat and a good affordable ending which makes it more interesting than a challenge. now I clarify below what my map brings. Weapons: \u2013 Acidgat (bo2) \u2013 Blundergat (bo2) -AK47 (MW2) \u2013 Servant (bo3) -Chicom (bo2) -MP5 (bo2) -Striker (MW2) -AN94 (bo2) \u2013 Scavenger (bo1) -Galil (bo2) -Dingo (bo3) -C4 \u201cMW2\u201d -Scorpion EVO (bo2) -Kard (bo2) -M14 (bo2) -M8A1 (bo2) -1927 Tommy Gun (bo2) -M1014 (MW2) -MC96 (bo2) -Cheytac (bo2) -MG08 (bo2) -PDW57 (bo2) \u2013 Ray Gun Mark II (bo2) -Peacekeeper (bo2) -RK5 (bo3) -Remignton Magnum (bo2 buried) -SCAR-H (bo2) -T7 PSSH (bo3) -Uzi (bo2) -Vector (bo2) -Law (bo1 ) -MP40 (bo2) Perks 8: \u2013 Quick revive \u2013 DoubleTap 2.0 (bo2) \u2013 Electric Cherry (bo2 ) \u2013 Juggernaut \u2013 Stamina Up (bo1) \u2013 Dead Shot (bo1) \u2013 Fast Reload \u2013 \u2013 PDH Flopper ( Dolphin bo1 ) Custom Scr",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_shadowzone",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "nazi_zombie_shadowzone.iwd:images/black_ops_vending_ads_logo_off_c.iwi",
+        "nazi_zombie_shadowzone.iwd:images/black_ops_vending_ads_logo_off_n.iwi",
+        "nazi_zombie_shadowzone.iwd:images/black_ops_vending_ads_logo_on_c.iwi",
+        "nazi_zombie_shadowzone.iwd:images/black_ops_vending_three_gun_logo_c.iwi",
+        "nazi_zombie_shadowzone.iwd:images/black_ops_vending_three_gun_logo_on_c.iwi",
+        "nazi_zombie_shadowzone.iwd:images/dt2_logo_on.iwi",
+        "nazi_zombie_shadowzone.iwd:images/loadscreen_nazi_zombie_shadowzone.iwi",
+        "nazi_zombie_shadowzone.iwd:images/menu_button_backing_right.iwi",
+        "nazi_zombie_shadowzone.iwd:images/menu_map_nazi_zombie_shadowzone.iwi",
+        "nazi_zombie_shadowzone.iwd:images/specialty_fastreload_zombies.iwi",
+        "nazi_zombie_shadowzone.iwd:images/zombiemob_menu.iwi",
+        "nazi_zombie_shadowzone.iwd:images/_-gzombie_vending_electric_c_logo.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_shadowzone"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 126.4,
+    "addon_iwds": [
+      {
+        "file": "motd_zombie_images.iwd",
+        "entries": 30,
+        "scripts": 0,
+        "bytes": 8573564
+      },
+      {
+        "file": "nazi_zombie_asylum.iwd",
+        "entries": 6,
+        "scripts": 6,
+        "bytes": 2722
+      },
+      {
+        "file": "zzz_feli_laststand_fix.iwd",
+        "entries": 2,
+        "scripts": 1,
+        "bytes": 6530
+      }
+    ],
+    "flags": [
+      "client_memory_risk",
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_shadowzone.ff",
+      "nazi_zombie_shadowzone_patch.ff",
+      "nazi_zombie_shadowzone.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

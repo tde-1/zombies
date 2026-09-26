@@ -1,0 +1,136 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_tun",
+  "title": "Nazi Zombie Tunnels",
+  "source": "custom",
+  "author": "Techno2s",
+  "released": "2008-12-12",
+  "fs_game": "mods/nazi_zombie_tun",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_tun.ff": "0fe1fe5d658c2dfbf7a539172ad56ee05d75d251baf1f101b05eb22c9625b4f6"
+  },
+  "badge": {
+    "main_finish": "round",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "round",
+    "why": "no easter egg or ending found; default Round 20",
+    "verdict_stock_baseline_only": "round",
+    "scripts": 40,
+    "script_count": 40,
+    "entities": 510,
+    "ee_candidates": [],
+    "ending_words": [],
+    "hardcoded_costs": [
+      1000,
+      1500
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        1500,
+        "zombie_debris",
+        "cardoor"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "cardoor"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "ammoblock"
+      ],
+      [
+        1500,
+        "weapon_cabinet_use",
+        "pf675_auto2"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "pf197_auto1"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [],
+    "zombiemode_sha256": "0fe1fe5d658c2dfbf7a539172ad56ee05d75d251baf1f101b05eb22c9625b4f6",
+    "map_specific_triggers": [],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:21:14Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_tun.exe",
+    "original_sha256": "cf996e7a9bb4b5da8229c1e13f212e47fa74d0eb780498560e1a4c7438f49bdd",
+    "original_size": 41279096,
+    "source_url": "http://www.mediafire.com/file/dpbronpd3qxsbul/nazi_zombie_tun.exe/file",
+    "source_page": "https://callofdutyrepo.com/2008/12/12/nazi-zombie-tun/",
+    "fetched": "2026-09-26T15:19:15Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Defend the two station platforms, the lobby and the 1942 modelled trains in this dingy dark abandoned subway station. June 12th, 1945. After an explosion at a secret biological weapons lab on the outskirts of Berlin, advancing American troops find themselves fighting a new enemy. Join the survivors who escaped via a subway train\u2026 and have reached the end of the line. There are 10 Entrances and 4 buyable \u2018doorways\u2019 unlocking 3 rooms. This took a few weeks to make, with some of the map built in the COD4 editor prior to COD5s release. Post how many rounds you got to! In testing with 2 players we only got to round 13! This is the first mission in a mini campaign. All missions will be tied together by intro movies.",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_tun",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "nazi_zombie_tun.iwd:images/loadscreen_nazi_zombie_tun.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_tun"
+    }
+  },
+  "notes": "Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 73.3,
+    "addon_iwds": [],
+    "flags": [
+      "no_patch_ff"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": false,
+    "napalmblob": [
+      "nazi_zombie_tun.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

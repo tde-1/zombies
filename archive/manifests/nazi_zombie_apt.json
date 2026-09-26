@@ -1,0 +1,189 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_apt",
+  "title": "Zombie Apartment",
+  "source": "custom",
+  "author": "Frankieanime158",
+  "released": "2015-03-23",
+  "fs_game": "mods/nazi_zombie_apt",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@apartment.iwd": "626ad49a1fc70f1ec567c4862d559d4ebc730cc29fe8c188de23c356f558a7a5"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        5000,
+        50000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 50000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 104,
+    "script_count": 104,
+    "entities": 1375,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000,
+      50000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "stamdoor"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "powerdoor"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "logsdoor"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "logsdoor"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "laundrydoor"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "626ad49a1fc70f1ec567c4862d559d4ebc730cc29fe8c188de23c356f558a7a5",
+    "map_specific_triggers": [
+      "end_game",
+      "kino_mainframe_trigger",
+      "kino_teleporter_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:18:58Z"
+    }
+  },
+  "archive": {
+    "original": "Apartment.exe",
+    "original_sha256": "cae57a940d2b1f412a2b6fef91f0585ce106a5fc0184448ed20147d75d62b093",
+    "original_size": 106487618,
+    "source_url": "https://www.mediafire.com/file/g3fnhzw4z0lklqg/Apartment.exe/file",
+    "source_page": "https://callofdutyrepo.com/2015/03/23/zombie-apartment-2/",
+    "fetched": "2026-09-26T15:17:05Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Description About: This is a map I\u2019ve been working on for about 2 months (My first in fact). The map is modeled after my apartment, and the area surrounding it. Goal: As I had trouble creating things like easter eggs, the general goal is to just slaughter the zombies, until the buyable ending in order to escape the area. Features: -Black Ops 2 speed knifing, and lunge speed multiplied drastically. -Fixed Wonderwaffe taking away health -Buffed Kar98K (And upgraded varient) *Damage, Fire Rate, Ammo capacity -Imported weapons, and upgraded varients -Black Ops perks (Including solo quick revive) -Buyable Ending -Kino Style Teleporter -Zombie Counter CREDITS MakeCents \u2013 Custom Loading Screen and Zombie Counter YaPh1l \u2013 Type writer intro bamskater33 \u2013 Black Ops perks/tutorial Sniperbolts prefabs (Couldn\u2019t find anyone to credit, but thinking it\u2019s someone named Sniperbolt) ZOMB1E-KLLR \u2013 (YouTube) tutorials Aiden \u2013 Kino Style Teleporter Zombie Madness \u2013 Imported Weapons* I believe there\u2019s something about someone who stole the scripts from an original creator. I saw the name \u201cRorke\u201d referenced, so if anyone could let me know the original person to credit, that would be great. I don\u2019t wanna give credit to someone who doesn\u2019t deserve it. *NOTE* Just want to say thank you to everyone in the community that helped me through this whole process. Everyone who\u2019s answer my help threads, you guys are awesome If you notice any glitches, let me know and I can get it fixed And if you\u2019d like to visi",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [
+        "apartment.iwd:images/custom_zombies_menu.iwi",
+        "apartment.iwd:images/custom_zombies_menu2.iwi",
+        "apartment.iwd:images/custom_zombies_menu3.iwi",
+        "apartment.iwd:images/menu_map_custom_zombies_menu.iwi",
+        "apartment.iwd:images/specialty_fastreload_zombies.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 113.9,
+    "addon_iwds": [
+      {
+        "file": "apartment.iwd",
+        "entries": 224,
+        "scripts": 16,
+        "bytes": 24007149
+      }
+    ],
+    "flags": [
+      "client_memory_risk",
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_apt.ff",
+      "nazi_zombie_apt_patch.ff",
+      "apartment.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

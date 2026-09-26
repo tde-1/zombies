@@ -1,0 +1,194 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_acres",
+  "title": "ACRES",
+  "source": "custom",
+  "author": "Rayjingstorm",
+  "released": "2012-04-03",
+  "fs_game": "mods/nazi_zombie_acres",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_acres.iwd": "cfe07db8f155eeaac6f5911932f1094141912977badfc8aca8626f3284a33bed"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "cellar_teleport_player_0"
+        }
+      },
+      "candidates": [
+        "cellar_teleport_player_0",
+        "cellar_teleport_player_1",
+        "cellar_teleport_player_2",
+        "cellar_teleport_player_3"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "cellar_teleport_player_0, cellar_teleport_player_1, cellar_teleport_player_2, cellar_teleport_player_3 name an ending and are this map's own; script hardcodes cost 3000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 36,
+    "script_count": 36,
+    "entities": 570,
+    "ee_candidates": [],
+    "ending_words": [
+      "cellar_teleport_player_0",
+      "cellar_teleport_player_1",
+      "cellar_teleport_player_2",
+      "cellar_teleport_player_3"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "tub1"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "barndoor"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "bladder"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "bladder"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "pf30_auto1"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [],
+    "zombiemode_sha256": "cfe07db8f155eeaac6f5911932f1094141912977badfc8aca8626f3284a33bed",
+    "map_specific_triggers": [
+      "ammo_trigger",
+      "cellar_trig",
+      "furnacetrigger",
+      "music_box_player"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:42:15Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_acres.exe",
+    "original_sha256": "cb21ac6dc7acf83f8cc12577171cbb6805a5bdcd3e8eb9985163e01232be05af",
+    "original_size": 155480160,
+    "source_url": "http://www.mediafire.com/file/74b222nzutb6p3h/nazi_zombie_acres.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T15:41:33Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Basic Features: Small Prototype style with a few Verruckt features Multiple play-modes including an ending Special zombies (fire and electricity) Music player* *Due to the included music, this map\u2019s mod folder is rather large. If it is requested enough, I can remove the music system entirely and release a new version.",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_acres",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "nazi_zombie_acres.iwd:images/loadscreen_nazi_zombie_acres.iwi",
+        "nazi_zombie_acres.iwd:images/menu_map_nazi_zombie_acres.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_acres"
+    }
+  },
+  "notes": "Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 97.7,
+    "addon_iwds": [],
+    "flags": [
+      "no_patch_ff"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": false,
+    "napalmblob": [
+      "nazi_zombie_acres.ff"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "nazi_zombie_acres.iwd:maps/tom_music_player_unl.gsc",
+        "menus": [],
+        "responses": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9"
+        ],
+        "note": "in game: a music player"
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

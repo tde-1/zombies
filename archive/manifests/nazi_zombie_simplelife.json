@@ -1,0 +1,188 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_simplelife",
+  "title": "Nazi Zombie Simplelife (Safe Zone)",
+  "source": "custom",
+  "author": "hexzombies",
+  "released": "2013-08-15",
+  "fs_game": "mods/nazi_zombie_simplelife",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_simplelife.iwd": "f1d63b2b5407f0def0732d21a731f160551011d44c0a322478c04acff3e8f2dc"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "crawler_round_ending"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game",
+        "teleport_power_up"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game, teleport_power_up name an ending and are this map's own; script hardcodes cost 5000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 101,
+    "script_count": 101,
+    "entities": 1459,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game",
+      "teleport_power_up"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_door",
+        "auto85"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto84"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto83"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "auto11"
+      ],
+      [
+        1000,
+        "zombie_door",
+        "auto85"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "f1d63b2b5407f0def0732d21a731f160551011d44c0a322478c04acff3e8f2dc",
+    "map_specific_triggers": [
+      "five_tele1",
+      "five_tele2",
+      "five_tele3",
+      "five_tele4",
+      "five_tele5",
+      "kino_mainframe_trigger",
+      "kino_teleporter_trigger",
+      "purchase",
+      "select"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:36:10Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_simplelife.exe",
+    "original_sha256": "31243dea60277f276e818610ed40dc23bfc8201921c187126893f2418b0d3c2b",
+    "original_size": 70895592,
+    "source_url": "https://www.mediafire.com/file/bzvbudbut8f16q3/nazi_zombie_simplelife.exe/file",
+    "source_page": "https://callofdutyrepo.com/2013/08/15/nazi-zombie-simplelife-safe-zone/",
+    "fetched": "2026-09-26T15:33:57Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Description: So yea guys this is my first map ever! so please be gentle. The Map is called Safe Zone or nazi_zombie_simplelife. The map takes place in an abondoned 3 house neighborhood on the edge or a vacant hotel. Map includes: 1. BO1 Perks 2. FIVE style teleporters 3. Kino style teleporter/ pack a punch system. 4. 3 houses, 3 yards and 3 garages. Since this is my first map \u2013 I am totally open to criticism from more seasoned mappers \u2013 please feel free to tell me what I should improve on and what I can do to make a better map in the future. Hope you guys like it",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_simplelife"
+      ],
+      "iwd_images": [
+        "nazi_zombie_simplelife.iwd:images/loadscreen_nazi_zombie_simplelife.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_simplelife"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 103.1,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 123,
+        "scripts": 0,
+        "bytes": 333477
+      }
+    ],
+    "flags": [],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_simplelife.ff",
+      "nazi_zombie_simplelife_patch.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

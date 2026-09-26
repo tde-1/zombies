@@ -1,0 +1,176 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_jap",
+  "title": "MAKIN ATOLL",
+  "source": "custom",
+  "author": "razzadaman",
+  "released": "2013-08-02",
+  "fs_game": "mods/nazi_zombie_jap",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_jap.iwd": "0017bd56cd6a4c0e3d5e6539aa72cf71ca333be3c52ea6126deed9b1e1149d1b"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000,
+        9000,
+        45000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 45000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 94,
+    "script_count": 94,
+    "entities": 447,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      9000,
+      45000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "zombie_door",
+        "dirt"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "sliding2"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "sliding1"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "sliding"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_3"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "0017bd56cd6a4c0e3d5e6539aa72cf71ca333be3c52ea6126deed9b1e1149d1b",
+    "map_specific_triggers": [
+      "end_game",
+      "zk_eggtrig"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:42:34Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_jap.exe",
+    "original_sha256": "cc84d98196a639132689cca589352840175bf5e339347452f216f8a2395151b4",
+    "original_size": 87912596,
+    "source_url": "http://www.mediafire.com/file/672y11xmiu82ox8/nazi_zombie_jap.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T15:41:47Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Description *DISCLAIMER* This is my first real map! I did upload another map to this site but that was a year ago now and was based on the tutorial map. This map took me 5 or 6 days to make, please report any bugs back to me please. Makin Atoll: More than just sand and trees\u2026.. Features: Japanese Style Zombies Buyable PPSH <3 Moving Pandora Box Pack a Punch All Perks Black Ops Quick Revive For Solo Climbing Zombies Risers Hidden Ray Gun and Wunderwaffe ! Hidden Song! Mounted Turrets Buyable Ending Funny/Qwuerky Intro Sayings Mission Objectives Dolphin Dive From Black Ops (Not Tested!) Custom Loadscreen Co-Op Custom Loadscreen Solo (Not Fully Working!) Custom Main Menu Storyline: You and your crew mates of Battalion 935 are flying over the Islands of Kiribati, East of Japan. You get a radio in that the war is over, HOORAY! Suddenly the signal cuts off\u2026.. The left engine fails on the aircraft causing it to spin out of control. The pilot, Tank Dempsey had to make a crash landing luckily just off a small island where a control station and radio tower is based, it\u2019s deserted. The area has been covered in toxic radiation from the Hiroshima and Nagasaki bombings in Japan, it isn\u2019t the best place but it\u2019s good for survival. Suddenly you hear screams and shrieks coming from the ground\u2026. ZOMBIES! Run For Your Lives! Radio For Help and Get Off the Island! Screenshots: These Screenshots are from an older version of the map, prices have changed and things have moved.",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_nazi_zombie_jap"
+      ],
+      "iwd_images": [
+        "nazi_zombie_jap.iwd:images/loadscreen_nazi_zombie_jap.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_jap"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 96.4,
+    "addon_iwds": [],
+    "flags": [],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_jap.ff",
+      "nazi_zombie_jap_patch.ff",
+      "nazi_zombie_jap.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

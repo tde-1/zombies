@@ -1,0 +1,195 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_ascension",
+  "title": "Ascension 2.0 - Candyland",
+  "source": "custom",
+  "author": "iBarnett",
+  "released": "2014-03-15",
+  "fs_game": "mods/nazi_zombie_ascension",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_ascension.iwd": "bef3b96c363cdba98f668316090f671e65f5d9cab7080dd7dff784b50350e7f8"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000,
+        9000,
+        45000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 45000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 108,
+    "script_count": 108,
+    "entities": 1499,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      9000,
+      45000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "door12"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "door6"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "door6"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "door4"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "door3"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc",
+      "maps/_utility.gsc"
+    ],
+    "zombiemode_sha256": "bef3b96c363cdba98f668316090f671e65f5d9cab7080dd7dff784b50350e7f8",
+    "map_specific_triggers": [
+      "end_game",
+      "jukebox",
+      "trig_c"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:04:44Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_ascension.exe",
+    "original_sha256": "1ba8636f3f0b20a9cce15c8e1d7e0a8c8ccf234857d9c82c3138de0f72707b43",
+    "original_size": 158914423,
+    "source_url": "https://www.mediafire.com/file/90le5449n0m36o5/nazi_zombie_ascension.exe/file",
+    "source_page": "https://callofdutyrepo.com/2014/03/15/ascension-2-0-candyland/",
+    "fetched": "2026-09-26T15:02:14Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "So this is my re-make of my re-make or ascension from Blops. THIS IS NOT COMPLETE!!! I for some reason have messed something up somewhere with in my map be it in radiant or in some script but when i go to launch my map it gets right to the end of the loading bar then crashes my whole waw game. I just though i would release it as is. Features : \u2013 Well detailed \u2013 UGX jukebox \u2013 Waw/blops perks with quick working on solo \u2013 Endgame Since this was a random compile that i found on my computer that \u201cxcup\u201d found (was ment to save my .map file not an actual compile version) it was in testing stage. So you start with 50000 points and the landers /rocket dosnt work and theres no EE. Was getting there though till i did something that i have no idea how to fix. So i am willing to give someone my recent .map file so they can load it into radiant and maybe get it working All i ask is that you are a pretty good mapper/scripter, not a teenybopper, And that you leave whats in it allready. I dont care if you add things to it to make it better And just give me credit for making the map (say with YaPh1l\u2019s into like it is right now). So if your intrested in it please leave a post stating who you are and why you think i should give you my .map . Hope someone will step up!!! cuz im beyond capable of fixing what ever i have done ( and yes i have tried running a new script placer copying the whole map over and just tried a basic compile with the same issue with it just crashing my waw game completely a",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc, maps/_utility.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 131.4,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 123,
+        "scripts": 0,
+        "bytes": 333477
+      }
+    ],
+    "flags": [
+      "client_memory_risk"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_ascension.ff",
+      "nazi_zombie_ascension_patch.ff"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "nazi_zombie_ascension.iwd:maps/ugx_jukebox.gsc",
+        "menus": [],
+        "responses": [],
+        "note": "in game: the jukebox"
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

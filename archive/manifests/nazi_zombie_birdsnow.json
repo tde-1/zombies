@@ -1,0 +1,201 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_birdsnow",
+  "title": "Snow Bird",
+  "source": "custom",
+  "author": "Kielrgz",
+  "released": "2021-10-01",
+  "fs_game": "mods/nazi_zombie_birdsnow",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_birdsnow.iwd": "beca6b892d8b402d9df4cb090085efc8d4364e0b7801de5a202f0a4b04e7085c"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        3000,
+        5000,
+        55000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 55000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 120,
+    "script_count": 120,
+    "entities": 1469,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      5000,
+      55000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2500,
+        "weapon_upgrade",
+        "?"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "auto8"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "auto7"
+      ],
+      [
+        2000,
+        "weapon_upgrade",
+        "?"
+      ],
+      [
+        2000,
+        "weapon_upgrade",
+        "?"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "beca6b892d8b402d9df4cb090085efc8d4364e0b7801de5a202f0a4b04e7085c",
+    "map_specific_triggers": [
+      "end_game"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:08:49Z"
+    }
+  },
+  "archive": {
+    "original": "BirdSnow_Mod_Normal.exe",
+    "original_sha256": "4f164ccd8cf5769404e4cfff4c60d3274e1ace5fce956b2ec77e0f597438d02d",
+    "original_size": 290116182,
+    "source_url": "https://www.mediafire.com/file/0igwedbpvecza72/BirdSnow_Mod_Normal.exe/file",
+    "source_page": "https://callofdutyrepo.com/2021/10/01/snow-bird/",
+    "fetched": "2026-09-26T15:06:24Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "SnowBird V1.0 Ladder Challenge with Affordable Ending I made a small detail to the weapons to make them look better. I made them specular. I hope you like it. Map data: Subo 2 Links \u2026 Normal and Hard Mode. The map includes weapons from bo2 and mw2. Specials: THUNDERGUN, RAY GUN MARK 2 AND SERVANT The specials I made it difficult for them to come out lucky. Bosses 2 and if everything goes well I will update with what shipudden brings. Perks of BO3, BO2, BO1 Effect on zombie eyes. Character Skin Arms with Final Affordable Camo Skin made by me and Kawai\u2019s by Treyarch Color Effect Points (Credits to ThunderFrost) Incono by Perk (Credits to ThunderFrost)",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "gympie6_perks.iwd:images/~p7_zm_vending_ads_logo_spc-r~301c48c1.iwi",
+        "gympie6_perks.iwd:images/p7_zm_vending_ads_logo_col.iwi",
+        "gympie6_perks.iwd:images/specialty_fastreload_zombies.iwi",
+        "nazi_zombie_birdsnow.iwd:images/menu_button_backing_right.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 74.5,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 123,
+        "scripts": 0,
+        "bytes": 333477
+      },
+      {
+        "file": "gympie6_perks.iwd",
+        "entries": 285,
+        "scripts": 7,
+        "bytes": 100287083
+      },
+      {
+        "file": "zombies_tranzit.iwd",
+        "entries": 57,
+        "scripts": 12,
+        "bytes": 15338712
+      },
+      {
+        "file": "zzz_feli_laststand_fix.iwd",
+        "entries": 2,
+        "scripts": 1,
+        "bytes": 6648
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_birdsnow.ff",
+      "nazi_zombie_birdsnow_patch.ff",
+      "nazi_zombie_birdsnow.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

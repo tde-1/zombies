@@ -1,0 +1,138 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_military",
+  "title": "Nazi Zombie Military HQ",
+  "source": "custom",
+  "author": "[HOG]Rampage",
+  "released": "2009-01-01",
+  "fs_game": "mods/nazi_zombie_military",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_military.ff": "e1903441f70431c4d0761ccb10f42332e06b5b2a356dc94a41ab3dc7f7bc4c12"
+  },
+  "badge": {
+    "main_finish": "round",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "round",
+    "why": "no easter egg or ending found; default Round 20",
+    "verdict_stock_baseline_only": "round",
+    "scripts": 43,
+    "script_count": 43,
+    "entities": 871,
+    "ee_candidates": [],
+    "ending_words": [],
+    "hardcoded_costs": [
+      1000,
+      1500
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        1500,
+        "weapon_cabinet_use",
+        "pf136_auto2"
+      ],
+      [
+        1000,
+        "zombie_debris",
+        "couch5"
+      ],
+      [
+        1000,
+        "zombie_debris",
+        "couch2"
+      ],
+      [
+        1000,
+        "zombie_debris",
+        "couch1"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "pf146_auto1"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [],
+    "zombiemode_sha256": "e1903441f70431c4d0761ccb10f42332e06b5b2a356dc94a41ab3dc7f7bc4c12",
+    "map_specific_triggers": [],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:39:50Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_military.exe",
+    "original_sha256": "4e4d058ac8ddf4d0291a37617b082988a2f7c605bb79a464f1d7bf5a4a4375d4",
+    "original_size": 40798519,
+    "source_url": "http://www.mediafire.com/file/a7am2sir9vp5t6g/nazi_zombie_military.exe/file",
+    "source_page": "https://callofdutyrepo.com/2009/01/01/nazi-zombie-military/",
+    "fetched": "2026-09-26T15:39:08Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "challenge"
+    ],
+    "catalogue_description": "This map has starting room plus 3 unlockable similar looking areas with each having its own guns and finally the last are holding mystery box. Good small nacht der untoten map! Thanks to Wakizashi for providing the map file and screenshots.",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_military",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "nazi_zombie_military.iwd:images/loadscreen_nazi_zombie_military.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_military"
+    }
+  },
+  "notes": "Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 71.6,
+    "addon_iwds": [],
+    "flags": [
+      "no_patch_ff"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": false,
+    "napalmblob": [
+      "nazi_zombie_military.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

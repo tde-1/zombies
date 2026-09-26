@@ -1,0 +1,168 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_bunkerr",
+  "title": "Nazi Zombie Bunkerr",
+  "source": "custom",
+  "author": "TheGlitchCrib",
+  "released": "2012-07-12",
+  "fs_game": "mods/nazi_zombie_bunkerr",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_Bunkerr.iwd": "c54b37b01fde343cf2c52201cedae7d7eda4dec728c355947fb82b37bd9a9917"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000,
+        45000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 45000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 96,
+    "script_count": 96,
+    "entities": 659,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      45000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        4000,
+        "zombie_debris",
+        "blocker4"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "blocker3"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "blocker2"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "blocker1"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "pf1776_auto1"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "c54b37b01fde343cf2c52201cedae7d7eda4dec728c355947fb82b37bd9a9917",
+    "map_specific_triggers": [
+      "end_game"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:26:57Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_Bunkerr.exe",
+    "original_sha256": "7c11be14e4f918a5a46908dd8c1669edd17f563ed2cc7aa4baf5b9e822e66666",
+    "original_size": 62189369,
+    "source_url": "http://www.mediafire.com/file/qvi58vlrsd11d9w/nazi_zombie_Bunkerr.exe/file",
+    "source_page": "https://callofdutyrepo.com/2012/07/12/nazi-zombie-bunkerr/",
+    "fetched": "2026-09-26T15:25:38Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Description Info: This is my 1st completed map out of the 4-6 maps I have started. It takes place in the near future in a bunker. Will you live to see the end of the Zombie Apocalypse?! Notice: To play map solo, enable console and type \u201cdevmap nazi_zombie_Bunkerr\u201d. I apologize that there is no option that you can click to play the map automatically. Features: -Custom Scripting -Mystery Box -All four Perks -P-A-P -Risers -No Dogs -Buyable Ending -Increased zombie spawn rates -increased Power ups drops Contact Information: Skype-TheGlitchCrib Steam-ZombiesEd Youtube- http://www.youtube.com/user/ZombiesEd http://www.youtube.com/user/i2eboot As of right now there are no known glitches. The only Bug is the zombies will start spawning a tad bit before the round begins ballbuster1",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 83.4,
+    "addon_iwds": [],
+    "flags": [],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_bunkerr.ff",
+      "nazi_zombie_bunkerr_patch.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

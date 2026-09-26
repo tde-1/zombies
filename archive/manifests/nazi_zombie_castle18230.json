@@ -1,0 +1,178 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_castle18230",
+  "title": "Nazi Zombie Castle 18230",
+  "source": "custom",
+  "author": "guigui18230",
+  "released": "2014-06-25",
+  "fs_game": "mods/nazi_zombie_castle18230",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_castle18230.iwd": "29c3be10ad94cda8e3cd485bc46161ac72e1d021de69931ae18d0a0a4d000dbe"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "crawler_round_ending"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 5000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 101,
+    "script_count": 101,
+    "entities": 1370,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "packpunch2"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "packpunch2"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "packpunch2"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "packpunch2"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "packpunch1"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "29c3be10ad94cda8e3cd485bc46161ac72e1d021de69931ae18d0a0a4d000dbe",
+    "map_specific_triggers": [
+      "bombtrigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:43:32Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_castle18230.exe",
+    "original_sha256": "2c968b9b041d190c93dbecaf89d8c09ae299bac3d230e385dd682785ecc475ad",
+    "original_size": 78949139,
+    "source_url": "https://www.mediafire.com/file/4cgm8a9qwm9rt92/nazi_zombie_castle18230.exe/file",
+    "source_page": "https://callofdutyrepo.com/2014/06/25/nazi-zombie-castle-18230/",
+    "fetched": "2026-09-26T15:42:06Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Description Hi, this is a big map which I made, it\u2019s the Castle map from the multiplayer, but i edit it for make this zombie map. Many buyable zone all the perks pack a punch NO DOG We can buy the PTRS, the FG-42, the thompson, the mp-40, and other weapons you must active the power. It look like an easy map because it\u2019s a large map, but, be careful. ps, sorry for my bad english (the timed gameplay on coop menu don\u2019t work, but i don\u2019t know how revove it)",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_castle18230",
+        "loadscreen_nazi_zombie_oldtown",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "nazi_zombie_castle18230.iwd:images/castle18230_background.iwi",
+        "nazi_zombie_castle18230.iwd:images/loadscreen_nazi_zombie_castle18230.iwi",
+        "nazi_zombie_castle18230.iwd:images/menu_map_nazi_zombie_castle18230.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_castle18230"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 116.0,
+    "addon_iwds": [],
+    "flags": [
+      "client_memory_risk"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_castle18230.ff",
+      "nazi_zombie_castle18230_patch.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

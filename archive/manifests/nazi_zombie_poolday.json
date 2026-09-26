@@ -1,0 +1,187 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_poolday",
+  "title": "Fy Pool Day Remake",
+  "source": "custom",
+  "author": "kielrgz",
+  "released": "2022-07-09",
+  "fs_game": "mods/nazi_zombie_poolday",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_poolday.iwd": "920a0222aa483823c96e118c8cd845ab17bba222dce8b23cdc19f5222f80858f"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        3000,
+        5000,
+        50000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 50000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 101,
+    "script_count": 101,
+    "entities": 530,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      5000,
+      50000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "door7"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door12"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "door11"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "door9"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "door9"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "920a0222aa483823c96e118c8cd845ab17bba222dce8b23cdc19f5222f80858f",
+    "map_specific_triggers": [
+      "end_game"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:03:35Z"
+    }
+  },
+  "archive": {
+    "original": "Fy_Pool_Day_v1.1.exe",
+    "original_sha256": "bb0a09b807b71a89bee25020ac821249daf4e2eb73932361dca669be0e8058b1",
+    "original_size": 300231256,
+    "source_url": "https://www.mediafire.com/file/r1nhespimiwgsgk/Fy_Pool_Day_v1.1.exe/file",
+    "source_page": "https://callofdutyrepo.com/2022/07/09/fy-pool-day-remake/",
+    "fetched": "2026-09-26T15:01:09Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Hello everyone, it\u2019s been a while since I brought you a map, it\u2019s because I was a bit complicated, even so I wanted to make a quick map and this one came out, I hope you enjoy it. I want to clarify that it is not an exact copy of the original since I am missing prefabs and some things but even so I think it is enjoyable for those who love the classic Fy Pool Day, without further ado I leave you my map and below the bugs that you may find . BUGS: The bugs they will find will be: That they can\u2019t revive their teammates in coop out there, (don\u2019t test that let me know if it works or not), In the hands of Nuketown, I mean the man in the suit With the Scar H and AN94 they will look weird sometimes when you use them, it\u2019s like a line, it doesn\u2019t affect the gameplay but when you reload it will be noticeable, to avoid that if you want to restart the map until Dempsey\u2019s Arms of Origins touches them, Another bug is that the perks don\u2019t light up I don\u2019t know why it happens that since before in my maps if they had lights but well I don\u2019t know what it really is, if there is any other bug they let me know, unfortunately I don\u2019t make perfect maps knowing that I\u2019ve been at this for years but well\u2026 you do what you know Maybe, being a Latin American mapper makes it difficult for me to look for new things to implement and even more so now that waw is a bit abandoned, I hope you know how to understand. What does the map bring? BO2 Weapons, 3 Bosses, Scavenger Weapon, MW2 Weapons, Cold War Style Hu",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [
+        "gympie6_perks.iwd:images/~p7_zm_vending_ads_logo_spc-r~301c48c1.iwi",
+        "gympie6_perks.iwd:images/p7_zm_vending_ads_logo_col.iwi",
+        "gympie6_perks.iwd:images/specialty_fastreload_zombies.iwi",
+        "nazi_zombie_poolday.iwd:images/menu_button_backing_right.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 79.7,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 123,
+        "scripts": 0,
+        "bytes": 333477
+      },
+      {
+        "file": "gympie6_perks.iwd",
+        "entries": 285,
+        "scripts": 7,
+        "bytes": 100277737
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_poolday.ff",
+      "nazi_zombie_poolday_patch.ff",
+      "nazi_zombie_poolday.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

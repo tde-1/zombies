@@ -1,0 +1,177 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "zm_berhotel",
+  "title": "[item] Berlin Hotel",
+  "source": "custom",
+  "author": "Ginger Boi",
+  "released": "2022-01-15",
+  "fs_game": "mods/zm_berhotel",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@zm_berhotel.iwd": "213465c79b91890717ce300b817b193aec393f2c7fbd6205e1368fce779ed58d"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "music_ee"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "music_ee look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 113,
+    "script_count": 113,
+    "entities": 1710,
+    "ee_candidates": [
+      "music_ee"
+    ],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_door",
+        "auto201"
+      ],
+      [
+        1500,
+        "zombie_door",
+        "auto18"
+      ],
+      [
+        1250,
+        "zombie_door",
+        "auto33"
+      ],
+      [
+        1250,
+        "zombie_door",
+        "auto16"
+      ],
+      [
+        1250,
+        "zombie_door",
+        "auto12"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "213465c79b91890717ce300b817b193aec393f2c7fbd6205e1368fce779ed58d",
+    "map_specific_triggers": [
+      "end_game_trigger",
+      "music_ee",
+      "zapper_damage_warehouse",
+      "zapper_damage_wuen"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:07:20Z"
+    }
+  },
+  "archive": {
+    "original": "Berlin_Hotel.zip",
+    "original_sha256": "123257905db6bd72b8b6ebee9352f1f64a8d3435b7c6a5f8b7a0b2e481d59855",
+    "original_size": 213902894,
+    "source_url": "https://archive.org/download/berlin-hotel/Berlin%20Hotel.zip",
+    "source_page": "https://archive.org/details/berlin-hotel",
+    "fetched": "2026-09-26T15:04:52Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "zip",
+    "shipped_executables": [],
+    "catalogue_tags": [
+      "archive_item"
+    ],
+    "catalogue_description": "The city is overrun. This was the last Safe Haven. It\\\u2019s up to you to survive. \u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2013 This is a fairly vanilla custom map that\\\u2019s been on my backburner for about 2 years. I started it right after I released Hangar 42, and am proud to finally present it to the community. It includes most BO1 weapons and functional BO1 perks. This is also my first map to released on the 2020 Modtools developed by Vertasea and YaF3li, who\\\u2019ve spent the last two years tweaking World at War\\\u2019s tools to be the best they can be. I hope you enjoy the map! Features included: \u2013 Bo1 weapons \u2013 Bo1 Perks (bo1 QR, DT 2.0) \u2013 Bo2 View-models \u2013 Fixed waffe upgrade \u2013 Sharable mystery box (after a few seconds, other players can pick up the weapon) \u2013 Improved zombie AI / pathing \u2013 NO MORE GRABBING ZOMBIES \u2013 Custom Replayable Easter Egg Song \u2013 Buyable ending \u2013 Some dual wield weapons \u2013 Many more quality of life tweaks to make WaW a more enjoyable experience. (I\\\u2019m aware of the mule kick Issue, and Im unsure how to fix it. Basically, it removed a weapon at random when downed) (seriously though, I\\\u2019m not listing anywhere NEAR the amount of improvements these guys have been working on, so I want to give credit where it\\\u2019s due) Credits: Vertasea & Yaf3li \u2013 2020 Mod Tools (which includes many of the prefabs, anims, models, and others used), countless hours of scripting and mapping help, being general homies Quizz \u2013 Weapon help and map help Chasr34 \u2013 Help with porting bo",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak",
+        "loadscreen_sp_makin",
+        "loadscreen_zm_berhotel",
+        "loadscreen_zm_berlin_hotel"
+      ],
+      "iwd_images": [
+        "zm_berhotel.iwd:images/loadscreen_zm_berlin_hotel.iwi",
+        "zm_berhotel.iwd:images/specialty_fastreload_dlc4.iwi",
+        "zm_berhotel.iwd:images/zombie_vending_ads_logo_c.iwi",
+        "zm_berhotel.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "zm_berhotel.iwd:images/zombie_vending_three_gun_logo_c.iwi",
+        "zm_berhotel.iwd:images/~-gzombie_vending_ads_logo_c.iwi",
+        "zm_berhotel.iwd:images/~-gzombie_vending_three_gun_logo_c.iwi",
+        "zm_berhotel.iwd:images/~~~-gzombie_vending_ads_logo_~b134f8b9.iwi"
+      ],
+      "loadscreen": "loadscreen_zm_berhotel"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 179.9,
+    "addon_iwds": [],
+    "flags": [
+      "client_memory_risk",
+      "no_patch_ff"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": false,
+    "napalmblob": [
+      "mod.ff",
+      "zm_berhotel.ff",
+      "zm_berhotel.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

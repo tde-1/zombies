@@ -1,0 +1,190 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_iw4_credits",
+  "title": "IW4 Credits",
+  "source": "custom",
+  "author": "Zomboy108",
+  "released": "2021-01-14",
+  "fs_game": "mods/nazi_zombie_iw4_credits",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@iw4credits.iwd": "b6436768f21e78a12d63a7a25f3555858886383f4270125cdfad1cfe902c419f"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        3000,
+        50000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 50000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 109,
+    "script_count": 109,
+    "entities": 1057,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      50000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "pf19_auto1",
+        "?"
+      ],
+      [
+        4000,
+        "pf39_auto1",
+        "?"
+      ],
+      [
+        3000,
+        "pf51_auto1",
+        "?"
+      ],
+      [
+        2500,
+        "pf54_auto1",
+        "?"
+      ],
+      [
+        2500,
+        "pf22_auto1",
+        "?"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "b6436768f21e78a12d63a7a25f3555858886383f4270125cdfad1cfe902c419f",
+    "map_specific_triggers": [
+      "end_game",
+      "harrybo21_perk_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:27:45Z"
+    }
+  },
+  "archive": {
+    "original": "IW4Credits_v1.0.exe",
+    "original_sha256": "eb6b47437cf19a9fb90e0f99cddfed263c0d5cb508dd9a0ee8fd114db51aaeaf",
+    "original_size": 164219987,
+    "source_url": "https://www.mediafire.com/file/mrm0fwccuwssor1/IW4Credits_v1.0.exe/file",
+    "source_page": "https://callofdutyrepo.com/2021/01/14/iw4-credits/",
+    "fetched": "2026-09-26T15:26:12Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "This is my first ever map I am releasing to the public. A lot of tears were shed making this, but it is finally done! This map is based off of a inaccessable devmap from Modern Warfare 2, then expanded upon and given the zombies treatment FEATURES: HarryBO21 Perks No Perk Limit World at War weapons Buyable ending Not much else actually. I plan on doing bigger and better maps in the future, but I think this is a good starting point for making this an actual hobby CREDITS: Harry BO21 for the perks Infinity Ward for the map Treyarch for the mod tools UGX for the tutorials Sniperbolt for the prefabs Radimax and Phil81334 for the scripting help (I cannot thank you enough!) Again, this is my first maps ever actually released to the public. Any criticism or feedback is more than welcome either in this thread, or over at the UGX discord! Hope you guys enjoy <3",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [
+        "harrybo21_perks.iwd:images/p6_zm_al_vending_ads_logo_m.iwi",
+        "harrybo21_perks.iwd:images/p6_zm_al_vending_three_gun_logo_m.iwi",
+        "harrybo21_perks.iwd:images/p6_zm_al_vending_three_gun_logo_n.iwi",
+        "harrybo21_perks.iwd:images/specialty_fastreload_zombies.iwi",
+        "harrybo21_perks.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "harrybo21_perks.iwd:images/ugx_mod_menu_template.iwi",
+        "harrybo21_perks.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "harrybo21_perks.iwd:images/_-gp6_zm_al_vending_ads_logo_c.iwi",
+        "harrybo21_perks.iwd:images/_-gzombie_vending_sleight_logo_c.iwi",
+        "harrybo21_perks.iwd:images/~__-gzombie_vending_ads_logo_~7aa94a54.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 75.4,
+    "addon_iwds": [
+      {
+        "file": "harrybo21_perks.iwd",
+        "entries": 279,
+        "scripts": 1,
+        "bytes": 45673802
+      },
+      {
+        "file": "iw4credits.iwd",
+        "entries": 87,
+        "scripts": 22,
+        "bytes": 313826
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_iw4_credits.ff",
+      "nazi_zombie_iw4_credits_patch.ff",
+      "iw4credits.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

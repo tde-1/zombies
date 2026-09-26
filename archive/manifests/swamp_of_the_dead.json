@@ -1,0 +1,126 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "swamp_of_the_dead",
+  "title": "Swamp of the Dead - Shi No Numa",
+  "source": "custom",
+  "author": "Sidzzz",
+  "released": "2017-06-03",
+  "fs_game": "mods/swamp_of_the_dead",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@zombie_sumpf.iwd": "bcd60cabf7220ecf4160a3072a985aee232589be0f4b32c5e53a249acc232e2d"
+  },
+  "badge": {
+    "main_finish": "round",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "round",
+    "why": "no easter egg or ending found; default Round 20",
+    "verdict_stock_baseline_only": "round",
+    "scripts": 77,
+    "script_count": 77,
+    "entities": 0,
+    "ee_candidates": [],
+    "ending_words": [],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2250,
+      2500,
+      3000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "bcd60cabf7220ecf4160a3072a985aee232589be0f4b32c5e53a249acc232e2d",
+    "map_specific_triggers": [],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:17:01Z"
+    }
+  },
+  "archive": {
+    "original": "Swamp_of_the_Dead.exe",
+    "original_sha256": "2188125d9dfb414f6736be74c1c81bcec8c5ae24ac6f960152d1e6ba0c4b2394",
+    "original_size": 435104184,
+    "source_url": "https://www.mediafire.com/file/4u2oa7ymx4q2wf6/Swamp_of_the_Dead.exe/file",
+    "source_page": "https://callofdutyrepo.com/2017/06/03/swamp-of-the-dead-shi-no-numa/",
+    "fetched": "2026-09-26T15:13:33Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "It is with great anticipation that I present to you my mod for the Call of Duty: World at War zombies map Shi No Numa , which is called Swamp of the Dead , a direct translation of the original name into English. The idea behind this mod is to thoroughly revamp and renew this classic zombies with modern and enticing features, to add an entirely new perspective towards the map itself. To enhance the experience the original map provided you and create a way to enjoy this map in a different and endearing way. FEATURES",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [
+        "zombie_sumpf.iwd:images/menu_button_backing_right.iwi",
+        "zombie_sumpf.iwd:images/specialty_fastreload_zombies.iwi",
+        "zombie_sumpf.iwd:images/~-gzombie_vending_sleight_logo_c.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": null,
+    "addon_iwds": [
+      {
+        "file": "zombie_sumpf.iwd",
+        "entries": 852,
+        "scripts": 77,
+        "bytes": 374377581
+      }
+    ],
+    "flags": [
+      "no_patch_ff",
+      "addon_iwd_with_scripts",
+      "no_map_ff"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": false,
+    "napalmblob": [
+      "zombie_sumpf.iwd:animscripts/death.gsc",
+      "zombie_sumpf.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

@@ -1,0 +1,205 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "hollengasthof",
+  "title": "Hollengasthof",
+  "source": "custom",
+  "author": "JayJiveCertified",
+  "released": "2020-12-12",
+  "fs_game": "mods/hollengasthof",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@hollengasthof.iwd": "6383dc74c8c6fbfb4348a7caf7880af9765f1814be8993692c1785f2127a9260"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "crawler_round_ending"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        3000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 3000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 124,
+    "script_count": 124,
+    "entities": 964,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "pf1014_auto1",
+        "?"
+      ],
+      [
+        4000,
+        "pf988_auto1",
+        "?"
+      ],
+      [
+        3000,
+        "zombie_door",
+        "auto47"
+      ],
+      [
+        3000,
+        "pf968_auto1",
+        "?"
+      ],
+      [
+        2500,
+        "pf976_auto1",
+        "?"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "6383dc74c8c6fbfb4348a7caf7880af9765f1814be8993692c1785f2127a9260",
+    "map_specific_triggers": [
+      "end_game_switch",
+      "harrybo21_perk_trigger",
+      "key_door",
+      "teleporter_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:21:35Z"
+    }
+  },
+  "archive": {
+    "original": "Hollengasthof.exe",
+    "original_sha256": "cbd71d4b2a3fc8bc58b25c524c77ef0c3df196318743e28e782cac92cfa324c8",
+    "original_size": 362791716,
+    "source_url": "https://www.mediafire.com/file/4zy8x4t4q4xgm1c/Hollengasthof.exe/file",
+    "source_page": "https://callofdutyrepo.com/2020/12/12/hollengasthof/",
+    "fetched": "2026-09-26T15:19:17Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Technically a sequel to my first map \u201cVertica\u201d. Enjoy! Features: \u2022 REALLY Full Auto Colt \u2022 13 Perk-a-Colas o Jugger-Nog (WaW) o Double Tap 2.0 (BO2) o Speed Cola (WaW) o Quick Revive [Solo / Co-op] (BO1) o Mule Kick (BO1) o Stamin-Up (BO1) o PHD Flopper (BO1) o Deadshot Daiquiri (BO1) o Tombstone Soda (BO2) o Who\u2019s Who (BO2) o Electric Cherry (BO2) o Widow\u2019s Wine (BO3) \u2022 No Perk Limit \u2022 MOTD Pack-a-Punch \u2022 Double Pack-a-Punch \u2022 14 Custom Guns o XR2 (BO3) o ICR-1 (BO3) o KN-44 (BO3) o Dingo (BO3) o FFAR (BO3) o Sheiva (BO3) o VMP (BO3) o Vesper (BO3) o Bootlegger (BO3) o Weevil (BO3) o Pharo (BO3) o MR6 (BO3) o DOUBLE UPGRADABLE Ray Gun Mark 1 and Mark 2 (BO2) o UPGRADABLE Mustang and Sally (BO1) \u2022 Hitmarkers \u2022 \u201cFive\u201d Style Zombies \u2022 Zombie Counter \u2022 Buyable Endgame Easter Egg (kinda) \u2022 Nuketown 2025 Character Models \u2022 Verruckt Sprinters \u2022 No Dogs \u2022 Custom Font \u2022 Custom Powerups o Unlimited Ammo o SPEED Credits: HarryBo21 \u2013 Perks, Pack-a-Punch, Ray Gun Mark 2, Mustang and Sally PROxFTW \u2013 Hitmarkers Dust \u2013 Zombie Counter alaurenc9 \u2013 Endgame Switch DidUknowiPwn \u2013 Custom Font shippuden1592 \u2013 \u201cFive\u201d Style Zombies, ICR-1, KN-44, Haymaker, XR2 KDXDARK \u2013 Custom Powerups KhelMho \u2013 Nuketown 2025 Character Models UGX Rorke \u2013 MR6 Killer Potato \u2013 FFAR the115 \u2013 Dingo Weapon Credits: Bootlegger, VMP, Vesper, Weevil: \u2013 BaD BoY 17 Aka \u201cTim Smith\u201d = Uv\u2019ing, Converting the anims & Models \u201cOriginal claimer\u201d. \u2013 DamianoTBM = Supplying me the weapon assests like sounds,models and anims. \u2013 DTZxPorte",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/p6_zm_al_vending_ads_logo_m.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/p6_zm_al_vending_three_gun_logo_m.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/p6_zm_al_vending_three_gun_logo_n.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/p7_zm_vending_ads_logo_col.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/specialty_fastreload_zombies.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/ugx_mod_menu_template.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/_-gp6_zm_al_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/_-gzombie_vending_sleight_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~-gp6_zm_al_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~-gp6_zm_al_vending_three_gun_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~p7_zm_vending_ads_logo_spc-r~301c48c1.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~__-gzombie_vending_ads_logo_~7aa94a54.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~~~-gzombie_vending_ads_logo_~54fdbc62.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 66.8,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 67,
+        "scripts": 0,
+        "bytes": 176320
+      },
+      {
+        "file": "harrybo21_bo1_2_3_perks_v5.0.0.iwd",
+        "entries": 609,
+        "scripts": 0,
+        "bytes": 132191594
+      },
+      {
+        "file": "zmb_five.iwd",
+        "entries": 31,
+        "scripts": 5,
+        "bytes": 5968487
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "hollengasthof.ff",
+      "hollengasthof_patch.ff",
+      "mod.ff",
+      "hollengasthof.iwd:maps/_loadout.gsc",
+      "hollengasthof.iwd:_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

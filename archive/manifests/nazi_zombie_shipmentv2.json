@@ -1,0 +1,198 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_shipmentv2",
+  "title": "Shipment 1983",
+  "source": "custom",
+  "author": "kielrgz",
+  "released": "2021-11-17",
+  "fs_game": "mods/nazi_zombie_shipmentv2",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_shipmentv2.iwd": "615dbde555c3587cf1a92e31df95e4912ce6655c3d8b204c7f68df43bd91d88e"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        3000,
+        5000,
+        58000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 58000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 126,
+    "script_count": 126,
+    "entities": 354,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      5000,
+      58000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_door",
+        "puerta5"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "puerta4"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "puerta3"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "puerta2"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "puerta1"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "615dbde555c3587cf1a92e31df95e4912ce6655c3d8b204c7f68df43bd91d88e",
+    "map_specific_triggers": [
+      "end_game"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:07:13Z"
+    }
+  },
+  "archive": {
+    "original": "Shipment_1983_Beta_v1.0.exe",
+    "original_sha256": "4daad520b409a2dce1ff3e3e53e37caeefd87f27a111a0d7775267295c510cad",
+    "original_size": 327829994,
+    "source_url": "https://www.mediafire.com/file/np506cja2lcvg57/Shipment_1983_Beta_v1.0.exe/file",
+    "source_page": "https://callofdutyrepo.com/2021/11/17/shipment-1983/",
+    "fetched": "2026-09-26T15:04:39Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "I bring a map that I liked to make, similar to the Shipment of COD 4, it still lacks many things such as what is outside the map, while they can enjoy and play if they want. I accept the criticism \u2026 The mod includes: BO2 WEAPONS,Cold War Shaders Perks, 2 BOSSES, DETAILS ON WEAPONS AND PREFABS THAT ARE ON THE MAP AND 1 BUYABLE FINAL. I did not want to put so many bosses because it is repeated. even so if I suggest it in the future I can put more. As for special weapons it occurred to me to put the Scavenger alone \u2026 since I will put some later. THIS MODE REQUIRES T4M FOR NOW I make it clear that this is a beta because I want to continue modifying this, I have to name the weapon hud and also create something outside the map that simulates a port. for that I need assets that I still do not get! If anyone has any, send it to me privately and I will give you the credits",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [
+        "gympie6_perks.iwd:images/~p7_zm_vending_ads_logo_spc-r~301c48c1.iwi",
+        "gympie6_perks.iwd:images/p7_zm_vending_ads_logo_col.iwi",
+        "gympie6_perks.iwd:images/specialty_fastreload_zombies.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 74.4,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 67,
+        "scripts": 0,
+        "bytes": 176320
+      },
+      {
+        "file": "gympie6_perks.iwd",
+        "entries": 284,
+        "scripts": 7,
+        "bytes": 100369553
+      },
+      {
+        "file": "zombies_tranzit.iwd",
+        "entries": 57,
+        "scripts": 12,
+        "bytes": 15338712
+      },
+      {
+        "file": "zzz_feli_laststand_fix.iwd",
+        "entries": 2,
+        "scripts": 1,
+        "bytes": 6659
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_shipmentv2.ff",
+      "nazi_zombie_shipmentv2_patch.ff",
+      "nazi_zombie_shipmentv2.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

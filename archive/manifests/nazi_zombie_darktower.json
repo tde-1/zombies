@@ -1,0 +1,190 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_darktower",
+  "title": "Dark Tower",
+  "source": "custom",
+  "author": "Unknown",
+  "released": "2010-12-30",
+  "fs_game": "mods/nazi_zombie_darktower",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_darktower.iwd": "f83d1878ff2ce97a51ba521b45ced57dc49c5cbc1ae7e7b2418e81933242e4e0"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "crawler_round_ending"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game",
+        "teleport_power_up"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game, teleport_power_up name an ending and are this map's own; script hardcodes cost 5000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 105,
+    "script_count": 105,
+    "entities": 1252,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game",
+      "teleport_power_up"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_door",
+        "auto61"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto60"
+      ],
+      [
+        1500,
+        "zombie_door",
+        "zone5"
+      ],
+      [
+        1500,
+        "zombie_door",
+        "auto58"
+      ],
+      [
+        1000,
+        "zombie_door",
+        "pf752_auto5"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "f83d1878ff2ce97a51ba521b45ced57dc49c5cbc1ae7e7b2418e81933242e4e0",
+    "map_specific_triggers": [
+      "purchase",
+      "select",
+      "teddy1",
+      "teddy2",
+      "teddy3"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:05:05Z"
+    }
+  },
+  "archive": {
+    "original": "Dark_Tower.exe",
+    "original_sha256": "b31233ba36762ac55769a8308f06b68576cb9861d0b9d24e5d244e2d6cc63b61",
+    "original_size": 83307376,
+    "source_url": "https://www.mediafire.com/file/hia7qsn1qddws26/Dark_Tower.exe/file",
+    "source_page": "https://callofdutyrepo.com/2010/12/30/dark-tower/",
+    "fetched": "2026-09-26T15:02:51Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 102.9,
+    "addon_iwds": [
+      {
+        "file": "ascencion_zombies.iwd",
+        "entries": 27,
+        "scripts": 6,
+        "bytes": 4714616
+      },
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 123,
+        "scripts": 0,
+        "bytes": 333477
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_darktower.ff",
+      "nazi_zombie_darktower_patch.ff",
+      "nazi_zombie_darktower.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

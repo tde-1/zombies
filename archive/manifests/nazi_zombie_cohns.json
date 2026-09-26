@@ -1,0 +1,334 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_cohns",
+  "title": "City of Hell - Next Station v1.0 (T4M)",
+  "source": "custom",
+  "author": "gamer9294",
+  "released": "2023-11-12",
+  "fs_game": "mods/nazi_zombie_cohns",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_cohns.iwd": "925b072e094cdf36e36ba548498135ff6a442ea2926b8844633183bfbcbecafe"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "ee_money_teddybears",
+        "ee_perk_teddybears",
+        "ee_perk_teddybears_reward",
+        "ee_roofaccess_door_trig",
+        "part_item"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "ee_money_teddybears, ee_perk_teddybears, ee_perk_teddybears_reward, ee_roofaccess_door_trig, part_item look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 179,
+    "script_count": 179,
+    "entities": 4482,
+    "ee_candidates": [
+      "ee_money_teddybears",
+      "ee_perk_teddybears",
+      "ee_perk_teddybears_reward",
+      "ee_roofaccess_door_trig",
+      "part_item"
+    ],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game",
+      "endgame_blst_dr_cagelight",
+      "endgame_blst_dr_trigger",
+      "endgame_bnkr_doors_control",
+      "endgame_bnkr_dr_trigger",
+      "endgame_bnkr_ligt_drs",
+      "endgame_bunker_blastdoors0",
+      "endgame_bunker_blastdoors0_clip",
+      "endgame_bunker_blastdoors1",
+      "endgame_bunker_blastdoors1_clip",
+      "endgame_bunker_bunkerdoor0",
+      "endgame_bunker_bunkerdoor1",
+      "endgame_bunker_bunkerdoor1_clip",
+      "endgame_bunker_doors_opend",
+      "endgame_bunker_elec_fan",
+      "endgame_bunker_elec_handle",
+      "endgame_bunker_elec_light",
+      "endgame_bunker_elecdoor",
+      "endgame_bunker_fusebox",
+      "endgame_bunker_keycard_require",
+      "endgame_bunker_power_generated",
+      "endgame_bunker_power_on",
+      "endgame_car_main",
+      "endgame_elevator_trig",
+      "endgame_mine_fusebox",
+      "endgame_mine_key_require",
+      "endgame_power_bunker",
+      "endgame_power_mine",
+      "escape_car_zone",
+      "motel_room_ending"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      10000,
+      50000,
+      75000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "garagedoor4_trig",
+        "metro_station_zone_spawners"
+      ],
+      [
+        1750,
+        "small_town_street_trigger",
+        "small_town_street_debris"
+      ],
+      [
+        1750,
+        "garagedoor3_trig",
+        "?"
+      ],
+      [
+        1750,
+        "garagedoor2_trig",
+        "?"
+      ],
+      [
+        1750,
+        "entrance_station_hall_trigger",
+        "entrance_station_hall_door"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc",
+      "maps/_utility.gsc"
+    ],
+    "zombiemode_sha256": "925b072e094cdf36e36ba548498135ff6a442ea2926b8844633183bfbcbecafe",
+    "map_specific_triggers": [
+      "backdoor_shop_trigger",
+      "backstreet_section_trigger",
+      "bank_building_hallway_trigger",
+      "beam_dmg1",
+      "beam_dmg2",
+      "building_pap_trigger",
+      "cashregistersystem_triggers",
+      "crafttable_trigger",
+      "creeplab_street_section_trigger",
+      "ee_roofaccess_door_trig",
+      "endgame_blst_dr_trigger",
+      "endgame_bnkr_doors_control",
+      "endgame_bnkr_dr_trigger",
+      "endgame_elevator_trig",
+      "entrance_creepy_house_trigger",
+      "entrance_lab_building_trigger",
+      "entrance_mining_building_trigger",
+      "entrance_mining_main_trigger",
+      "entrance_old_building_trigger",
+      "entrance_station_hall_trigger",
+      "entrance_streetpark_end_section_trigger",
+      "entrance_streetpark_mid_section_trigger",
+      "entrance_streetpark_section_trigger",
+      "flashback_porter_trigger",
+      "garagedoor1_trig",
+      "garagedoor2_trig",
+      "garagedoor3_trig",
+      "garagedoor4_trig",
+      "lab_level1_research_left1_trigger",
+      "lab_level1_research_left2_trigger",
+      "lab_level1_trigger",
+      "lab_level2_research_left2_trigger",
+      "lab_level2_research_left_trigger",
+      "lab_level2_research_right2_trigger",
+      "lab_level2_research_right_trigger",
+      "mining_station_section_trigger",
+      "motel_backstreet_section_trigger",
+      "motel_backyard_parking_trigger",
+      "motel_backyard_section_trigger",
+      "motel_parking_section_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:03:03Z"
+    }
+  },
+  "archive": {
+    "original": "City_of_Hell_-_Next_Station_v1.exe",
+    "original_sha256": "8d29acf8698b603a7b7f1c2e06f1fe8be10e0a4e9a0896fcb1f6769ad4945efc",
+    "original_size": 389131798,
+    "source_url": "https://www.mediafire.com/file_premium/n1dnsjgimf1i03w/City_of_Hell_-_Next_Station_v1.exe/file",
+    "source_page": "https://callofdutyrepo.com/2023/11/12/city-of-hell-next-station-v1-0-t4m/",
+    "fetched": "2026-09-26T14:59:33Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "City of Hell \u2013 Next Station Version 1.0 ( Requires T4M to play this map) Important to know (1) First thing to know is, this map requires T4M tool to make the map playable because of the limits. (2) Second thing is to turn off: \u2018 Specular Map \u2018 and \u2018 Ocean Simulation \u2018 options in the Call of Duty \u2013 World at War Game. (Settings -> Graphics). (3) Maybe need to decrease the option: \u2018Number of Corpses\u2019 to \u2018Small\u2019 or \u2018Tiny\u2019. (4) There are some bugs in this map, at the moment not much time to work on it but when possible do my best to fix these bugs. (5) Last thing to keep it short. Maybe it can happen that the game crashes on loading screen don\u2019t worry, just try few more couple of times, if it doesn\u2019t work make sure you have running Steam or LanFixed version with the T4M enabled. Story The 4 survivors has found a way out to escape from the zombie horde with the red train and reached out a next station. They thought this place was a safer place than they thought, but apparently it was a fraud. Now they have to prove themselves again if they can survive this zombie horde. But will they really be able to do that, who knows? Features Features of this custom zombie map (WaW): Buyable ammo (Cold War style) Wunderfizz (Black Ops 2 style) Buildable Weapons Buildable Pack-A-Punch Crafting Table (Cold War style) Pointstreaks (Similiar to killstreaks) Flashback Porter Trashbags (Ghosts style) Perks (Juggernog, Speed cola, Quick revive 2.0, Mule Kick, Stamin-up, Tombstone, Electric cherry) Wea",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [
+        "nazi_zombie_cohns.iwd:images/pointstreak_system_menu.iwi",
+        "nazi_zombie_cohns.iwd:images/specialty_fastreload_zombies.iwi",
+        "nazi_zombie_cohns.iwd:images/weapon_red_cross_background.iwi",
+        "nazi_zombie_cohns.iwd:images/weapon_red_cross_background_2.iwi",
+        "nazi_zombie_cohns.iwd:images/weapon_red_cross_background_iw5.iwi",
+        "nazi_zombie_cohns.iwd:images/_-gp6_bullet_train_logo_c.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc, maps/_utility.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 182.9,
+    "addon_iwds": [
+      {
+        "file": "trem_hintstrings.iwd",
+        "entries": 1,
+        "scripts": 1,
+        "bytes": 1108
+      },
+      {
+        "file": "zombies_tranzit.iwd",
+        "entries": 57,
+        "scripts": 12,
+        "bytes": 15338712
+      }
+    ],
+    "flags": [
+      "client_memory_risk",
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_cohns.ff",
+      "nazi_zombie_cohns_patch.ff",
+      "nazi_zombie_cohns.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "nazi_zombie_cohns.iwd:maps/_gamer9294_crafttable.gsc",
+        "menus": [],
+        "responses": [],
+        "note": null
+      },
+      {
+        "script": "nazi_zombie_cohns.iwd:maps/_gamer9294_pointstreaks.gsc",
+        "menus": [],
+        "responses": [
+          "ac130",
+          "ammocrate",
+          "arsenalbackpack",
+          "artillery",
+          "assaultdrone",
+          "b52bomber",
+          "carepackage",
+          "choppergunner",
+          "clusterbomb",
+          "clusterstrike",
+          "guarddog",
+          "harrierstrike",
+          "juggernautsuit",
+          "nuke",
+          "powerupcrate",
+          "predatormissile",
+          "reaper",
+          "sentryturret",
+          "weaponcrate",
+          "weaponupgrade"
+        ],
+        "note": null
+      },
+      {
+        "script": "nazi_zombie_cohns.iwd:maps/_zombiemode_perks.gsc",
+        "menus": [],
+        "responses": [
+          "electriccherry",
+          "juggernog",
+          "mulekick",
+          "paybackrip",
+          "quickrevive",
+          "specialty_armorvest",
+          "specialty_boost",
+          "specialty_bulletaccuracy",
+          "specialty_detectexplosive",
+          "specialty_extraammo",
+          "specialty_fastreload",
+          "specialty_longersprint",
+          "specialty_quickrevive",
+          "specialty_recon",
+          "specialty_reconnaissance",
+          "specialty_rof",
+          "specialty_shades",
+          "speedcola",
+          "staminup",
+          "tombstone"
+        ],
+        "note": null
+      },
+      {
+        "script": "nazi_zombie_cohns.iwd:maps/system_atms.gsc",
+        "menus": [],
+        "responses": [
+          "none"
+        ],
+        "note": null
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

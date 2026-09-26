@@ -1,0 +1,136 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_pr",
+  "title": "Nazi Zombie Pr",
+  "source": "custom",
+  "author": "Preacher",
+  "released": "2009-01-29",
+  "fs_game": "mods/nazi_zombie_pr",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_pr.ff": "0fe1fe5d658c2dfbf7a539172ad56ee05d75d251baf1f101b05eb22c9625b4f6"
+  },
+  "badge": {
+    "main_finish": "round",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "round",
+    "why": "no easter egg or ending found; default Round 20",
+    "verdict_stock_baseline_only": "round",
+    "scripts": 44,
+    "script_count": 44,
+    "entities": 455,
+    "ee_candidates": [],
+    "ending_words": [],
+    "hardcoded_costs": [
+      1000,
+      1500
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "bench"
+      ],
+      [
+        1500,
+        "zombie_debris",
+        "doorchurch"
+      ],
+      [
+        1000,
+        "zombie_debris",
+        "frige"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "pf40_auto1"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "pf18_auto1"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [],
+    "zombiemode_sha256": "0fe1fe5d658c2dfbf7a539172ad56ee05d75d251baf1f101b05eb22c9625b4f6",
+    "map_specific_triggers": [],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:37:27Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_pr.exe",
+    "original_sha256": "5cb1d80fe8900b3f33778bcf3129da3057f48bc4f6cad45761ea0885d48ce79f",
+    "original_size": 42592714,
+    "source_url": "https://www.mediafire.com/file/b4oibtfgfyi48sl/nazi_zombie_pr.exe/file",
+    "source_page": "https://callofdutyrepo.com/2009/01/29/nazi-zombie-pr/",
+    "fetched": "2026-09-26T15:35:52Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Features -Nacht Der Untoten Zombies -Wall Guns -2 Mystery Boxes",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_pr",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "nazi_zombie_pr.iwd:images/loadscreen_nazi_zombie_pr.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_pr"
+    }
+  },
+  "notes": "Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 72.8,
+    "addon_iwds": [],
+    "flags": [
+      "no_patch_ff"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": false,
+    "napalmblob": [
+      "nazi_zombie_pr.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

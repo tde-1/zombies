@@ -1,0 +1,206 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_rtkanal",
+  "title": "RT KANAL",
+  "source": "custom",
+  "author": "Gbomb",
+  "released": "2010-09-19",
+  "fs_game": "mods/nazi_zombie_rtkanal",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_rtkanal.iwd": "16e4ba34c9a29a2ab155721a1c5888ccbd2f275e42686df78b51299dbf4bd1c5"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game",
+        "escape"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        3500,
+        5000,
+        40000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game, escape name an ending and are this map's own; script hardcodes cost 40000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 104,
+    "script_count": 104,
+    "entities": 1084,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game",
+      "escape"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      3500,
+      5000,
+      40000
+    ],
+    "orphan_end_triggers": [
+      "trigger_teleport_pad_0",
+      "trigger_teleport_pad_1",
+      "trigger_teleport_pad_2"
+    ],
+    "top_costs": [
+      [
+        2000,
+        "zombie_door",
+        "pf909_auto55"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "ramp"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "paddle"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "escape"
+      ],
+      [
+        1750,
+        "weapon_upgrade",
+        "auto5"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "16e4ba34c9a29a2ab155721a1c5888ccbd2f275e42686df78b51299dbf4bd1c5",
+    "map_specific_triggers": [
+      "art_trig",
+      "end_game",
+      "give_ammo",
+      "zapper_damage_bridge",
+      "zapper_damage_warehouse",
+      "zapper_damage_wuen"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:45:35Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_rtkanal.exe",
+    "original_sha256": "103109c2fe6343a0532b25219c16f1a649d29b4a28810f1aac35ba964ec1bad6",
+    "original_size": 98454215,
+    "source_url": "http://www.mediafire.com/file/pqv8p9l22yyv1ia/nazi_zombie_rtkanal.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T15:44:32Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "nazi_zombie_rtkanal is a large scale zombie map. It\u2019s designed for 3-4 player coop, so expect a challenge. Rtkanal is somewhat inspired by the Half Life mission of the same name. The setting is a futuristic canal system and a network of underground sewers. The map has a winnable ending, if you can survive long enough and navigate the sewer system. As always, Good Luck! Gbomb Stock features: * All Der Riese sounds. * Pack a Punch * Mainframe and 3 teleporters to hook up. * All four perks * Lots of hell hounds. * Lots of un-lockable rooms and doors. * Monkey Bombs and Bowie knife. * Easter egg. * Moving weapons box. * Bouncing Betty. * Lots of special effects and more! * Cheat protection not enabled, you\u2019ll probably need them! * Rising Zombies * Zappers Additional features: * Non zombie stock weapons. * Custom sounds. * Buyable ammo. * Artillery Strikes. * Winnable ending. * Zombie Counter. What\u2019s new in v1.1: * Teleporters and PaP set up to work in single player. * New playing area. * Reworked layout of sewers. * Adjusted cost of m1 at start. * Fixed zombies and dogs sticking in sewer. * Added detail and sounds. Note: non-stock weapons buyable off the wall can not be upgraded intentionally. The weapons box plays a more important role in your survival! Special Credits and lots of thanks: dance1 TomBMX, for his hard work on scripting tutorials used for parts of this map. Crackshot, testing and his MP weapons tutorial.",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [
+        "nazi_zombie_rtkanal.iwd:images/loadscreen_nazi_zombie_bocage.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 137.3,
+    "addon_iwds": [],
+    "flags": [
+      "client_memory_risk"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_rtkanal.ff",
+      "nazi_zombie_rtkanal_patch.ff"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "nazi_zombie_rtkanal.iwd:maps/tom_music_player_unl.gsc",
+        "menus": [],
+        "responses": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9"
+        ],
+        "note": "in game: a music player"
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

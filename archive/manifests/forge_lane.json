@@ -1,0 +1,220 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "forge_lane",
+  "title": "FORGE LANE CHRISTMAS SPECIAL",
+  "source": "custom",
+  "author": "drugsnugs",
+  "released": "2013-12-09",
+  "fs_game": "mods/forge_lane",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@forge_lane.iwd": "585b3bdf7e58635328db3b9675be0e905f52822faf2a3d64c4c7f99e43d2e6f7"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000,
+        9000,
+        20000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 20000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 104,
+    "script_count": 104,
+    "entities": 1715,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      9000,
+      20000
+    ],
+    "orphan_end_triggers": [
+      "trigger_teleport_pad_0",
+      "trigger_teleport_pad_2"
+    ],
+    "top_costs": [
+      [
+        1000,
+        "zombie_door",
+        "auto2113"
+      ],
+      [
+        1000,
+        "zombie_debris",
+        "seconddoor2"
+      ],
+      [
+        1000,
+        "zombie_debris",
+        "seconddoor1"
+      ],
+      [
+        1000,
+        "zombie_debris",
+        "seconddoor"
+      ],
+      [
+        1000,
+        "zombie_debris",
+        "debris99"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "585b3bdf7e58635328db3b9675be0e905f52822faf2a3d64c4c7f99e43d2e6f7",
+    "map_specific_triggers": [
+      "SHIT",
+      "bomb",
+      "bomb2",
+      "drugsnugs",
+      "end_game",
+      "fish",
+      "laser_control",
+      "laser_hurt",
+      "music_box_player",
+      "rec",
+      "tree",
+      "trig",
+      "use_cart"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:14:30Z"
+    }
+  },
+  "archive": {
+    "original": "forge_lane.exe",
+    "original_sha256": "17cb0b358b90b9c9e9a77cf681ae555161dfa19d64cd305844615ed76d637558",
+    "original_size": 169216528,
+    "source_url": "https://www.mediafire.com/file/90l2hbcdt6gu4r7/forge_lane.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T15:12:17Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "christmas_map"
+    ],
+    "catalogue_description": "After not finishing my map in time for the halloween comp i decided to go all out for a Christmas one. its a big map with big areas to run around in and will be too easy for good players, its got tight areas in the houses where all the good stuff is, don\u2019t hang around in there or your be dead, this is my first map and first time using a computer, which i hope you will think when you play it you will realize how go zombiemodding is at helping a complete noob rise up and become a mapper. i will be releasing forge lane halloween next year so all feed back will be used to finish my halloween map. cant say enough thanks to all the guys at zm for all your replies to my question and tutorials. oh by the way that is me in picture the mighty DRUGSNUGS",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_forge_lane",
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "forge_lane.iwd:images/bar_menubackground_forge_lane.iwi",
+        "forge_lane.iwd:images/loadscreen_forge_lane.iwi",
+        "forge_lane.iwd:images/menu_map_forge_lane.iwi"
+      ],
+      "loadscreen": "loadscreen_forge_lane"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 117.6,
+    "addon_iwds": [],
+    "flags": [
+      "client_memory_risk"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "forge_lane.ff",
+      "forge_lane_patch.ff",
+      "mod.ff",
+      "forge_lane.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "forge_lane.iwd:maps/tom_music_player_unl.gsc",
+        "menus": [],
+        "responses": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9"
+        ],
+        "note": "in game: a music player"
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

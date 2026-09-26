@@ -1,0 +1,319 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "ayee",
+  "title": "Ayee",
+  "source": "custom",
+  "author": "Unknown",
+  "released": "2016-10-09",
+  "fs_game": "mods/ayee",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@ugx_mod.iwd": "66756709ea671d61589a15e13bb63fbeb1364eb1e8679949b84f88588a9bbff1"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "ee_a1",
+        "ee_a1_trig",
+        "ee_a2",
+        "ee_a2_trig",
+        "ee_a3",
+        "ee_a3_trig"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "ee_a1, ee_a1_trig, ee_a2, ee_a2_trig, ee_a3, ee_a3_trig look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 158,
+    "script_count": 158,
+    "entities": 195,
+    "ee_candidates": [
+      "ee_a1",
+      "ee_a1_trig",
+      "ee_a2",
+      "ee_a2_trig",
+      "ee_a3",
+      "ee_a3_trig"
+    ],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      3500,
+      5000,
+      6000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        1000,
+        "zombie_debris",
+        "escapedoor3"
+      ],
+      [
+        1000,
+        "zombie_debris",
+        "escapedoor2"
+      ],
+      [
+        1000,
+        "zombie_debris",
+        "escapedoor"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "common_scripts/utility.gsc",
+      "maps/_callbackglobal.gsc",
+      "maps/_callbacksetup.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc",
+      "maps/_utility.gsc"
+    ],
+    "zombiemode_sha256": "66756709ea671d61589a15e13bb63fbeb1364eb1e8679949b84f88588a9bbff1",
+    "map_specific_triggers": [
+      "ee_a1_trig",
+      "ee_a2_trig",
+      "ee_a3_trig",
+      "ugx_wallweapon"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:12:59Z"
+    }
+  },
+  "archive": {
+    "original": "ayee.exe",
+    "original_sha256": "d38eca62f2a9d78fa86f412b7987d42c70bfda2424b264b8c833a950cbe64310",
+    "original_size": 340691046,
+    "source_url": "https://www.mediafire.com/file/skh2sgpugrbd2m2/ayee.exe/file",
+    "source_page": "https://callofdutyrepo.com/2016/10/09/ayee/",
+    "fetched": "2026-09-26T15:10:56Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_ber1",
+        "loadscreen_ber2",
+        "loadscreen_ber3",
+        "loadscreen_ber3b",
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_asylum",
+        "loadscreen_nazi_zombie_ver_ex",
+        "loadscreen_oki1",
+        "loadscreen_oki2",
+        "loadscreen_oki3",
+        "loadscreen_pby_fly"
+      ],
+      "iwd_images": [
+        "ayee.iwd:images/specialty_fastreload_zombies.iwi",
+        "ugx_mod.iwd:images/menu_button_backing_highlight.iwi",
+        "ugx_mod.iwd:images/ugx_camp_beta_menu.iwi",
+        "ugx_mod.iwd:images/ugx_mod_menu_camp.iwi",
+        "ugx_mod.iwd:images/ugx_mod_pregamemenu.iwi",
+        "ugx_mod.iwd:images/ugx_mod_temp_background.iwi",
+        "ugx_mod.iwd:images/zombie_house_menu_bg.iwi",
+        "ugx_mod.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi",
+        "ugx_mod.iwd:images/~-gzombie_vending_three_gun_logo_c.iwi",
+        "ugx_mod.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "ugx_mod.iwd:images/ugx_mod_menu_template.iwi",
+        "ugxm_guns.iwd:images/specialty_fastreload_zombies.iwi",
+        "ugxm_guns.iwd:images/ugx_logo_menu.iwi",
+        "ugxm_guns.iwd:images/ugx_menu_arrow.iwi",
+        "ugxm_guns.iwd:images/ugx_menu_overlay.iwi",
+        "ugxm_guns.iwd:images/weapon_red_cross_background.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (common_scripts/utility.gsc, maps/_callbackglobal.gsc, maps/_callbacksetup.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc, maps/_utility.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 45.7,
+    "addon_iwds": [
+      {
+        "file": "ugx_mod.iwd",
+        "entries": 218,
+        "scripts": 71,
+        "bytes": 29147861
+      },
+      {
+        "file": "ugxm_guns.iwd",
+        "entries": 1137,
+        "scripts": 2,
+        "bytes": 183248876
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "ayee_patch.ff",
+      "mod.ff",
+      "ugx_mod.iwd:animscripts/death.gsc"
+    ]
+  },
+  "modes": {
+    "ugx": {
+      "mechanism": "ugx_vote_11",
+      "calls_vote": true,
+      "default": "classic",
+      "modes": [
+        {
+          "id": "classic",
+          "label": "Classic",
+          "response": "cl",
+          "note": "Stock zombies with the UGX weapons and perks."
+        },
+        {
+          "id": "gungame",
+          "label": "Gun Game",
+          "response": "gg",
+          "note": "Every kill moves you to the next gun; no wall guns, box, perks cabinet or Pack-a-Punch."
+        },
+        {
+          "id": "arcademode",
+          "label": "Arcade Mode",
+          "response": "ar",
+          "note": "Classic plus UGX power-ups and boss rounds."
+        },
+        {
+          "id": "sharpshooter",
+          "label": "Sharpshooter",
+          "response": "ss",
+          "note": "Everyone's gun changes on a timer; 15-minute game; no buying."
+        },
+        {
+          "id": "bountyhunter",
+          "label": "Bounty Hunter",
+          "response": "bh",
+          "note": "Points race with a 15-minute limit."
+        },
+        {
+          "id": "kingofthehill",
+          "label": "King of the Hill",
+          "response": "kh",
+          "note": "Two teams hold the hill; the map's own team picker shows in game for 15 seconds."
+        },
+        {
+          "id": "chaosmode",
+          "label": "Chaos Mode",
+          "response": "cm",
+          "note": "UGX's chaos rules with a time limit."
+        }
+      ],
+      "options_off": [
+        "objectives",
+        "timed_gameplay"
+      ],
+      "source": {
+        "init": "ugx_mod.iwd:maps/ugxm_init.gsc",
+        "settings": "ugx_mod.iwd:maps/ugxm_user_settings.gsc",
+        "zombiemode": "ugx_mod.iwd:maps/_zombiemode.gsc"
+      }
+    },
+    "other": [
+      {
+        "script": "ugx_mod.iwd:maps/ugx_elemental.gsc",
+        "menus": [],
+        "responses": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "buy_button",
+          "clear_tree",
+          "close",
+          "mg",
+          "pistol",
+          "rifle",
+          "skill_elemental",
+          "smg",
+          "spread"
+        ],
+        "note": "in game: UGX elemental skill tree"
+      },
+      {
+        "script": "ugx_mod.iwd:maps/ugx_jukebox.gsc",
+        "menus": [],
+        "responses": [],
+        "note": "in game: the jukebox"
+      },
+      {
+        "script": "ugx_mod.iwd:maps/ugxm_character.gsc",
+        "menus": [],
+        "responses": [],
+        "note": "only in UGX's separate customize-room map (no custom_character entity elsewhere)"
+      },
+      {
+        "script": "ugx_mod.iwd:maps/ugxm_kingofthehill.gsc",
+        "menus": [
+          "ugxm_vote_teams"
+        ],
+        "responses": [
+          "captured",
+          "close",
+          "contested",
+          "moved",
+          "switch"
+        ],
+        "note": "UGX 1.1 King of the Hill: in-mode team picker, closes itself after 15 s"
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

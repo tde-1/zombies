@@ -1,0 +1,206 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "standoff",
+  "title": "Standoff Zombies",
+  "source": "custom",
+  "author": "Smol",
+  "released": "2022-02-15",
+  "fs_game": "mods/standoff",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@standoff.iwd": "f7d520cb0596a7dae1acf1edaf84924f29c01f7900bebd094909e6dd8fc8d74b"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "crawler_round_ending"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game",
+        "struct_black_hole_teleport"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        3000,
+        5000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game, struct_black_hole_teleport name an ending and are this map's own; script hardcodes cost 5000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 131,
+    "script_count": 131,
+    "entities": 2061,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game",
+      "struct_black_hole_teleport"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        3000,
+        "zombie_door",
+        "auto208"
+      ],
+      [
+        3000,
+        "zombie_door",
+        "auto171"
+      ],
+      [
+        3000,
+        "zombie_door",
+        "auto171"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto180"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto163"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "f7d520cb0596a7dae1acf1edaf84924f29c01f7900bebd094909e6dd8fc8d74b",
+    "map_specific_triggers": [
+      "dubstep_trigger",
+      "end_game_switch",
+      "level_01_door_light_build_trig",
+      "level_01_door_light_pick_trig",
+      "level_01_door_panel_build_trig",
+      "level_01_door_panel_pick_trig",
+      "level_01_door_switch_build_trig",
+      "level_01_door_switch_pick_trig",
+      "level_01_door_switch_use_trig",
+      "satchel_build_trig",
+      "satchel_exp_damage_trig",
+      "satchel_pick_trig",
+      "satchel_pick_trig_2",
+      "satchel_pick_trig_3",
+      "satchel_pick_trig_4",
+      "scare_him_now",
+      "spinningflamesdamage",
+      "spinningflamestrig"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:14:04Z"
+    }
+  },
+  "archive": {
+    "original": "Standoff_1.8.exe",
+    "original_sha256": "88130fa8a98997f3730a26c378d5a2bbd84329573126a93157fcc85347ceaaa4",
+    "original_size": 571695285,
+    "source_url": "https://www.mediafire.com/file/t58dykyr0kqxclr/Standoff_1.8.exe/file",
+    "source_page": "https://callofdutyrepo.com/2022/02/15/standoff-zombies/",
+    "fetched": "2026-09-26T15:10:25Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Hello This my first release of a map so if you find bugs pls message me over this topic . and sorry it requires T4M . This map is Standoff from Black ops 2 but in WAW as zombie version. IF TEXTURE IS BUGGED SET IT ON HIGH OR MEDIUM WHEN YOURE INGAME OPEN CONSOLE AND TYPE: \u201cDevmap Standoff\u201d SO YOU CAN PLAY IT ALONE Bo1 WALLWEAPONS HAVE NO TEXT BUT YOU CAN BUY THEM!!! I had no time to make a Trailer but I started it so I will give you that what i have started: https://youtu.be/u7E7fVNwK0s My Standoff version has some extra rooms and a walkable house that wasnt walkable before. Standoff includes Gympie6\u2019s_perks and has some ported Bo1 Weapons (Scavanger, Mp5k, Galil and more). We even have some zombie bosses like the Goliath and the Hazmat. It has wallweapons (but not many and no bo1 wallweapons). Perklimit is 5!!! Btw if you have problems with the boss zombies find the PTRS! . Standoff has a custom main menu song and Screen and a EE song with 6 Teddybears that you have to shoot (Could be more or less Teddys correct me if Im wrong). But I wont show you photos where there are so you have to find them If you really struggle to find them they make sounds! I removed some weapons since they are too strong and because i have some bo1 weapons: Removed Weapons from Mystery Box: -Wunderwaffe -Magnum -Kar98k -M1A1 Carbine -PTRS (Wallweapon) -Molotov -DoubleBarrel -Bar -FG42 -MG42 \u200b(Sry ) -PPSH (Sry ) -Panzershrek Credits: NG \u200b, above all thank you so much for helping me so much Gympie6, T",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [
+        "gympie6_perks.iwd:images/~p7_zm_vending_ads_logo_spc-r~301c48c1.iwi",
+        "gympie6_perks.iwd:images/p7_zm_vending_ads_logo_col.iwi",
+        "gympie6_perks.iwd:images/specialty_fastreload_zombies.iwi",
+        "standoff.iwd:images/dead_ops_load.iwi",
+        "standoff.iwd:images/hitman_menu.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 147.5,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 118,
+        "scripts": 0,
+        "bytes": 322265
+      },
+      {
+        "file": "gympie6_perks.iwd",
+        "entries": 285,
+        "scripts": 7,
+        "bytes": 100287083
+      }
+    ],
+    "flags": [
+      "client_memory_risk",
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "standoff.ff",
+      "standoff_patch.ff",
+      "standoff.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

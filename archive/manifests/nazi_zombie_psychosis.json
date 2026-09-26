@@ -1,0 +1,252 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_psychosis",
+  "title": "Psychosis",
+  "source": "custom",
+  "author": "Joeycx",
+  "released": "2016-03-29",
+  "fs_game": "mods/nazi_zombie_psychosis",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@psychosis.iwd": "75ff40b7806b3956a72c41aa4e95110c190f2d73fa4a1e8ac5d4241d082a0bf5"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "quest_one1",
+        "quest_one2",
+        "quest_one3",
+        "quest_startone",
+        "quest_two1",
+        "quest_two2",
+        "quest_two3"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "quest_one1, quest_one2, quest_one3, quest_startone, quest_two1, quest_two2 look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 147,
+    "script_count": 147,
+    "entities": 3808,
+    "ee_candidates": [
+      "quest_one1",
+      "quest_one2",
+      "quest_one3",
+      "quest_startone",
+      "quest_two1",
+      "quest_two2",
+      "quest_two3"
+    ],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game",
+      "teleport_room_4"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      5000,
+      10000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "pf1870_auto1",
+        "?"
+      ],
+      [
+        4000,
+        "auto2194",
+        "?"
+      ],
+      [
+        3000,
+        "pf12523_auto1",
+        "?"
+      ],
+      [
+        2500,
+        "weapon_upgrade",
+        "?"
+      ],
+      [
+        2500,
+        "pf1861_auto1",
+        "?"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc",
+      "maps/_utility.gsc"
+    ],
+    "zombiemode_sha256": "75ff40b7806b3956a72c41aa4e95110c190f2d73fa4a1e8ac5d4241d082a0bf5",
+    "map_specific_triggers": [
+      "door_five_trig",
+      "harrybo21_perk_trigger",
+      "help_trigger",
+      "help_trigger2",
+      "help_trigger3",
+      "help_trigger4",
+      "help_trigger5",
+      "help_trigger6",
+      "help_trigger7",
+      "help_trigger8",
+      "help_trigger9",
+      "inter_trigger",
+      "inter_trigger2",
+      "kino_mainframe_trigger",
+      "kino_teleporter_trigger",
+      "quest_one1",
+      "quest_one2",
+      "quest_one3",
+      "quest_startone",
+      "quest_two1",
+      "quest_two2",
+      "quest_two3",
+      "rift_trigger",
+      "rotating_door",
+      "secret_trigger",
+      "secret_trigger2",
+      "start_zone",
+      "vhs_trigger2",
+      "vhs_trigger3",
+      "vhs_trigger4",
+      "weapon_locker",
+      "zone_1",
+      "zone_10",
+      "zone_11",
+      "zone_12",
+      "zone_2",
+      "zone_3",
+      "zone_4",
+      "zone_5",
+      "zone_6"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:41:21Z"
+    }
+  },
+  "archive": {
+    "original": "Psychosis_Alpha_Test_Ver.exe",
+    "original_sha256": "3d572af7441d2e55e7eff507aa1cb2e3cfc7bf4d339fe76f4174797f194a4b93",
+    "original_size": 766063175,
+    "source_url": "http://www.mediafire.com/file/6ibxvcus8jucjej/Psychosis_Alpha_Test_Ver.exe",
+    "source_page": "https://callofdutyrepo.com/2016/03/29/psychosis/",
+    "fetched": "2026-09-26T15:40:25Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "-Background- Hello! It\u2019s been a while hasn\u2019t it, since my other release Psychopath, I decided to take up a new challenge of making a new map, so here it is, about 2-3 months prior to planning and mapping out some parts. -Map Style And Description- This map is more of a mature version of my Psychopath attempt, it\u2019s much darker, and will still have a anxious feeling. The map will be set in a forest, towns and such overtaken by nature, it\u2019s much more open and roaming and will feature different districts and rivers, i wanted it to be roaming so every time you play the map, the experience will differ. The districts will be vast and each will be special in their own way. The outside will give an earthy feeling and inside the building will be similar to the style of Verruckt. I\u2019ll go more into detail once i mapped out more. I have a long way to map. It will feature Psychopath\u2019s Building. -Storyline- I don\u2019t really know if anyone found any of my Easter eggs in Psychopath, but if you didn\u2019t then the map will be centered around the storyline of surrounding area and a secondary character in Zombies, Sophia, her motives and secrets centered around this forest. Sophia being Maxis\u2019s assistance, isn\u2019t German, but part of the OSS, reporting all information back during WW2, being the youngest and female to be part of OSS. She was the one to transport the patients from Verruckt to Psychopath for.. -Features or planning on adding- -All Perks including (BO1/BO2/BO3) -Mp guns from World At War (S",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/p6_zm_al_vending_ads_logo_m.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/p6_zm_al_vending_three_gun_logo_m.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/p6_zm_al_vending_three_gun_logo_n.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/p7_zm_vending_ads_logo_col.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/specialty_fastreload_zombies.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/ugx_mod_loadscreen_template.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/ugx_mod_menu_template.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/_-gp6_zm_al_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/_-gzombie_vending_sleight_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~-gp6_zm_al_vending_ads_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~-gp6_zm_al_vending_three_gun_logo_c.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~p7_zm_vending_ads_logo_spc-r~301c48c1.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~__-gzombie_vending_ads_logo_~7aa94a54.iwi",
+        "harrybo21_bo1_2_3_perks_v5.0.0.iwd:images/~~~-gzombie_vending_ads_logo_~54fdbc62.iwi",
+        "psychosis.iwd:images/menu_map_nazi_zombie_psychosis - Copy.iwi",
+        "psychosis.iwd:images/menu_mp_weapons_an94.iwi",
+        "psychosis.iwd:images/menu_mp_weapons_hk416.iwi",
+        "psychosis.iwd:images/menu_mp_weapons_sa58.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc, maps/_utility.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 253.5,
+    "addon_iwds": [
+      {
+        "file": "harrybo21_bo1_2_3_perks_v5.0.0.iwd",
+        "entries": 609,
+        "scripts": 0,
+        "bytes": 132191594
+      },
+      {
+        "file": "psychosis.iwd",
+        "entries": 1042,
+        "scripts": 74,
+        "bytes": 385650344
+      },
+      {
+        "file": "trem_hintstrings.iwd",
+        "entries": 1,
+        "scripts": 1,
+        "bytes": 1108
+      }
+    ],
+    "flags": [
+      "client_memory_risk",
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_psychosis_patch.ff",
+      "psychosis.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

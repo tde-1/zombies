@@ -1,0 +1,146 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_invasion",
+  "title": "Nazi Zombie Invasion",
+  "source": "custom",
+  "author": "darkcod",
+  "released": "2010-02-28",
+  "fs_game": "mods/nazi_zombie_invasion",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@mod.ff": "1c8eeb638099dbac78dcd035c195ce323aeca88e14ed16e2ae1a2be6a0b0cc15"
+  },
+  "badge": {
+    "main_finish": "round",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "round",
+    "why": "no easter egg or ending found; default Round 20",
+    "verdict_stock_baseline_only": "round",
+    "scripts": 45,
+    "script_count": 45,
+    "entities": 742,
+    "ee_candidates": [],
+    "ending_words": [],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      4000,
+      5000,
+      6000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        4000,
+        "zombie_debris",
+        "blocker3"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "blocker9"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "blocker4"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "blocker2"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "blocker11"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [],
+    "zombiemode_sha256": "1c8eeb638099dbac78dcd035c195ce323aeca88e14ed16e2ae1a2be6a0b0cc15",
+    "map_specific_triggers": [],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:36:34Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_invasion.exe",
+    "original_sha256": "7d395b1f67bce76b929164bd62efaf0487c7b4dc14a542ea36d5587a19fdbf19",
+    "original_size": 58539801,
+    "source_url": "https://www.mediafire.com/file/qm4dsix1wt3n6em/nazi_zombie_invasion.exe/file",
+    "source_page": "https://callofdutyrepo.com/2010/02/28/nazi-zombie-invasion/",
+    "fetched": "2026-09-26T15:34:39Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Description Invasion \u2013 Le Marais, France Includes : Perk Machines Powerswitch Betties Powerups FX Treasure Chest Custom Boards Custom Blocker Cost Custom Perk Values : Juggernaut = 5000 Revive = 3000 Sleight of Hand = 6000 Double Tap = 4000 17 Zombie Spawns 10 Boards 11 Blockers 25 Buyable Weapons",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_ber1",
+        "loadscreen_ber2",
+        "loadscreen_ber3",
+        "loadscreen_ber3b",
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_asylum",
+        "loadscreen_nazi_zombie_invasion",
+        "loadscreen_oki1",
+        "loadscreen_oki2",
+        "loadscreen_oki3",
+        "loadscreen_pby_fly"
+      ],
+      "iwd_images": [],
+      "loadscreen": "loadscreen_nazi_zombie_invasion"
+    }
+  },
+  "notes": "Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 89.4,
+    "addon_iwds": [],
+    "flags": [
+      "no_patch_ff"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": false,
+    "napalmblob": [
+      "nazi_zombie_invasion.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

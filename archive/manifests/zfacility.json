@@ -1,0 +1,208 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "zfacility",
+  "title": "ZFacility (unfinished)",
+  "source": "custom",
+  "author": "Quizz",
+  "released": "2015-07-04",
+  "fs_game": "mods/zfacility",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@zfacility.iwd": "1d8d3a44d6b2c55b5bbfbc577cb84abd2d4169175334260084cacc6bfa7db936"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "crawler_round_ending"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        3000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 3000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 108,
+    "script_count": 108,
+    "entities": 1591,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        0,
+        "zombie_door",
+        "maze_foor"
+      ],
+      [
+        0,
+        "zombie_door",
+        "fun_door_3_150secs"
+      ],
+      [
+        0,
+        "zombie_door",
+        "fun_door_2_150secs"
+      ],
+      [
+        0,
+        "zombie_door",
+        "fun_door_1_90secs"
+      ],
+      [
+        0,
+        "zombie_door",
+        "door45_50secs"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "1d8d3a44d6b2c55b5bbfbc577cb84abd2d4169175334260084cacc6bfa7db936",
+    "map_specific_triggers": [
+      "blood_money",
+      "enter",
+      "gallery_door",
+      "gallery_trig",
+      "hp",
+      "kill_em",
+      "mag",
+      "optic",
+      "sniper_targets",
+      "stock"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:19:47Z"
+    }
+  },
+  "archive": {
+    "original": "ZFacility_unfinished_.exe",
+    "original_sha256": "2637c0788be662cdc460507d583ef480e6ff5ff161b0d2a77a862ed4b3d84078",
+    "original_size": 140590796,
+    "source_url": "https://www.mediafire.com/file/q2m54io2ad4umnj/ZFacility_%2528unfinished%2529.exe/file",
+    "source_page": "https://callofdutyrepo.com/2015/07/04/zfacility-unfinished/",
+    "fetched": "2026-09-26T15:17:46Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "ZFacility or Zombie Facility was never finished and has quite a few bugs and incomplete features. Despite all the rough edges, the first challenge is difficult and will require some skill and strategy to complete. If you want a challenge and have some friends willing, try this map out! You begin in some sort of zombie test facility. Pick your loadout and push the undead back as you make you way through the strange building. Find new perks and upgrades as you work together to complete new challenges in this very difficult zombies experience. Features",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "zfacility_images.iwd:images/logo_cod5.iwi",
+        "zfacility_images.iwd:images/menu_background_coop.iwi",
+        "zfacility_images.iwd:images/menu_background_coop_blurred.iwi",
+        "zfacility_images.iwd:images/menu_icon_invite.iwi",
+        "zfacility_images.iwd:images/menu_icon_invite_small.iwi",
+        "zfacility_images.iwd:images/quizz_menu.iwi",
+        "zfacility_images.iwd:images/specialty_fastreload_zombies.iwi",
+        "zfacility_images.iwd:images/weapon_red_cross_background.iwi",
+        "zfacility_images.iwd:images/weapon_red_cross_background_iw5.iwi",
+        "zfacility_images.iwd:images/weapon_red_cross_background_max.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 102.5,
+    "addon_iwds": [],
+    "flags": [],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "zfacility_patch.ff",
+      "zfacility.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "zfacility.iwd:maps/_zombiemode.gsc",
+        "menus": [],
+        "responses": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9",
+          "ads",
+          "attack",
+          "use"
+        ],
+        "note": null
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

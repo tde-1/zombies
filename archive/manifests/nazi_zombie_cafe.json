@@ -1,0 +1,133 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_cafe",
+  "title": "CAFE",
+  "source": "custom",
+  "author": "[HOF]Spuddy100",
+  "released": "2010-01-28",
+  "fs_game": "mods/nazi_zombie_cafe",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_cafe.ff": "0fe1fe5d658c2dfbf7a539172ad56ee05d75d251baf1f101b05eb22c9625b4f6"
+  },
+  "badge": {
+    "main_finish": "round",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "round",
+    "why": "no easter egg or ending found; default Round 20",
+    "verdict_stock_baseline_only": "round",
+    "scripts": 41,
+    "script_count": 41,
+    "entities": 833,
+    "ee_candidates": [],
+    "ending_words": [],
+    "hardcoded_costs": [
+      1000,
+      1500
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "couch2"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "couch1"
+      ],
+      [
+        1500,
+        "weapon_cabinet_use",
+        "pf355_auto2"
+      ],
+      [
+        1250,
+        "zombie_debris",
+        "metal3"
+      ],
+      [
+        1250,
+        "zombie_debris",
+        "metal2"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [],
+    "zombiemode_sha256": "0fe1fe5d658c2dfbf7a539172ad56ee05d75d251baf1f101b05eb22c9625b4f6",
+    "map_specific_triggers": [],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:21:57Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_cafe.exe",
+    "original_sha256": "22e29a655167c8b5aff479d6bcd351d3a386fddb6a13ac36c30af51847c2835b",
+    "original_size": 50067309,
+    "source_url": "http://www.mediafire.com/file/gwjyf11x2smwg43/nazi_zombie_cafe.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T15:19:57Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Nazi_Zombie_Cafe is a med to large zombie map. The bottom floor where you start is an eatery with 5 buyable guns and 5 blockers 2 of those lead you upstairs to the theatre.There you will find 3 more buyable guns and 3 more blockers 2 of those will lead you to the rooftop.There you will find the music box and also the ray gun and Thompson. Im really not sure who made this one but look out this is one awesome map",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_nazi_zombie_cafe"
+      ],
+      "iwd_images": [
+        "nazi_zombie_cafe.iwd:images/loadscreen_nazi_zombie_cafe.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_cafe"
+    }
+  },
+  "notes": "Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 94.8,
+    "addon_iwds": [],
+    "flags": [
+      "no_patch_ff"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": false,
+    "napalmblob": [
+      "nazi_zombie_cafe.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

@@ -1,0 +1,178 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_central_gym",
+  "title": "CENTRAL GYM",
+  "source": "custom",
+  "author": "BacONMOnst3r",
+  "released": "2015-12-11",
+  "fs_game": "mods/nazi_zombie_central_gym",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@central_gym.iwd": "ce4075a28b5499ef2639e6ae10b0a4ea1f9bc5f5b0142ce521619ffeb91acb15"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "crawler_round_ending"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        5000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 5000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 99,
+    "script_count": 99,
+    "entities": 1034,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_door",
+        "auto58"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto57"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto56"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto55"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto54"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "ce4075a28b5499ef2639e6ae10b0a4ea1f9bc5f5b0142ce521619ffeb91acb15",
+    "map_specific_triggers": [],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:30:23Z"
+    }
+  },
+  "archive": {
+    "original": "central_gym.exe",
+    "original_sha256": "e7681c2b44c102af77e21715dfd9acc89670cde11d0d796abf139e24f45be273",
+    "original_size": 64256587,
+    "source_url": "https://www.mediafire.com/file/bx789zdwedavw3b/central_gym.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T15:28:21Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Description Welcome to the Central Gym! this map is based off of the gym of the middle school I used to attend, so that didn\u2019t leave me with much to work with. (I don\u2019t think the link for mega works. sorry!) =========================== Features 1. Hidden pack a punch. Go find it! 2. Double tap 2.0 3. dead shot 2.0 (decreased crosshairs, laser, bonus headshot damage) 4. seven perks =========================== This is also my first map, if a bug or two pop up, oh well. i lost access to the original radiant .map file, as I bought a new pc and sold my old one. PLEASE, tell me what you think about my map! any positive comment would be greatly appreciated!! ============================== Credits 1. ZK, for assorted tutorials 2. Jake (Apex) for lighting help, and the bleacher models in the spawn 3. Bamskater33 for black ops perks",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [
+        "central_gym.iwd:images/specialty_fastreload_zombies.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 85.1,
+    "addon_iwds": [
+      {
+        "file": "central_gym.iwd",
+        "entries": 104,
+        "scripts": 12,
+        "bytes": 1057529
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_central_gym.ff",
+      "nazi_zombie_central_gym_patch.ff",
+      "central_gym.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

@@ -1,0 +1,233 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_auschwitz",
+  "title": "Nazi Zombie Auschwitz",
+  "source": "custom",
+  "author": "lilstiffy69",
+  "released": "2011-05-14",
+  "fs_game": "mods/nazi_zombie_auschwitz",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@zct_mod2_mw.iwd": "018fbe9e69c11f9c2f859c823609bec1ad876df871fc7f08fa92686c83d264f2"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "egg"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "egg look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 61,
+    "script_count": 61,
+    "entities": 1796,
+    "ee_candidates": [
+      "egg"
+    ],
+    "ending_words": [
+      "end_game",
+      "teleport_pad"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      1750,
+      2000,
+      2500,
+      3000,
+      4000,
+      4500,
+      5000,
+      50000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "zm"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "stick2"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "stick"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "goal"
+      ],
+      [
+        2000,
+        "zombie_debris",
+        "fence"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "018fbe9e69c11f9c2f859c823609bec1ad876df871fc7f08fa92686c83d264f2",
+    "map_specific_triggers": [
+      "buy_powerup",
+      "end_game",
+      "hankey_slidedoor",
+      "hiddentrig",
+      "music_box_player",
+      "zapper_1",
+      "zombie_perks"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:11:36Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_auschwitz_beta.exe",
+    "original_sha256": "ea908104ea15a537a64773013c4e37ebe4361454def4b3a480d5c282eef49e95",
+    "original_size": 167829299,
+    "source_url": "https://www.mediafire.com/file/j32om2tudlul31j/nazi_zombie_auschwitz_beta.exe/file",
+    "source_page": "https://callofdutyrepo.com/2011/05/14/nazi-zombie-auschwitz/",
+    "fetched": "2026-09-26T15:08:55Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Auschwitz 90% complete! I am working on a new map called auschwitz.Auschwitz was a death camp controlled by the nazis during world war 2.This is going to be my first map released on zombie modding. The map is prototype and it includes the zct mod with it brainfood1 Note: The name is not meant to offended anyone. sorry if you are offended by the name i might just change the name of the map.The map looks nothing like the real deathcamp. things included in my map are -zappers -thunder and heavy rain -mamy,many weapons:mw guns,campain guns,and guns from der rise maps!! -teleporters -zct mw mod :26: -10 buyable perks with custom machines (zombies dont drop power ups) -Music player -modified zommbies with hardened diffuculty. -custom perk machines -random ammo box that spawns at random places -buyable power ups! -and secerts and easter eggs! (which i wont tell) :lipsrsealed: and much more to come!!! dance1 (sorry its taking too long for me to make the map,psn is finally up so i dont have as much time to make the map ) ok i am sorry for the long wait on the map,i was unable to work on my map because my cod waw all the sudden started working slow but,now it runs well New things added to the map 1.zombie risers 2.\u201dfinal stand area\u201d ( path nodes still need some tweaking) 3.buyable ending 4.more areas and buyable rooms added! ( path nodes still need some tweaking) 5.Friendly Al\u2019s 6.Toms gambler prefab (which still needs work) 7.And custom new zombie skins!!!",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_auschwitz",
+        "loadscreen_nazi_zombie_factory",
+        "loadscreen_nazi_zombie_maze",
+        "loadscreen_nazi_zombie_maze2",
+        "loadscreen_nazi_zombie_maze3",
+        "loadscreen_nazi_zombie_maze4",
+        "loadscreen_nazi_zombie_maze5",
+        "loadscreen_nazi_zombie_mp2_1",
+        "loadscreen_nazi_zombie_mp2_3",
+        "loadscreen_nazi_zombie_ott"
+      ],
+      "iwd_images": [
+        "zct_mod2_mw.iwd:images/menu_zct_mod.iwi",
+        "zct_mod2_mw.iwd:images/menu_zct_mod_wide.iwi",
+        "zct_mod2_mw.iwd:images/weapon_red_cross_background.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_auschwitz"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 112.0,
+    "addon_iwds": [
+      {
+        "file": "zct_mod2_mw.iwd",
+        "entries": 303,
+        "scripts": 35,
+        "bytes": 76572746
+      }
+    ],
+    "flags": [
+      "client_memory_risk",
+      "no_patch_ff",
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": false,
+    "napalmblob": [
+      "nazi_zombie_auschwitz.ff",
+      "zct_mod2_mw.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "zct_mod2_mw.iwd:maps/tom_music_player_unl.gsc",
+        "menus": [],
+        "responses": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9"
+        ],
+        "note": "in game: a music player"
+      },
+      {
+        "script": "zct_mod2_mw.iwd:maps/trem_bank.gsc",
+        "menus": [],
+        "responses": [
+          "0",
+          "1",
+          "11",
+          "17",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9"
+        ],
+        "note": null
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

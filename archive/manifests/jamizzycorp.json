@@ -1,0 +1,219 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "jamizzycorp",
+  "title": "Jamizzycorp (T4M)",
+  "source": "custom",
+  "author": "Jamizzy5.0",
+  "released": "2026-03-12",
+  "fs_game": "mods/jamizzycorp",
+  "script_fingerprints": {
+    "_zombiemode.gsc@jamizzycorp.iwd": "0901f0256f6b84e4aa43427aa7c39331ed8f47a0de1d8785d1f83020e4657fb8",
+    "maps/_zombiemode.gsc@jamizzycorp.iwd": "48e4ced424ff4421d4e84cb93867b4cd6a088d74148b8f3cadf55d31deb0520b"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "zombie_door",
+          "zombie_cost": 10000
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        3000,
+        5000,
+        100000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 100000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 104,
+    "script_count": 104,
+    "entities": 3442,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      5000,
+      100000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        10000,
+        "zombie_door",
+        "door14"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "door9"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "door8"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "door8"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "door7"
+      ]
+    ],
+    "buyable_ending_candidate": {
+      "zombie_cost": 10000,
+      "targetname": "zombie_door",
+      "target": "door14",
+      "next_highest": 2000
+    },
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "48e4ced424ff4421d4e84cb93867b4cd6a088d74148b8f3cadf55d31deb0520b",
+    "map_specific_triggers": [
+      "end_game"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:05:29Z"
+    }
+  },
+  "archive": {
+    "original": "jamizzycorp.exe",
+    "original_sha256": "107d60517be970dc4173cde18557c3ca3f69cb4a73632c779c7c2f2d0146981d",
+    "original_size": 464571013,
+    "source_url": "https://www.mediafire.com/file/lg2h3ix35zmp9kf/jamizzycorp.exe/file",
+    "source_page": "https://callofdutyrepo.com/2026/03/12/jamizzycorp-t4m/",
+    "fetched": "2026-09-26T15:03:09Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "This is my first map it has custom guns from BO1,MW2,MW3, and various other games It has BO1 Perks + Electric Cherry The Map Requires T4M to run Bugs: To acquire another weapon slot (either start game or mule kick) you will have to buy a wallgun otherwise the mystery box will replace your gun even if you technically have another weapon slot. There are numerous coop bugs, I highly recommend only playing this map in single player. *please reply with any bugs you might find, they will not be fixed until a full remaster occurs*| Credit Weapons: Shippuden1592 The Stig (DamianoTBM) Killer Potato BaD BoY 17 Greazb435 WoLf_GoLd UGX Rourke Models & Perks: GymPie6 GU$TOMAN Pashan Font & HUD: DidUknowiPwn JR-Imagine Misc: UGXMods Team GAM3VIDZ NGcaudle",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [
+        "gympie6_perks.iwd:images/~p7_zm_vending_ads_logo_spc-r~301c48c1.iwi",
+        "gympie6_perks.iwd:images/p7_zm_vending_ads_logo_col.iwi",
+        "gympie6_perks.iwd:images/specialty_fastreload_zombies.iwi",
+        "jamizzycorp.iwd:images/weapon_red_cross_background.iwi",
+        "jamizzycorp.iwd:images/weapon_red_cross_background_2.iwi",
+        "jamizzycorp.iwd:images/weapon_red_cross_background_iw5.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 91.4,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 67,
+        "scripts": 0,
+        "bytes": 176320
+      },
+      {
+        "file": "gympie6_perks.iwd",
+        "entries": 285,
+        "scripts": 7,
+        "bytes": 100290596
+      },
+      {
+        "file": "gympie6_wunderfizz.iwd",
+        "entries": 31,
+        "scripts": 0,
+        "bytes": 5479386
+      },
+      {
+        "file": "z_hud.iwd",
+        "entries": 3,
+        "scripts": 0,
+        "bytes": 8133
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "jamizzycorp.ff",
+      "jamizzycorp_patch.ff",
+      "mod.ff",
+      "jamizzycorp.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "jamizzycorp.iwd:maps/ugx_jukebox.gsc",
+        "menus": [],
+        "responses": [],
+        "note": "in game: the jukebox"
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

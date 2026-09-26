@@ -1,0 +1,199 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_dieletztenacht",
+  "title": "Die Letzten Nacht",
+  "source": "custom",
+  "author": "Eppicgamer552",
+  "released": "2019-07-31",
+  "fs_game": "mods/nazi_zombie_dieletztenacht",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_dieletztenacht.iwd": "d81027b44bf5f8f590e2052eb69109fd92b2ecead2517e16b8d6ea2f6e54b6f3"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "crawler_round_ending"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        5000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 5000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 107,
+    "script_count": 107,
+    "entities": 4828,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_door",
+        "auto3475"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto000"
+      ],
+      [
+        1000,
+        "zombie_door",
+        "auto126"
+      ],
+      [
+        1000,
+        "zombie_door",
+        "auto11"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "magic_box_lid_5"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "d81027b44bf5f8f590e2052eb69109fd92b2ecead2517e16b8d6ea2f6e54b6f3",
+    "map_specific_triggers": [
+      "break_wall"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:08:28Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_dieletztenacht.exe",
+    "original_sha256": "ebd2514c9fa40d5beb2d4d31bb8f1a4e75bb4d97b2aa4cd2d34ba300075d6c3a",
+    "original_size": 427902524,
+    "source_url": "http://www.mediafire.com/file/v2jvtj9wwqzesg2/nazi_zombie_dieletztenacht.exe/file",
+    "source_page": "https://callofdutyrepo.com/2019/07/31/die-letzten-nacht/",
+    "fetched": "2026-09-26T15:05:00Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Description Hello all of you wonderful Zombie Slayers!!! Today I have another map I\u2019ve just finished making, entitled \u201cDie Letzten Nacht\u201d, or \u201cThe Last Night\u201d in English. This map is a huge step forward from my last one, and though still nowhere near good enough to be considered a \u201cProfessional\u201d map, I\u2019m particularly proud of it as it\u2019s a milestone nevertheless. I hope you enjoy playing it as much as I have enjoyed Making it!!! -Eppicgamer552 CREDITS: Custom xmodels-Salaj Team, GU$TOMAN, CFGFactory BO1 Weapons-Rorke BO2 Weapons-zombie madness aka Rorke\u2014\u2014-extra weapon fixes and porting these weapons, elfenliedtopfan5\u2014\u2014teaching me how to convert .TANIMS, CFGFACTORY.com for requesting mod.csv line for launcher and reporting bug\u2019s/glitches, treyarch\u2014\u2014for the weapon models, tom_bmx\u2014\u2014\u2014\u2014\u2013for his tools (lime) and lemon for the anims, autodesk\u2014\u2014\u2014for maya, aidan\u2014\u2014-for his cod 5 plugin, ray\u2014\u2014\u2014-for the tac 45 anim fix, pashan\u2014\u2014\u2014\u2013weapons tester BO3 Weapons-the115, DamianoTBM: Massive help with the port, DTZxPorter: Wraith, DrLilRobot: T7-T5 Convertion, RigScobalula: Maya add-on for anims, Call of Duty Wiki: Stats, Treyarch: Models/anims/sounds, Ricos, Dr. Lilrobot, mohammed, BaD BoY 17 Aka \u201cTim Smith\u201d, CFGFactory, Dr.Squidbot, Scobalula, Tito, Ricos, Jerri13, natesmithzombies, shippuden1592, Treyarch, Cod wiki + Marvel, UrbanSpiral CODAW Weapons-BaD BoY 17 Aka \u201cTim Smith\u201d, DamianoTBM, DTZxPorter, dr.Squidbot, Treyarch, Scobalula Inspiration for the \u201cLoyal Servant\u201d Easter Egg: Akuno-P/Moth",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [
+        "_bam_bo1_perks_mod.iwd:images/specialty_fastreload_zombies.iwi",
+        "_bam_bo1_perks_mod.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "_bam_bo1_perks_mod.iwd:images/zombie_vending_three_gun_logo_c.iwi",
+        "_bam_bo1_perks_mod.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "_bam_bo1_perks_mod.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi",
+        "nazi_zombie_dieletztenacht.iwd:images/toxic_barrel_logo_black.iwi",
+        "nazi_zombie_dieletztenacht.iwd:images/toxic_barrel_logo_blue.iwi",
+        "nazi_zombie_dieletztenacht.iwd:images/toxic_barrel_logo_green1.iwi",
+        "nazi_zombie_dieletztenacht.iwd:images/toxic_barrel_logo_green2.iwi",
+        "nazi_zombie_dieletztenacht.iwd:images/toxic_barrel_logo_red1.iwi",
+        "nazi_zombie_dieletztenacht.iwd:images/toxic_barrel_logo_red2.iwi",
+        "nazi_zombie_dieletztenacht.iwd:images/weapon_red_cross_background.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 84.2,
+    "addon_iwds": [
+      {
+        "file": "_bam_bo1_perks_mod.iwd",
+        "entries": 58,
+        "scripts": 3,
+        "bytes": 2985211
+      },
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 67,
+        "scripts": 0,
+        "bytes": 176320
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_dieletztenacht.ff",
+      "nazi_zombie_dieletztenacht_patch.ff",
+      "nazi_zombie_dieletztenacht.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

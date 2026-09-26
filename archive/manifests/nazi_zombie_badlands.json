@@ -1,0 +1,135 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_badlands",
+  "title": "BADLANDS",
+  "source": "custom",
+  "author": "Wgmaddog",
+  "released": "2008-12-27",
+  "fs_game": "mods/nazi_zombie_badlands",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_badlands.ff": "0fe1fe5d658c2dfbf7a539172ad56ee05d75d251baf1f101b05eb22c9625b4f6"
+  },
+  "badge": {
+    "main_finish": "round",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "read",
+  "needs_human": false,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "round",
+    "why": "no easter egg or ending found; default Round 20",
+    "verdict_stock_baseline_only": "round",
+    "scripts": 39,
+    "script_count": 39,
+    "entities": 909,
+    "ee_candidates": [],
+    "ending_words": [],
+    "hardcoded_costs": [
+      1000,
+      1500
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "creat"
+      ],
+      [
+        1500,
+        "weapon_cabinet_use",
+        "pf188_auto2"
+      ],
+      [
+        1000,
+        "zombie_debris",
+        "desk"
+      ],
+      [
+        1000,
+        "zombie_debris",
+        "bookshelf1"
+      ],
+      [
+        950,
+        "treasure_chest_use",
+        "pf184_auto1"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [],
+    "zombiemode_sha256": "0fe1fe5d658c2dfbf7a539172ad56ee05d75d251baf1f101b05eb22c9625b4f6",
+    "map_specific_triggers": [],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:44:28Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_badlands.exe",
+    "original_sha256": "fc4555b8670ca57195a5520c5a9390e440c00c155edcfbf7059c71d56e4254d3",
+    "original_size": 38499308,
+    "source_url": "https://www.mediafire.com/file/wr7uasrla1d7020/nazi_zombie_badlands.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T15:42:45Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "challenge"
+    ],
+    "catalogue_description": "The map consists startin area plus three more area to survive in. Each area brings new weapons to the table, along with mystery box,mg and even raygun wall purchases! Thanks to Wakizashi for providing the map file and screenshots.",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_nazi_zombie_badlands"
+      ],
+      "iwd_images": [
+        "nazi_zombie_badlands.iwd:images/loadscreen_nazi_zombie_badlands.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_badlands"
+    }
+  },
+  "notes": "Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). ",
+  "precheck": {
+    "map_zone_inflated_mb": 64.3,
+    "addon_iwds": [],
+    "flags": [
+      "no_patch_ff"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": false,
+    "napalmblob": [
+      "nazi_zombie_badlands.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

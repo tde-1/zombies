@@ -1,0 +1,214 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_prepav1_9",
+  "title": "Prep1",
+  "source": "custom",
+  "author": "Spart117MX",
+  "released": "2023-01-23",
+  "fs_game": "mods/nazi_zombie_prepav1_9",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_prepav1_9.iwd": "eb8844137f0d2fb4aaaee0b2406b06cfe7a5473352caf6775534362eecb86b88"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        5000,
+        20000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 20000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 114,
+    "script_count": 114,
+    "entities": 3053,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000,
+      20000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_debris",
+        "debris11"
+      ],
+      [
+        1750,
+        "zombie_debris",
+        "debris7"
+      ],
+      [
+        1750,
+        "zombie_debris",
+        "debris13"
+      ],
+      [
+        1750,
+        "zombie_debris",
+        "debris12"
+      ],
+      [
+        1750,
+        "zombie_debris",
+        "debris12"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "eb8844137f0d2fb4aaaee0b2406b06cfe7a5473352caf6775534362eecb86b88",
+    "map_specific_triggers": [
+      "end_game",
+      "perkaholic",
+      "wunderfizz_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:19:20Z"
+    }
+  },
+  "archive": {
+    "original": "P1_Installer.exe",
+    "original_sha256": "8c8ece5805a31faaa2e6594cc36133ab2e1ea7db870c214b7f7dd9359bd50693",
+    "original_size": 92901401,
+    "source_url": "https://www.mediafire.com/file/n4k8oy5spfq5gkl/P1_Installer.exe/file",
+    "source_page": "https://callofdutyrepo.com/2023/01/23/prep1/",
+    "fetched": "2026-09-26T15:17:31Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Hi everyone! I\u2019m posting an old map that I\u2019ve made about 2 years ago during the pandemic to avoid the boring, is a pretty basic map, it\u2019s based on my high school when I\u2019ve missing it. I added bam Bo1 perks, double PaP to the special weapons, I\u2019ve also added some custom power ups. This maps is pretty old while I was unnexperienced about modding or coding, it have some issues, so this map have some minor issues. Known issues: \u2013 The monkey bombs doesn\u2019t work well in this map \u2013 If you run while you\u2019re knocking down the map would crash \u2013 In the upper levels of the large building the zombie\u2019s AI doesn\u2019t work propperly \u2013 Some areas are pretty empty \u2013 Some text written in english on the map are poorly written *Disclaimer* The map is pretty hard Credits for the people that made the mods I\u2019ve used \u2013 @jei9363 he post the Bam_bo1 perks, the wunderfizz script, vulture aid and electric cherry \u2013 @espi_thekiller he post the knee slide script \u2013 @DidUknowiPwn he post the random perk power up",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [
+        "_bam_bo1_perks_mod.iwd:images/specialty_fastreload_zombies.iwi",
+        "_bam_bo1_perks_mod.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "_bam_bo1_perks_mod.iwd:images/zombie_vending_three_gun_logo_c.iwi",
+        "_bam_bo1_perks_mod.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "_bam_bo1_perks_mod.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 101.0,
+    "addon_iwds": [
+      {
+        "file": "_bam_bo1_perks_mod.iwd",
+        "entries": 61,
+        "scripts": 3,
+        "bytes": 3273488
+      },
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 67,
+        "scripts": 0,
+        "bytes": 176320
+      },
+      {
+        "file": "electric_cherry.iwd",
+        "entries": 10,
+        "scripts": 1,
+        "bytes": 953440
+      },
+      {
+        "file": "vulture_aid.iwd",
+        "entries": 11,
+        "scripts": 1,
+        "bytes": 557060
+      },
+      {
+        "file": "wunderfizz.iwd",
+        "entries": 8,
+        "scripts": 1,
+        "bytes": 1019295
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_prepav1_9.ff",
+      "nazi_zombie_prepav1_9_patch.ff",
+      "nazi_zombie_prepav1_9.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

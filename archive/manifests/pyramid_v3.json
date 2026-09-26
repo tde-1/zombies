@@ -1,0 +1,191 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "pyramid_v3",
+  "title": "Pyramid v3",
+  "source": "custom",
+  "author": "Avalebor",
+  "released": "2017-12-19",
+  "fs_game": "mods/pyramid_v3",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@pyramid_v3.iwd": "3c8f97c15ae03f919fb8d51cf9d3f6ea2a781d80176a7711fc935d560d01d61c"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        5000,
+        155000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 155000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 108,
+    "script_count": 108,
+    "entities": 974,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000,
+      155000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        8000,
+        "zombie_debris",
+        "level7"
+      ],
+      [
+        8000,
+        "zombie_debris",
+        "level7"
+      ],
+      [
+        8000,
+        "zombie_debris",
+        "level7"
+      ],
+      [
+        8000,
+        "zombie_debris",
+        "level7"
+      ],
+      [
+        8000,
+        "zombie_debris",
+        "level7"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "3c8f97c15ae03f919fb8d51cf9d3f6ea2a781d80176a7711fc935d560d01d61c",
+    "map_specific_triggers": [
+      "end_game"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:14:58Z"
+    }
+  },
+  "archive": {
+    "original": "pyramid_v3.exe",
+    "original_sha256": "caffc8b9e6e4f4b9ad01426adedfabccda5f336f55651ddd20ae355dfb65b58b",
+    "original_size": 195379402,
+    "source_url": "http://www.mediafire.com/file/8ay0s90nwghtd0c/pyramid_v3.exe/file",
+    "source_page": "https://callofdutyrepo.com/2017/12/19/pyramid-v3/",
+    "fetched": "2026-09-26T15:12:34Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending",
+      "challenge"
+    ],
+    "catalogue_description": "this map was created by me \u2013 Avalebor (Ava_ru) Features: \u2013 zombies run from the 1st round \u2013 changed the appearance of zombies \u2013 increased number of zombies \u2013 added Nova Crawlers zombies \u2013 2 bosses \u2013 added weapons from BO1, BO3 \u2013 in the box there is a weapon with an upgrade \u2013 weapons from the wall can not be upgraded \u2013 purchased end of the game (THE END) CREDITS: shippuden1592 \u2013 zombie Call of the Dead (drag-and-drop) Shippuden1592 \u2013 Zombie Nova Crawlers shippuden1592, ReznovRevenge \u2013 boss scripts shippuden1592 \u2013 weapons: ICR, M8A7, Man-o-War, Pharoah, Haymaker (tc12), XR2, Ak74u, Commando, Famas, Hk21, Rpk Infinity Ward, DamianoTBM \u2013 weapons: IW NV4 MrDunlop4 \u2013 character TOM_BMX \u2013 Buyable Ending scripts",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_pyramid_v3",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "pyramid_v3.iwd:images/loadscreen_pyramid_v3.iwi",
+        "pyramid_v3.iwd:images/specialty_fastreload_zombies.iwi"
+      ],
+      "loadscreen": "loadscreen_pyramid_v3"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 84.7,
+    "addon_iwds": [
+      {
+        "file": "call_of_dead.iwd",
+        "entries": 35,
+        "scripts": 6,
+        "bytes": 7497842
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "pyramid_v3.ff",
+      "pyramid_v3_patch.ff",
+      "pyramid_v3.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

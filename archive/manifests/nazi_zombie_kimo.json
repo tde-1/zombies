@@ -1,0 +1,187 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_kimo",
+  "title": "KIMO",
+  "source": "custom",
+  "author": "anrew345",
+  "released": "2012-01-13",
+  "fs_game": "mods/nazi_zombie_kimo",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_kimo.iwd": "6ec4792410e2eb6b9abb0f89b3ae5063df52e427eb219f3d353da84f6e22f3c0"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "crawler_round_ending"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1250,
+        1500,
+        2000,
+        2500,
+        3000,
+        3500,
+        5000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 5000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 106,
+    "script_count": 106,
+    "entities": 1343,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1250,
+      1500,
+      2000,
+      2500,
+      3000,
+      3500,
+      5000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        1250,
+        "zombie_door",
+        "slide3"
+      ],
+      [
+        1000,
+        "zombie_door",
+        "slide2"
+      ],
+      [
+        1000,
+        "zombie_door",
+        "door"
+      ],
+      [
+        1000,
+        "zombie_debris",
+        "gar3"
+      ],
+      [
+        1000,
+        "zombie_debris",
+        "door5"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "6ec4792410e2eb6b9abb0f89b3ae5063df52e427eb219f3d353da84f6e22f3c0",
+    "map_specific_triggers": [
+      "activate_mg",
+      "art_trig",
+      "buy_powerup",
+      "kino_mainframe_trigger",
+      "kino_teleporter_trigger",
+      "zapper1_damage",
+      "zapper1_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:26:40Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_kimo.exe",
+    "original_sha256": "84223873eb42d771f03d0d1d929d7b1c1375ce8ff118b9a89faa795d54e03d36",
+    "original_size": 84135635,
+    "source_url": "https://www.mediafire.com/file/ay5r9i70b77o33e/nazi_zombie_kimo.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T15:25:19Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Features -Kino Der Toten shaped starting area plus Ascension shaped outer areas. Truly shaped like the mixture of those two BO1 zombie maps features: *mp guns *kino style teleporter *easter eggs *buy-able ray gun. *pap and perks *custom power up/s *buyable ammo(i guess) *i would say *hard* even if big space *tom music box(thank u tom) *skinned zombies(finally) *more stuff Outstanding help from: *towniy *Mr.Hankey *rampage_619 *cinnober *ADDICTED *paragalor *tom_bmx *other ppl i forgot the names of Known Bugs: *some zombies will Not come out of some windows anyways this is my very first map ever. i don\u2019t care what u say about just try it. im really sorry for the inconvenience. ALSO I MADE IT WITH BIG SPACE. Because i made it the size of the REAL kino. but turn out REALLY REALLY BAD AND TIGHT! UPDATES: added rain thanks towniy\u2019s help added few more mp guns thanks to paragalor. story line which ill tell later. UPDATE: mp guns now upgradable, also this project didnt turn out great but lets wait till my second map. NOTE!: it wasnt finished because of an error but hope u enjoy! another note: DONT USE TEH ZAPPERS IT DOES NOT WORK!!",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_kimo",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "nazi_zombie_kimo.iwd:images/loadscreen_nazi_zombie_kimo.iwi",
+        "nazi_zombie_kimo.iwd:images/load_screen_nazi_zombie_kimo.iwi",
+        "nazi_zombie_kimo.iwd:images/menu_map_nazi_zombie_kimo.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_kimo"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 119.7,
+    "addon_iwds": [],
+    "flags": [
+      "client_memory_risk"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_kimo.ff",
+      "nazi_zombie_kimo_patch.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

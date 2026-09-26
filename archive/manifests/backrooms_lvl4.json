@@ -1,0 +1,204 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "backrooms_lvl4",
+  "title": "Backrooms Lvl4 (Abandoned Office)",
+  "source": "custom",
+  "author": "Klaudeh",
+  "released": "2022-10-22",
+  "fs_game": "mods/backrooms_lvl4",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@backrooms_lvl4.iwd": "abaa8b130654c45e49545b0192e58c69693906bce87a682edb4ca27658e6f93b"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_trigger"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game",
+        "end_trigger"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        3000,
+        6500,
+        75000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game, end_trigger name an ending and are this map's own; script hardcodes cost 75000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 116,
+    "script_count": 116,
+    "entities": 1161,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game",
+      "end_trigger"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      6500,
+      75000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "rotating_door",
+        "auto179"
+      ],
+      [
+        4000,
+        "rotating_door",
+        "auto159"
+      ],
+      [
+        3500,
+        "rotating_door",
+        "auto143"
+      ],
+      [
+        3000,
+        "rotating_door",
+        "auto138"
+      ],
+      [
+        3000,
+        "rotating_door",
+        "auto130"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "abaa8b130654c45e49545b0192e58c69693906bce87a682edb4ca27658e6f93b",
+    "map_specific_triggers": [
+      "amb_sound",
+      "end_trigger",
+      "rotating_door",
+      "secret_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:03:18Z"
+    }
+  },
+  "archive": {
+    "original": "Backrooms_Lvl4_Abandoned_Office_.exe",
+    "original_sha256": "1b359ca22193274d19f6547832befb08d1f468bfd935dd257a60e100624ff090",
+    "original_size": 437030767,
+    "source_url": "https://www.mediafire.com/file/v63o76lp372ciea/Backrooms_Lvl4_%2528Abandoned_Office%2529.exe/file",
+    "source_page": "https://callofdutyrepo.com/2022/10/22/backrooms-lvl4-abandoned-office/",
+    "fetched": "2026-09-26T14:59:25Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Welcome to a new map based on one of the many (or infinite idk) levels of the backrooms. . . This map started to be a series of maps based on levels of the backrooms, but for now only my friend KielRGZ has made his part of the \u201cseries\u201d ( better know has Backrooms Edition Zero, you should check it out, great map https://callofdutyrepo.com/2022/09/24/backroom-edition-zero/ ) and we hope to see a full series of maps based on this idea or at least that what we aimed for. This map got a abandoned office style so you will encounter many windows, carpets, doors, idk. It is based of by a single image lol, im very happy of the result and how it turned out. So i hope you like it and have a lot of fun trying to beat it! With nothing more to say. Enjoy. . . This map features: \u2013 Custom Weapons from BO3 and BO2 \u2013 Bo1, Bo2 and Bo3 Perks \u2013 3 hits system \u2013 Mob Of The Dead Zombies (Alcatraz) \u2013 Bo3 HUD (kinda) \u2013 Power up custom (Money Power Up) \u2013 Custom Player Model and Hands \u2013 Sprinters \u2013 Hug Fix and Bo1 knife \u2013 Buyable ending \u2013 Custom Camos \u2013 Hitmarkers \u2013 Colored zombie counter \u2013 Added recoil and balance to weapon movement \u2013 Rotating Doors \u2013 Elemental Ammo Credits: \u2013 Shippuden1592 (Some bo3 weapons, Power up Money) \u2013 Ricko0z (Bo3 Weapons and Bo2 Weapons) \u2013 BluntStuffy (Elemental Ammo) \u2013 Gympie6 (Perks of Bo1, Bo2 and Bo3) \u2013 TaXi (3 hits system) \u2013 ThunderFrosty (Customizable Bo2 HUD) \u2013 Steviewonder87 (Zombie Hug fix and bo1 knife) \u2013 SpyroScope (Buyable Ending With Teleport) \u2013 Kielrgz (Mob Of T",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [
+        "gympie6_perks.iwd:images/p7_zm_vending_ads_logo_col.iwi",
+        "gympie6_perks.iwd:images/specialty_fastreload_zombies.iwi",
+        "gympie6_perks.iwd:images/~p7_zm_vending_ads_logo_spc-r~301c48c1.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 91.3,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 67,
+        "scripts": 0,
+        "bytes": 176320
+      },
+      {
+        "file": "gympie6_perks.iwd",
+        "entries": 237,
+        "scripts": 7,
+        "bytes": 46717906
+      },
+      {
+        "file": "motd_zombie_images.iwd",
+        "entries": 30,
+        "scripts": 0,
+        "bytes": 8573564
+      },
+      {
+        "file": "nazi_zombie_asylum.iwd",
+        "entries": 6,
+        "scripts": 6,
+        "bytes": 2722
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "backrooms_lvl4.ff",
+      "backrooms_lvl4_patch.ff",
+      "mod.ff",
+      "backrooms_lvl4.iwd:animscripts/death.gsc",
+      "gympie6_perks.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

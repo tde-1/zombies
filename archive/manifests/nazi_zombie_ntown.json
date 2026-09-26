@@ -1,0 +1,246 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_ntown",
+  "title": "NEW TOWN",
+  "source": "custom",
+  "author": "localbaby poop",
+  "released": "2015-01-23",
+  "fs_game": "mods/nazi_zombie_ntown",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_ntown.iwd": "ac5825a476de64d286ad47e7ef52b9811bae20c4c4fd794f569aafa77bc5104f"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "local_shot_egg"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "local_shot_egg look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 118,
+    "script_count": 118,
+    "entities": 2214,
+    "ee_candidates": [
+      "local_shot_egg"
+    ],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      7000,
+      9000,
+      90000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        4000,
+        "zombie_debris",
+        "superman"
+      ],
+      [
+        4000,
+        "zombie_debris",
+        "barrel1"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto672"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto666"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "auto139"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "ac5825a476de64d286ad47e7ef52b9811bae20c4c4fd794f569aafa77bc5104f",
+    "map_specific_triggers": [
+      "buy_powerup",
+      "clip_build_trig",
+      "clip_pick_trig",
+      "end_game",
+      "firestarter",
+      "handle_build_trig",
+      "handle_pick_trig",
+      "heli_trig",
+      "local_shot_egg",
+      "moon_teleporter_a_trigger",
+      "moon_teleporter_b_trigger",
+      "music_box_player",
+      "musicbox_build_trig",
+      "musicbox_pick_trig",
+      "musichandle_build_trig",
+      "musichandle_pick_trig",
+      "musiclights2_build_trig",
+      "musiclights2_pick_trig",
+      "musiclights_build_trig",
+      "musiclights_pick_trig",
+      "panel_build_trig",
+      "panel_pick_trig",
+      "peacmaker_body_build_trig",
+      "peacmaker_body_pick_trig",
+      "scare_him1_now",
+      "scare_him2_now",
+      "scare_him3_now",
+      "scare_him_now",
+      "shoot_me",
+      "shoot_me1",
+      "trem_bank_trig",
+      "turn_power_on",
+      "weapon_buying1",
+      "wir_build_trig",
+      "wir_pick_trig",
+      "wire_build_trig",
+      "wire_pick_trig",
+      "ywallhousing2damage",
+      "ywallhousingdamage"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:22:23Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_ntown.exe",
+    "original_sha256": "77f762817d6e4d3e0a97caa782f41750e54789e014a079eedfd1590efa7d270e",
+    "original_size": 517063889,
+    "source_url": "http://www.mediafire.com/file/0knv4wsdm1aooqq/nazi_zombie_ntown.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T15:19:44Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Description Finally Here it is,New town We all miss black ops and New town was made for black ops fan\u2019s in mind.NOTE: Hope you have a blast, and it brings back so good time,Map was made with some of my kids idea\u2019s to load the map for single player \u201cNazi_zombie_ntown\u201d New town is wide open in case all goes wrong. Map start black and white but if you don\u2019t like it buy revive and go down than you will have color in map or just turn on power save your money lol oh evil monkey made the town think there was no power see him shot the dam thing FEATURES: custom Weapons and one weapon put in just for the Thompson troll from my last map sorry spider lol Now you can upgrade it twice all 8 ops Perks + 2 perks Dr.D and Yes $2000 double dew but with a twist new flavor cherry work on some new script new perk danger Deegan took a bit but ou want it who need jug when you got danger Deegan lol \u201cDeegan is my son\u201d Custom Pack A Punch names, Custom Weapon, skins, buyable ending, teleports and alot more there has to be some thing to find out you self lol.",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_locked",
+        "loadscreen_mak",
+        "loadscreen_nazi_zombie_ntown",
+        "loadscreen_zom2"
+      ],
+      "iwd_images": [
+        "nazi_zombie_ntown.iwd:images/apec_acm_powerloader_lower_c.iwi",
+        "nazi_zombie_ntown.iwd:images/apex_acm_powerloader_grate_c.iwi",
+        "nazi_zombie_ntown.iwd:images/apex_acm_powerloader_upper_c.iwi",
+        "nazi_zombie_ntown.iwd:images/custom_zombies_menu.iwi",
+        "nazi_zombie_ntown.iwd:images/custom_zombies_menu2.iwi",
+        "nazi_zombie_ntown.iwd:images/custom_zombies_menu3.iwi",
+        "nazi_zombie_ntown.iwd:images/loadscreen_nazi_zombie_ntown.iwi",
+        "nazi_zombie_ntown.iwd:images/marley_griffin_moving_logo_col.iwi",
+        "nazi_zombie_ntown.iwd:images/menu_background_mp_tank.iwi",
+        "nazi_zombie_ntown.iwd:images/menu_map_nazi_zombie_ntown.iwi",
+        "nazi_zombie_ntown.iwd:images/specialty_fastreload_zombies.iwi",
+        "nazi_zombie_ntown.iwd:images/weapon_red_cross_background.iwi",
+        "nazi_zombie_ntown.iwd:images/zombie_vending_sleight_logo_c.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_ntown"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 156.0,
+    "addon_iwds": [],
+    "flags": [
+      "client_memory_risk"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_ntown.ff",
+      "nazi_zombie_ntown_patch.ff",
+      "nazi_zombie_ntown.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "nazi_zombie_ntown.iwd:maps/tom_music_player_unl.gsc",
+        "menus": [],
+        "responses": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9"
+        ],
+        "note": "in game: a music player"
+      },
+      {
+        "script": "nazi_zombie_ntown.iwd:maps/trem_bank_2.gsc",
+        "menus": [],
+        "responses": [],
+        "note": "in game: the bank"
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

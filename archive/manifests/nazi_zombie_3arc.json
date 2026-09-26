@@ -1,0 +1,192 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_3arc",
+  "title": "Crazy Box",
+  "source": "custom",
+  "author": "CrazyG4mer108",
+  "released": "2014-04-28",
+  "fs_game": "mods/nazi_zombie_3arc",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@Cr4zy-Box.iwd": "89b80aee18bfab6d853fa4ac28146119b382b5da175e6d58b2a8cbb7eb37599f"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        3000,
+        4000,
+        5000,
+        6000,
+        8000,
+        9000,
+        30000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 30000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 101,
+    "script_count": 101,
+    "entities": 350,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      4000,
+      5000,
+      6000,
+      8000,
+      9000,
+      30000
+    ],
+    "orphan_end_triggers": [
+      "trigger_teleport_pad_0",
+      "trigger_teleport_pad_1",
+      "trigger_teleport_pad_2"
+    ],
+    "top_costs": [
+      [
+        2000,
+        "zombie_door",
+        "door_6"
+      ],
+      [
+        1500,
+        "zombie_door",
+        "door_7"
+      ],
+      [
+        1500,
+        "zombie_door",
+        "door_4"
+      ],
+      [
+        1500,
+        "zombie_door",
+        "door_3"
+      ],
+      [
+        1500,
+        "zombie_door",
+        "door_3"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "89b80aee18bfab6d853fa4ac28146119b382b5da175e6d58b2a8cbb7eb37599f",
+    "map_specific_triggers": [
+      "end_game",
+      "scare_him_now"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:38:20Z"
+    }
+  },
+  "archive": {
+    "original": "Cr4zy-Box_1.1.exe",
+    "original_sha256": "b82d924092251c6730afbe5d1f8f5219d03d95df7128b69cce4988a0d95dc11d",
+    "original_size": 67156693,
+    "source_url": "https://www.mediafire.com/file/k4q8acu3o8isad0/Cr4zy-Box_1.1.exe/file",
+    "source_page": "https://callofdutyrepo.com/2014/04/28/crazy-box/",
+    "fetched": "2026-09-26T15:37:17Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": null,
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_nazi_zombie_3arc"
+      ],
+      "iwd_images": [
+        "Cr4zy-Box.iwd:images/loadscreen_nazi_zombie_3arc.iwi",
+        "Cr4zy-Box.iwd:images/specialty_fastreload_zombies.dds",
+        "Cr4zy-Box.iwd:images/specialty_fastreload_zombies.iwi"
+      ],
+      "loadscreen": "loadscreen_nazi_zombie_3arc"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 80.4,
+    "addon_iwds": [
+      {
+        "file": "Cr4zy-Box.iwd",
+        "entries": 132,
+        "scripts": 9,
+        "bytes": 5068281
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_3arc.ff",
+      "nazi_zombie_3arc_patch.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

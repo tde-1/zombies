@@ -1,0 +1,211 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "vstower",
+  "title": "VSTower Challenge Map",
+  "source": "custom",
+  "author": "Klaudeh",
+  "released": "2022-08-18",
+  "fs_game": "mods/vstower",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@vstower.iwd": "a256eff8e02a2204be9265468fdc3ae937729ab8c8d31f0b1427245884702b73"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game",
+        "mech_escape_trigger"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        3000,
+        5000,
+        69000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game, mech_escape_trigger name an ending and are this map's own; script hardcodes cost 69000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 125,
+    "script_count": 125,
+    "entities": 1841,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game",
+      "mech_escape_trigger"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      5000,
+      69000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        5000,
+        "zombie_door",
+        "auto58"
+      ],
+      [
+        5000,
+        "zombie_door",
+        "auto57"
+      ],
+      [
+        5000,
+        "zombie_door",
+        "auto55"
+      ],
+      [
+        5000,
+        "zombie_door",
+        "auto47"
+      ],
+      [
+        2500,
+        "zombie_door",
+        "auto21"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "a256eff8e02a2204be9265468fdc3ae937729ab8c8d31f0b1427245884702b73",
+    "map_specific_triggers": [
+      "end_game",
+      "mech_escape_trigger",
+      "soul_triggers",
+      "soulboxes_reward_door_trigger"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:09:30Z"
+    }
+  },
+  "archive": {
+    "original": "VsTower.exe",
+    "original_sha256": "47178f41226fe22c5f81c2e1b6fd3b5523d10b876ec68c34db469024ac97eb74",
+    "original_size": 396153743,
+    "source_url": "https://www.mediafire.com/file/2iz3tvvb0stf0ex/VsTower.exe/file",
+    "source_page": "https://callofdutyrepo.com/2022/08/18/vstower-challenge-map/",
+    "fetched": "2026-09-26T15:05:58Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Let me introduce my first \u201ctower\u201d inspirated map. Like the name suggest is a \u201cVS\u201d tower so it\u2019s kinda a pvp\u2019ish map, where you can do matches agains your friends in a 1v1 or 2v2 style gameplay, you spawn in a tower and your friend spawn in the other tower to see who\u2019s the first to get to the bottom of the map. The map it\u2019s fully playable on solo and coop , so you don\u2019t get problems in neither if you play alone or with friends, but it\u2019s more fun to play with some friends to see who\u2019s gonna get down first;) Also you can open the doors from the tower of your friend if they get stuck or you want to help him. You can always leave them by themself hehe. The map is fully T imed Gameplay , and fast style gameplay so it\u2019s gonna be hard and challenging to get past throw the map but it\u2019s kinda easy when you get to it. And. . . you gonna get a surprise at the end it was really cool trying to make something unique to the map so i\u2019ll let you see it. Tips: \u2013 Get the Rk5 at the start \u2013 Try to pap the MR6 at the start with the pap power up \u2013 Keep in mind the panzer spawn at the minute 3 second 40. Or minute 4 second 20 on coop if you have the break at the start \u2013 Try getting a lot of points at the start of the map so later you can just rush your way to the bottom (It\u2019s a little hard to make this but work fine). Bugs: Im sure i fix these one\u2019s and tested out to see if the map work fine but, i leave here the bugs if happen to someone \u2013 The soulboxes fill them by themself at random times (Idk wh",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [
+        "gympie6_perks.iwd:images/~p7_zm_vending_ads_logo_spc-r~301c48c1.iwi",
+        "gympie6_perks.iwd:images/p7_zm_vending_ads_logo_col.iwi",
+        "gympie6_perks.iwd:images/specialty_fastreload_zombies.iwi",
+        "vstower.iwd:images/specialty_fastreload_zombies.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 64.9,
+    "addon_iwds": [
+      {
+        "file": "BlSt_PanzerSoldat.iwd",
+        "entries": 15,
+        "scripts": 2,
+        "bytes": 4281198
+      },
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 67,
+        "scripts": 0,
+        "bytes": 176320
+      },
+      {
+        "file": "gympie6_perks.iwd",
+        "entries": 235,
+        "scripts": 7,
+        "bytes": 46705183
+      },
+      {
+        "file": "motd_zombie_images.iwd",
+        "entries": 30,
+        "scripts": 0,
+        "bytes": 8573564
+      },
+      {
+        "file": "nazi_zombie_asylum.iwd",
+        "entries": 6,
+        "scripts": 6,
+        "bytes": 2722
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "vstower.ff",
+      "vstower_patch.ff",
+      "gympie6_perks.iwd:maps/_loadout.gsc",
+      "vstower.iwd:animscripts/death.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

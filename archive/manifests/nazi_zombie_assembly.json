@@ -1,0 +1,175 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_assembly",
+  "title": "GROUP 877",
+  "source": "custom",
+  "author": "bamskater33",
+  "released": "2013-04-07",
+  "fs_game": "mods/nazi_zombie_assembly",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_assembly.iwd": "065d08ec9e27e44bef668bd87a1adee1ff90aad8b1bcab32e871808600f1fe5e"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "crawler_round_ending"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game",
+        "teleport_power_up"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000,
+        9000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game, teleport_power_up name an ending and are this map's own; script hardcodes cost 9000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 109,
+    "script_count": 109,
+    "entities": 1040,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game",
+      "teleport_power_up"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000,
+      9000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        1250,
+        "zombie_door",
+        "door_left_2c"
+      ],
+      [
+        1250,
+        "zombie_door",
+        "door_left_2c"
+      ],
+      [
+        1250,
+        "zombie_debris",
+        "rocks1"
+      ],
+      [
+        1250,
+        "zombie_debris",
+        "rocks1"
+      ],
+      [
+        1000,
+        "zombie_door",
+        "door_right_3"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "065d08ec9e27e44bef668bd87a1adee1ff90aad8b1bcab32e871808600f1fe5e",
+    "map_specific_triggers": [
+      "purchase",
+      "select",
+      "trig_c"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:45:44Z"
+    }
+  },
+  "archive": {
+    "original": "group_877.exe",
+    "original_sha256": "3d65c5ec07eba630e4c203b20d34cd2fef6104ca845a1ff83841645050dd1ce2",
+    "original_size": 120405621,
+    "source_url": "http://www.mediafire.com/file/ylpymw9jecb3e1o/group_877.exe/file",
+    "source_page": "https://zwr.gg/custom-downloads/waw",
+    "fetched": "2026-09-26T15:44:16Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Description I apologize, update 1, 4/8/13 11:55 AM EST, Coupon Queen doesn\u2019t make everything free anymore. Please Re-download Group 877 was a less competent organization than 935. They were in charge of mostly perk machine manufacturing and distribution. Lack of funding resulted in unethical practices during which many employees went missing. Group 877 couldn\u2019t get teleportation working, but was successful in an organic flux transportation system. An explosion from an experiment interfered with the speed-cola manufacturing branch. Element 115 from the bottles was exposed to the water system and soon was being circulated through the air-conditioning units. Features: Black Ops Perks Fully Fixed Mule Kick Unstable Perk machines Organic Flux Transportation Dedric the Zombie Centrifuge Powerup Machine Perk Assembly Line Ambient Sounds (Pa system, radio, bubbling, wind) Moving Pack-A-Punch",
+    "art": {
+      "loadscreen_materials": [],
+      "iwd_images": [
+        "nazi_zombie_assembly.iwd:images/plr_mw2_op_arctic_spr_loadout_col.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 87.6,
+    "addon_iwds": [],
+    "flags": [],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_assembly.ff",
+      "nazi_zombie_assembly_patch.ff",
+      "nazi_zombie_assembly.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

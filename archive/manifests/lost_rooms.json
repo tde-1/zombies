@@ -1,0 +1,201 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "lost_rooms",
+  "title": "Lost Rooms",
+  "source": "custom",
+  "author": "Klaudeh",
+  "released": "2023-12-06",
+  "fs_game": "mods/lost_rooms",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@lost_rooms.iwd": "31f24ef8347343b33306f0d5840fb291af8310591b66558d1d3bb3f14def7f91"
+  },
+  "badge": {
+    "main_finish": "easter_egg",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "easter_egg",
+      "label": "Easter Egg",
+      "priority": 1,
+      "when": {
+        "manual": true
+      },
+      "candidates": [
+        "ee_monkey_trigg",
+        "ee_monkey_trigg2"
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "easter_egg",
+    "why": "ee_monkey_trigg, ee_monkey_trigg2 look like easter-egg state (map's own, after subtracting 827 stock names); confirm which combination means 'done'",
+    "verdict_stock_baseline_only": "easter_egg",
+    "scripts": 123,
+    "script_count": 123,
+    "entities": 553,
+    "ee_candidates": [
+      "ee_monkey_trigg",
+      "ee_monkey_trigg2"
+    ],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      5000,
+      50000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        4000,
+        "rotating_door",
+        "auto39"
+      ],
+      [
+        4000,
+        "rotating_door",
+        "auto2"
+      ],
+      [
+        3500,
+        "zombie_door",
+        "auto25"
+      ],
+      [
+        3500,
+        "zombie_door",
+        "auto23"
+      ],
+      [
+        3500,
+        "zombie_door",
+        "auto20"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "31f24ef8347343b33306f0d5840fb291af8310591b66558d1d3bb3f14def7f91",
+    "map_specific_triggers": [
+      "ee_monkey_trigg",
+      "ee_monkey_trigg2",
+      "end_game",
+      "repair_valve",
+      "rotating_door",
+      "soul_triggers",
+      "soulboxes_reward_door_trigger",
+      "soulboxes_reward_weapon_point",
+      "tool_box",
+      "valve"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:18:15Z"
+    }
+  },
+  "archive": {
+    "original": "Lost_rooms.exe",
+    "original_sha256": "0f8f181d52a667189b11bf0578c28663ad84b47f18ed2ef7dd036f6bdcb99bf0",
+    "original_size": 277511055,
+    "source_url": "https://www.mediafire.com/file_premium/v0ywyxi0c9akktp/Lost_rooms.exe/file",
+    "source_page": "https://callofdutyrepo.com/2023/12/06/lost-rooms/",
+    "fetched": "2026-09-26T15:16:09Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "This time i bring you a special map for me, this is inspired by my friend first try at making a custom map on waw, you see, back when i was doing my first map the plan was to start making maps with my friend a couple years ago, sadly he got a lot of problems with his pc and when he tried the mod tools really didn\u2019t like doing maps. The good part was that because of him i started making maps until today, i started almost 2 years ago and still making plans for new maps! So this is a homenage to my friend try at making a map and also a new try at implementing new things for maps in the future (like fx\u2019s, simple gsc scripting, etc). The layout of the map is simple, just a starting room and 4 door with barriers for the zombies to go, i try to expand on this concept of my friend first map and change 2 of the barriers for something different also a lot of decoration (model spam) added to most of the rooms, new vision file and a try of good visuals for the map to give it a nice looking ambience. Also from the starting zone i added a hallway and a outdoor zone base on my friend favorite \u201cbackroom floor\u201d, an idea that we loved to add for a custom map so i added in here why not. Is a small map and a easy one so is more of a chill to play map once you get to the outside area, just need to grind for the buyable ending and that is. I hope you like the map and im waiting for your feedback if you have any suggestion for the map This map features: \u2013 Custom Weapons from BO1, BO2, MW3 and BO3. ",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [
+        "gympie6_perks.iwd:images/p7_zm_vending_ads_logo_col.iwi",
+        "gympie6_perks.iwd:images/specialty_fastreload_zombies.iwi",
+        "gympie6_perks.iwd:images/~p7_zm_vending_ads_logo_spc-r~301c48c1.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). The scanner found easter-egg state; WHICH combination means done is a human's call, so the finish is {\"manual\": true} and the Round 20 fallback applies meanwhile. PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 60.0,
+    "addon_iwds": [
+      {
+        "file": "dlc3_weapons.iwd",
+        "entries": 67,
+        "scripts": 0,
+        "bytes": 176320
+      },
+      {
+        "file": "gympie6_perks.iwd",
+        "entries": 237,
+        "scripts": 7,
+        "bytes": 46717932
+      },
+      {
+        "file": "motd_zombie_images.iwd",
+        "entries": 30,
+        "scripts": 0,
+        "bytes": 8573564
+      },
+      {
+        "file": "nazi_zombie_asylum.iwd",
+        "entries": 6,
+        "scripts": 6,
+        "bytes": 2722
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "lost_rooms.ff",
+      "lost_rooms_patch.ff",
+      "mod.ff",
+      "gympie6_perks.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

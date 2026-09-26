@@ -1,0 +1,250 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "zm_hanger",
+  "title": "Hangar 42",
+  "source": "custom",
+  "author": "TRex_0",
+  "released": "2019-08-12",
+  "fs_game": "mods/zm_hanger",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@zm_hanger.iwd": "cb5c0fcd394eae430b33bd3156415cc5f09c1fc8ad0de1465c7cea0339336326"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "crawler_round_ending"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        5000,
+        50000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 50000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 128,
+    "script_count": 128,
+    "entities": 1237,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000,
+      50000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        2000,
+        "zombie_door",
+        "auto15"
+      ],
+      [
+        1250,
+        "zombie_door",
+        "auto4"
+      ],
+      [
+        1250,
+        "zombie_door",
+        "auto3"
+      ],
+      [
+        1250,
+        "zombie_door",
+        "auto2"
+      ],
+      [
+        1250,
+        "zombie_debris",
+        "debris3"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "cb5c0fcd394eae430b33bd3156415cc5f09c1fc8ad0de1465c7cea0339336326",
+    "map_specific_triggers": [],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:27:52Z"
+    }
+  },
+  "archive": {
+    "original": "zm_hanger.exe",
+    "original_sha256": "de1890b6b6d07487cb14d588dedba26616f8a3d813cc01ac79165a0edd0b5b7a",
+    "original_size": 266314039,
+    "source_url": "http://www.mediafire.com/file/i00dzsanqoc79eu/zm_hanger.exe/file",
+    "source_page": "https://callofdutyrepo.com/2019/08/12/hangar-42/",
+    "fetched": "2026-09-26T15:26:09Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [
+      "buyable_ending"
+    ],
+    "catalogue_description": "Aside from the obvious \u201cThis is my first map\u201d, I\u2019ve put about a month of work into this map and I\u2019m proud to finally say I have created a Custom Zombies map for World at War! It has a small Easter Egg to get to PaP, and a buyable ending. Hope y\u2019all enjoy! The map is pretty barebones in terms of custom features; that being said, I tried to make the map look detailed to make up for the lack of custom assests. There\u2019s two training spots, albeit somewhat challenging to the average player, and an abundance of camping spots with strategic wallbuys for you and your friends to constantly have ammo. As stated below, there\u2019s 18 bears to shoot around the map to unlock the bunker, and only 1 of them is outside the map. Finally, there\u2019s around 5-6 functioning zappers scattered across the map for ya. Good luck all! Features : \u2013 10 Perks \u2013 Small Teddy Bear Easter Egg (18 Bears) \u2013 Vulture aid \u2013 Vanilla Weapons \u2013 Black Ops Quick Revive Credits: \u2013 Custom Perks: Bamskater33 \u2013 Bunker Door Script: Xspicious \u2013 Assorted assets: Xspicious \u2013 Zappers: ADDICTED HUGE thanks to Xspicious for countless hours of help, and RADIMAX for help in Radiant.",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak",
+        "loadscreen_sp_makin",
+        "loadscreen_zm_hanger"
+      ],
+      "iwd_images": [
+        "_bam_bo1_perks_mod.iwd:images/specialty_fastreload_zombies.iwi",
+        "_bam_bo1_perks_mod.iwd:images/zombie_vending_ads_logo_n.iwi",
+        "_bam_bo1_perks_mod.iwd:images/zombie_vending_three_gun_logo_c.iwi",
+        "_bam_bo1_perks_mod.iwd:images/_-gzombie_vending_ads_logo_c.iwi",
+        "_bam_bo1_perks_mod.iwd:images/_-gzombie_vending_three_gun_logo_c.iwi",
+        "wardog_assets.iwd:images/wardog_deadshot_logo_col.iwi",
+        "wardog_assets.iwd:images/wardog_deadshot_logo_m.iwi",
+        "wardog_assets.iwd:images/wardog_deadshot_logo_nml.iwi",
+        "wardog_assets.iwd:images/wardog_mule_logo_col.iwi",
+        "wardog_assets.iwd:images/wardog_mule_logo_m.iwi",
+        "wardog_assets.iwd:images/wardog_mule_logo_nml.iwi",
+        "wardog_assets.iwd:images/wardog_revive_logo_col.iwi",
+        "wardog_assets.iwd:images/wardog_revive_logo_nml.iwi",
+        "wardog_assets.iwd:images/wardog_speed_logo_col.iwi",
+        "wardog_assets.iwd:images/wardog_speed_logo_m.iwi",
+        "wardog_assets.iwd:images/wardog_tombstone_logo_col.iwi",
+        "wardog_assets.iwd:images/wardog_tombstone_logo_nml.iwi",
+        "wardog_assets.iwd:images/~wardog_deadshot_logo_spec-rg~bb1ac844.iwi",
+        "wardog_assets.iwd:images/~wardog_mule_logo_spec-rgb&$white-l-11.iwi",
+        "wardog_assets.iwd:images/~wardog_revive_logo_spec-rgb&~9706a770.iwi"
+      ],
+      "loadscreen": "loadscreen_zm_hanger"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 120.2,
+    "addon_iwds": [
+      {
+        "file": "_bam_bo1_perks_mod.iwd",
+        "entries": 61,
+        "scripts": 3,
+        "bytes": 3273488
+      },
+      {
+        "file": "electric_cherry.iwd",
+        "entries": 10,
+        "scripts": 1,
+        "bytes": 953440
+      },
+      {
+        "file": "lunar_lander.iwd",
+        "entries": 30,
+        "scripts": 1,
+        "bytes": 2609997
+      },
+      {
+        "file": "origins_generators.iwd",
+        "entries": 25,
+        "scripts": 1,
+        "bytes": 7455195
+      },
+      {
+        "file": "porter_punch.iwd",
+        "entries": 6,
+        "scripts": 2,
+        "bytes": 293841
+      },
+      {
+        "file": "vulture_aid.iwd",
+        "entries": 12,
+        "scripts": 1,
+        "bytes": 580109
+      },
+      {
+        "file": "wardog_assets.iwd",
+        "entries": 128,
+        "scripts": 0,
+        "bytes": 10363718
+      },
+      {
+        "file": "wunderfizz.iwd",
+        "entries": 8,
+        "scripts": 1,
+        "bytes": 1019303
+      }
+    ],
+    "flags": [
+      "client_memory_risk",
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": true,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "hanger.ff",
+      "hanger_patch.ff",
+      "mod.ff",
+      "zm_hanger.ff",
+      "zm_hanger_patch.ff",
+      "zm_hanger.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

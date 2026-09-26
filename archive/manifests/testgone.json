@@ -1,0 +1,214 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "testgone",
+  "title": "Testing Facility Gone Zero V3",
+  "source": "custom",
+  "author": "animekingichigo",
+  "released": "2015-04-11",
+  "fs_game": "mods/testgone",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@testinfaciltygonezero.iwd": "9afcb3171e53b8b5aa881454ae859ba6d0eeae956f9e05febb3e6642c86ebebe"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "zombie_door",
+          "zombie_cost": 10000
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        4000,
+        5000,
+        80000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 80000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 104,
+    "script_count": 104,
+    "entities": 333,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      4000,
+      5000,
+      80000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        10000,
+        "zombie_door",
+        "Door_4"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "Door_jug"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "Door_6"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "Door_1"
+      ],
+      [
+        1000,
+        "zombie_door",
+        "Door_tom"
+      ]
+    ],
+    "buyable_ending_candidate": {
+      "zombie_cost": 10000,
+      "targetname": "zombie_door",
+      "target": "Door_4",
+      "next_highest": 2000
+    },
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "9afcb3171e53b8b5aa881454ae859ba6d0eeae956f9e05febb3e6642c86ebebe",
+    "map_specific_triggers": [
+      "end_game",
+      "music_box_player",
+      "zapper_damage_warehouse"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:38:53Z"
+    }
+  },
+  "archive": {
+    "original": "Testing_Facilty_Gone_ZeroV3.exe",
+    "original_sha256": "ed872f679b8c3c9ae0cf45378aba0460c4ff659edfc489fbfa2f3f3b2c652b8f",
+    "original_size": 93290579,
+    "source_url": "https://www.mediafire.com/file/ktgyeawmmqvcfkv/Testing_Facilty_Gone_ZeroV3.exe/file",
+    "source_page": "https://callofdutyrepo.com/2015/04/11/testing-facility-gone-zero-v3/",
+    "fetched": "2026-09-26T15:37:55Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Description Hello this is one of two maps i have been making and i have completed this one recently\u2026 this is the smallest of the two but this map i tried to design\u2026 this map to be relatively hard or more depending on person. The map contains Some BO1 Weapons, Halo Dual magnums\u2026 Some Of the BO1 weapons you can only get by upgrading a Cod waw Weapon (dont worry they have been modified to be nice weapons) also the Halo Pistoles you are only able to get by packing a weapon. There is a Double Pack able Weapon\u2026 And a buy-able ending. BO1 perks and electric cherry!! Credits: Marsvinking- Helped with some texture\u2019s and he made the Spawn Ceiling for me and he was a beta tester GH1LL13- Beta Tester, and helped with the cod waw to BO1 pack (helped chose guns to change in to what lol) BO1 Weapons files: zombie madness aka Rorke-extra weapon fixes and porting these weapons elfenliedtopfan5-weapon fixes Bigkittyjr-tester SammyCustom-finding bugs in the weapons rollonmath42-for shotgun fixes Tom_bmx- Toms Music Box and Tools For those Who do not wanna Find what guns pack in to what here is list :p STG44-AUG\u2026\u2026.FG42-Famas\u2026\u2026.M1911-halo Pistoles\u2026\u2026MP40-Galil For Those who whant to know which weapon is double packable\u2026. PPSH",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_nazi_zombie_testgone"
+      ],
+      "iwd_images": [
+        "testinfaciltygonezero.iwd:images/loadscreen_nazi_zombie_testgone.iwi",
+        "testinfaciltygonezero.iwd:images/specialty_fastreload_zombies.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 91.3,
+    "addon_iwds": [
+      {
+        "file": "testinfaciltygonezero.iwd",
+        "entries": 167,
+        "scripts": 17,
+        "bytes": 22622159
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "testgone.ff",
+      "testgone_patch.ff",
+      "testinfaciltygonezero.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "modes": {
+    "ugx": null,
+    "other": [
+      {
+        "script": "testinfaciltygonezero.iwd:maps/tom_music_player_unl.gsc",
+        "menus": [],
+        "responses": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9"
+        ],
+        "note": "in game: a music player"
+      }
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}

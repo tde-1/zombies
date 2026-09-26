@@ -1,0 +1,215 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_sdtoten",
+  "title": "Nazi Zombie Sdtoten",
+  "source": "custom",
+  "author": "thejipppp",
+  "released": "2015-05-01",
+  "fs_game": "mods/nazi_zombie_sdtoten",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@mod.ff": "ffd79e6dc20ec74006a5464cc27b2c491946963d12b04ddebd6a31bce672910a"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game",
+        "escape_s11_door",
+        "teleport_power_up"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        5000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game, escape_s11_door, teleport_power_up name an ending and are this map's own; script hardcodes cost 5000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 99,
+    "script_count": 99,
+    "entities": 6701,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game",
+      "escape_s11_door",
+      "teleport_power_up"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      2000,
+      2500,
+      3000,
+      5000
+    ],
+    "orphan_end_triggers": [
+      "end_game"
+    ],
+    "top_costs": [
+      [
+        5000,
+        "zombie_door",
+        "gangR1_door"
+      ],
+      [
+        5000,
+        "zombie_door",
+        "gangR1_door"
+      ],
+      [
+        5000,
+        "zombie_door",
+        "R_door"
+      ],
+      [
+        5000,
+        "zombie_door",
+        "R_door"
+      ],
+      [
+        2000,
+        "zombie_door",
+        "beneden_door"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "ffd79e6dc20ec74006a5464cc27b2c491946963d12b04ddebd6a31bce672910a",
+    "map_specific_triggers": [
+      "answer1Atrig",
+      "answer1Btrig",
+      "answer1Ctrig",
+      "answer1Dtrig",
+      "answer2Atrig",
+      "answer2Btrig",
+      "answer2Ctrig",
+      "answer2Dtrig",
+      "answer3Atrig",
+      "answer3Btrig",
+      "answer3Ctrig",
+      "answer3Dtrig",
+      "answer4Atrig",
+      "answer4Btrig",
+      "answer4Ctrig",
+      "answer4Dtrig",
+      "answer5Atrig",
+      "answer5Btrig",
+      "answer5Ctrig",
+      "answer5Dtrig",
+      "answer6Atrig",
+      "answer6Btrig",
+      "answer6Ctrig",
+      "answer6Dtrig",
+      "brand",
+      "end_game",
+      "endteletrigger",
+      "five_tele1",
+      "five_tele2",
+      "five_tele3",
+      "five_tele4",
+      "five_tele5",
+      "five_tele6",
+      "give_ammo",
+      "jezus1",
+      "jezus2",
+      "jezus3",
+      "kino_mainframe_trigger",
+      "kino_teleporter_trigger",
+      "lander_use"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T15:28:30Z"
+    }
+  },
+  "archive": {
+    "original": "nazi_zombie_sdtoten2.1.exe",
+    "original_sha256": "62fb5a73658b6cd73e05a92bd671f5d69c0734bf791dcc2174328692bcecaaa4",
+    "original_size": 300223347,
+    "source_url": "https://www.mediafire.com/file/t5dl6t1zywkbmge/nazi_zombie_sdtoten2.1.exe/file",
+    "source_page": "https://callofdutyrepo.com/2015/05/01/nazi-zombie-sdtoten/",
+    "fetched": "2026-09-26T15:26:21Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "Description One year ago, I made this map with some friends and it was a lot of fun Because of school work, I had to leave zombiemodding This map took 7 months to make it and I think it became really good as my first and probably last map. Today I realised that I\u2019ve never uploaded my map here, so I\u2019m proud to present you Schule Der Toten. There are a lot easter egg songs, the most of them are made by Dj Almix, so big thanks to him. I hope you will have fun defeating the undead! FEATURES -Custom menu (Thx to Rampage_619, treminaor and Tom_Bmx ) \u2013 Kino teleporter (Thx to ADDICTED and Tom_Bmx) -Zappers (Thx to ADDICTED and Tom_Bmx) -BO perks (Thx to bamskater33 and OnlineX420) -Vulure-aid and Electric Cherry (Thx to bamskater33) -Buyable Ending (Thx to Tom_Bmx) -Custom powerups (Thx to http://www.thetechgame.com/ (scripts) and KDXDARK from ugx-mods) -Adapted Five Teleporters (Thx to Pie man) -Power-Up machine (Thx to bamskater33) -Lunar Lander (Thx to bamskater33) -Boss with meter (Thx to Paraglor and losangeles26) -Custom perk shaders (Thx to Deadnaut) EASTER EGGS \u2013 WOOSH (Thx to MakeCents, JBird632, bamskater33) -? ??(Thx to bamskater33, Phil, Jonas, TheGtlad and thebeast2365) -3.(Thx to bamskater33) -BB and Boss (Zomb1e-KLLR) VERY SPECIAL THANKS TO Dj Almix (He made our music + he is awesome ) Tanno Quintens (web designer) Jesper Van Caeter AKA Thejipppp (scripter + mapper) and Brian Coppens AKA Hellkid_6969 (mapper) Lucien De Leeuw AKA DrWeB-Jr (promotor + betatester + desig",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_nazi_zombie_sdtoten"
+      ],
+      "iwd_images": [],
+      "loadscreen": "loadscreen_nazi_zombie_sdtoten"
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 156.3,
+    "addon_iwds": [],
+    "flags": [
+      "client_memory_risk"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_sdtoten.ff",
+      "nazi_zombie_sdtoten_patch.ff"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}
