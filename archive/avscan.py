@@ -52,6 +52,12 @@ def detections_since(ts):
 
 
 def scan(path):
+    if os.name != "nt":
+        # The cloud run (Linux) has no Defender and ClamAV's signature CDN refuses it; say so,
+        # and main() below re-scans every sidecar whose scan did not run, on B's PC.
+        return {"scanner": "none (Linux run)", "engine": None, "ran": False,
+                "result": "scan did not run", "detections_during_scan": None,
+                "scanned_at": None, "output": "no AV on this host; run avscan.py on Windows"}
     started = datetime.datetime.now() - datetime.timedelta(seconds=2)
     r = subprocess.run(PS + [
         "try { Start-MpScan -ScanType CustomScan -ScanPath '%s' -ErrorAction Stop; "
