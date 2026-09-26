@@ -130,5 +130,7 @@
     "verdict": "unproven",
     "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
     "tool": "archive/cloud_static.py"
-  }
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
 }

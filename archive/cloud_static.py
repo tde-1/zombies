@@ -167,6 +167,9 @@ def main(argv):
             man["modes"] = modes
         man["asset_audit"] = {"verdict": "unproven", "why": ASSETS_UNPROVEN,
                               "tool": "archive/cloud_static.py"}
+        # hidden until a box proof un-hides it (popular.py --apply), like every tranche
+        man.setdefault("site_hidden", True)
+        man.setdefault("site_hidden_reason", "cloud archive run: not box-proven yet")
         mf = os.path.join(scan_maps.OUT, bsp + ".json")
         try:
             os.makedirs(scan_maps.OUT, exist_ok=True)
