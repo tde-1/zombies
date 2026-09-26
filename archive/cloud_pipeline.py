@@ -248,19 +248,20 @@ def main():
     ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--fetchers", type=int, default=4,
                     help="parallel fetches; per-host politeness is kept by the shared session")
-    ap.add_argument("--min-free-gb", type=float, default=8)
+    ap.add_argument("--min-free-gb", type=float, default=14,
+                    help="a 4 GB pack plus its nested extraction needs ~3x its size")
     ap.add_argument("--max-file-mb", type=int, default=4000)
     ap.add_argument("--max-mirrors", type=int, default=4)
     ap.add_argument("--static", default=os.environ.get("CLOUD_STATIC"),
                     help="command run as <cmd> <norm> <bsp> after extraction")
     ap.add_argument("--keep-originals", action="store_true")
     ap.add_argument("--retry-failed", action="store_true")
-    ap.add_argument("--retry-match", default=r"^(?!.*(w3x|Wc3)).*(Unsupported Method|upload failed|unar)",
+    ap.add_argument("--retry-match", default=r"^(?!.*(w3x|Wc3)).*(Unsupported Method|upload failed|unar|too big|Errno 28)",
                     help="with --retry-failed: only failures whose error matches this regex")
     args = ap.parse_args()
 
     # an interrupted run leaves half-built trees; they are rebuilt from the originals
-    for d in (extract.EXTRACT, extract.MODS):
+    for d in (extract.EXTRACT, extract.MODS, fetch.QUARANTINE):
         if os.path.isdir(d):
             for n in os.listdir(d):
                 shutil.rmtree(os.path.join(d, n), ignore_errors=True)
@@ -299,8 +300,11 @@ def main():
                        "trace": traceback.format_exc()[-1500:]}
             with STATE_LOCK:
                 status[norm] = rec
-                save_status(status)
                 done_count[0] += 1
+                try:
+                    save_status(status)
+                except OSError as exc:            # full disk: keep the worker alive
+                    log("[state] save failed: %s" % exc)
             log("[done] %-24s %s %s" % (norm, "OK " + ",".join(rec.get("bsps", [])) if rec.get("ok")
                                         else "FAIL", "; ".join(rec.get("errors", []))[:200]))
             if done_count[0] % 5 == 0:
@@ -334,6 +338,15 @@ def main():
                 norm = todo.get_nowait()
             except queue.Empty:
                 return
+            try:
+                fetch_step(fdb, norm)
+            except Exception as exc:
+                # a full disk once killed both fetchers mid-round (status write -> ENOSPC)
+                # and the round ended with half its queue untouched; never again
+                log("[fetcher] %-24s %s: %s (continuing)" % (norm, exc.__class__.__name__, exc))
+                time.sleep(10)
+
+    def fetch_step(fdb, norm):
             while free_gb() < args.min_free_gb:
                 log("[disk] %.1f GB free; waiting for uploads" % free_gb())
                 time.sleep(20)
@@ -348,7 +361,7 @@ def main():
                                     "name": res.get("name")}
                     save_status(status)
                 log("[fetch] %-24s %s" % (norm, res.get("status")))
-                continue
+                return
             if not os.path.exists(res.get("file", "")) and args.retry_failed:
                 # processed before and freed, but it failed after the fetch: its original is
                 # in the bucket (step 2 runs first), so take it from there, not the host
@@ -366,7 +379,7 @@ def main():
                         status[norm] = {"norm": norm, "ok": False, "stage": "fetch",
                                         "errors": ["sidecar present, original gone (already processed?)"]}
                         save_status(status)
-                continue
+                return
             work.put((norm, res))
 
     fts = [threading.Thread(target=fetcher, daemon=True) for _ in range(args.fetchers)]
