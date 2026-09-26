@@ -7,7 +7,7 @@ round=0
 while true; do
   round=$((round+1))
   python3 archive/cloud_queue.py --out /home/user/zwork/queue.txt
-  python3 archive/cloud_pipeline.py --queue /home/user/zwork/queue.txt --workers 3 \
+  python3 archive/cloud_pipeline.py --queue /home/user/zwork/queue.txt --workers 3 --static "$PWD/archive/cloud_static.py" \
     >> /home/user/zwork/logs/pipeline.log 2>&1
   echo "$(date -u +%H:%M:%S) round $round exit $?" >> /home/user/zwork/logs/pipeline.log
   sleep 120

@@ -28,7 +28,6 @@ we do not deliver). A map never booted is `unproven` and passes here; the box pr
 --save-console and popular.py --apply are where its log is judged.
 """
 import argparse
-import glob
 import json
 import os
 import re

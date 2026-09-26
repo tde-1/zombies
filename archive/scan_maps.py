@@ -49,7 +49,6 @@ from __future__ import annotations
 
 import argparse
 import collections
-import glob
 import hashlib
 import json
 import os
@@ -71,6 +70,7 @@ MODS = os.path.join(WORK, "mods")
 ORIGINALS = os.path.join(WORK, "originals")
 OUT = os.path.join(HERE, "manifests")
 BASELINE = os.path.join(HERE, "stock-baseline.json")
+CORPUS_IGNORE = os.path.join(HERE, "corpus-ignore.json")   # written by main(), read by cloud_static.py
 
 # A finish a human still has to adjudicate vs one the event stream can award alone.
 # Easter eggs ALWAYS need a human: the scanner finds the state, but which combination
@@ -81,6 +81,69 @@ NEEDS_HUMAN = {"easter_egg", "manual"}
 AUTO_ENT = re.compile(r"^(pf\d+_)?auto\d+$", re.I)
 PERK_ENT = re.compile(r"vending", re.I)
 CORPUS_FRACTION = 0.6
+
+
+def zone_files(d):
+    """(ffs, iwds) under a map folder, matching the extension case-insensitively: glob's
+    `*.ff` is case-insensitive on Windows only, and some installers ship `.FF`."""
+    ffs, iwds = [], []
+    for root, _dirs, files in os.walk(d):
+        for f in files:
+            low = f.lower()
+            if low.endswith(".ff"):
+                ffs.append(os.path.join(root, f))
+            elif low.endswith(".iwd"):
+                iwds.append(os.path.join(root, f))
+    return sorted(ffs), sorted(iwds)
+
+
+def pass1(mapname, d):
+    """Scan one map folder against the stock baseline only; None if it has no zones."""
+    ffs, iwds = zone_files(d)
+    if not ffs and not iwds:
+        return None
+    res = scan_map.scan(ffs, iwds, baseline_path=BASELINE)
+    scripts = scan_map.read_scripts(ffs, iwds)
+    trigger_names = set()
+    for e in scan_map.read_mapents(ffs):
+        if e.get("classname", "").startswith("trigger") and e.get("targetname"):
+            trigger_names.add(e["targetname"])
+    fps = {}
+    for name, (text, src) in sorted(scripts.items()):
+        if name.endswith("_zombiemode.gsc"):
+            fps["%s@%s" % (name, src)] = hashlib.sha256(
+                text.encode("latin-1")).hexdigest()
+    return {"map": mapname, "res1": res, "ffs": ffs, "iwds": iwds,
+            "trigger_names": trigger_names, "fingerprints": fps,
+            "script_count": len(scripts),
+            "own": (set(res["own_flags"]) | set(res["own_notifies"])
+                    | set(res["own_entity_names"]) | trigger_names)}
+
+
+def extras_for(m, ignore, n_stock, stock_ents):
+    return {
+        "fingerprints": m["fingerprints"],
+        "script_count": m["script_count"],
+        "trigger_names": m["trigger_names"],
+        "verdict_no_ignore": m["res1"]["verdict"]["finish"],
+        "stock_names": n_stock,
+        "corpus_ignored": len(ignore),
+        "map_specific_triggers": sorted(
+            n for n in m["trigger_names"]
+            if n not in ignore and not AUTO_ENT.match(n) and not PERK_ENT.search(n)
+            and n not in stock_ents)[:40],
+    }
+
+
+def provisional(mpath):
+    """The manifest at mpath if cloud_static.py wrote it without the corpus ignore set
+    (safe to rewrite: no hand edits go into those), else None."""
+    try:
+        m = json.load(open(mpath, encoding="utf-8"))
+    except Exception:
+        return None
+    run = (m.get("scanner") or {}).get("run") or {}
+    return m if run.get("tool") == "archive/cloud_static.py" and not run.get("corpus_ignore") else None
 
 
 def provenance(norm):
@@ -261,35 +324,24 @@ def main():
         d = os.path.join(a.mods, mapname)
         if not os.path.isdir(d):
             continue
-        ffs = sorted(glob.glob(os.path.join(d, "**", "*.ff"), recursive=True))
-        iwds = sorted(glob.glob(os.path.join(d, "**", "*.iwd"), recursive=True))
-        if not ffs and not iwds:
-            continue
         try:
-            res = scan_map.scan(ffs, iwds, baseline_path=BASELINE)
-            scripts = scan_map.read_scripts(ffs, iwds)
+            m = pass1(mapname, d)
         except Exception as exc:
             print("%-24s SCANNER ERROR %s" % (mapname, exc))
             continue
-        trigger_names = set()
-        for e in scan_map.read_mapents(ffs):
-            if e.get("classname", "").startswith("trigger") and e.get("targetname"):
-                trigger_names.add(e["targetname"])
-        fps = {}
-        for name, (text, src) in sorted(scripts.items()):
-            if name.endswith("_zombiemode.gsc"):
-                fps["%s@%s" % (name, src)] = hashlib.sha256(
-                    text.encode("latin-1")).hexdigest()
-        maps.append({"map": mapname, "res1": res, "ffs": ffs, "iwds": iwds,
-                     "trigger_names": trigger_names, "fingerprints": fps,
-                     "script_count": len(scripts),
-                     "own": (set(res["own_flags"]) | set(res["own_notifies"])
-                             | set(res["own_entity_names"]) | trigger_names)})
+        if m:
+            maps.append(m)
 
     # ------------------------------------------- corpus boilerplate, their own rule
     ignore = scan_map.corpus_common([m["own"] for m in maps], a.corpus_fraction)
     print("corpus ignore: %d names shared by >=%.0f%% of %d maps"
           % (len(ignore), 100 * a.corpus_fraction, len(maps)))
+    # Persist the set so a one-map run (cloud_static.py, which sees a single map and so
+    # has no corpus) judges with the same boilerplate rule as this full pass.
+    if maps:
+        with open(CORPUS_IGNORE, "w", encoding="utf-8") as fh:
+            json.dump({"maps": len(maps), "fraction": a.corpus_fraction,
+                       "names": sorted(ignore)}, fh, indent=1)
 
     # ------------------------------------------------------ pass 2: final verdicts
     rows = []
@@ -298,23 +350,20 @@ def main():
         mapname = m["map"]
         ee = extract_report.get(mapname)
         meta = provenance(ee["norm"]) if ee else None
-        extras = {
-            "fingerprints": m["fingerprints"],
-            "script_count": m["script_count"],
-            "trigger_names": m["trigger_names"],
-            "verdict_no_ignore": m["res1"]["verdict"]["finish"],
-            "stock_names": n_stock,
-            "corpus_ignored": len(ignore),
-            "map_specific_triggers": sorted(
-                n for n in m["trigger_names"]
-                if n not in ignore and not AUTO_ENT.match(n) and not PERK_ENT.search(n)
-                and n not in stock_ents)[:40],
-        }
+        extras = extras_for(m, ignore, n_stock, stock_ents)
         man = manifest_for(mapname, res, ee, meta, db, extras)
         mpath = os.path.join(OUT, mapname + ".json")
-        if a.keep_existing and os.path.exists(mpath):
+        prev = provisional(mpath)
+        if a.keep_existing and os.path.exists(mpath) and prev is None:
             pass
         else:
+            # A cloud_static.py manifest made without corpus-ignore.json is provisional:
+            # rewrite its verdict, keep the static checks it recorded.
+            for k in ("precheck", "modes", "asset_audit"):
+                if prev and k in prev:
+                    man[k] = prev[k]
+            if prev and "art" in prev.get("archive", {}):
+                man["archive"]["art"] = prev["archive"]["art"]
             with open(mpath, "w", encoding="utf-8") as fh:
                 json.dump(man, fh, indent=2)
         v = res["verdict"]["finish"]
