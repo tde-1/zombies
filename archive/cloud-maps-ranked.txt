@@ -801,54 +801,32 @@ sas6  # AkimkA map1, 0
 challenge_ausenposten  # AUSENPOSTEN, 0
 ballbags_3  # BALLBAGS 3, 0
 nazi_zombie_playa  # Barbie Inverted Tower, 0
-bcast_patch_original  # Bcast Patch Original, 0
 zm_brickshithouse  # BRICKSHIZHOUSE, 0
-ccubeuload  # Ccube U Load, 0
 nazi_zombie_meaty  # CN TOWER (MEATY), 0
-cursedload  # Cursed Load, 0
 nazi_zombie_ragnarok  # CZC MAP PACK VOL. 2, 0
 nazi_zombie_western  # CZC MAP PACK VOL. 6, 0
-czmfnaf4  # Czm Fnaf4 Patch, 0
 nazi_zombie_res  # CZ MAP PACK 5, 0
 nazi_zombie_maps  # DARK CRUSADE, 0
-deadopsarcadefirstperson  # DEAD OPS ARCADE - FIRST PERSON, 0
 nazi_zombie_decapitator  # DECAPITATOR 1, 0
 e1m1  # DOOM E1M1 - HANGAR, 0
 nazi_zombie_exozom  # EXO ZOMBIES, 0
 nazi_zombie_faraway  # FAR AWAY 1, 0
 fh  # FARM HOUSE - PASHAN, 0
 nazi_zombie_fivehours  # FIVE HOURS OF BLOOD, 0
-main  # GUN MOD - ROLLON, 0
-common  # GUN MOD - ROLLON, 0
 nazi_zombie_halloween  # HALLOWEEN CHURCH OF THE DAMNED, 0
 hogwarts  # HARRY POTTER: HOGWARTS, 0
 hellfield  # HELLFIELD, 0
 nazi_zombie_estate  # Industrial Estate New Realism 3 0 Version, 0
-killhouseload  # Killhouse Load, 0
 d  # Kino: Rezurrection 1.05 2026, 0
 nazi_zombie_x  # KINO: THE REBIRTH, 0
 landderuntoten  # LAND DER UNTOTEN UNFINISHED), 0
-localizedcommon  # Localized Common, 0
-localizedcursed  # Localized Nazi Zombie Cursed, 0
-localizedczmfnaf  # Localized Czm Fnaf, 0
-localizedfivenights  # Localized Nazi Zombie Fivenights, 0
-localizedmario  # Localized Mario, 0
-localizednuketown  # Localized Nuketown, 0
-localizedperk  # Localized Nazi Zombie Perk, 0
 localizedv2beta  # Localized Nazi Zombie V2Beta, 0
-localizedyawfnaf  # Localized Yaw Fnaf, 0
-localizedyawpokemon  # Localized Yaw Pokemon, 0
 nazi_zombie_locked_in  # LOCKED IN, 0
 nazi_zombie_madagascar  # MADAGASKAR, 0
-malibuload  # Malibu Load, 0
-marioload  # Mario Load, 0
 nazi_zombie_mol  # MEN OF LETTERS - SPERNATURAL, 0
 zm_minecraft  # Minecraft Zombies 2024 v2, 0
-mineload  # Mine Load, 0
-mod  # Mod, 0
 nazi_zombie_morgue  # MORGUE, 0
 nazi_zombie_training  # ZOMBIE MORNING, 0
-motion_flex_v2_1  # [item] Motion Flex V 2.1, 0
 mp_firstday  # MULTIPLAYER - FIRST DAY, 0
 zombie_nuke_winter  # NUKETOWN WINTER EDITION, 0
 nazi_zombie_proboxmap  # PGZ SMALL MAP, 0
@@ -867,7 +845,6 @@ nazi_zombie_sog  # S.O.G., 0
 zombiemap  # FINAL STAND, 0
 zm_sturm_der_toten  # STURM DER TOTEN, 0
 suffering  # Suffering v1.0, 0
-test1load  # Test1 Load, 0
 nazi_zombie_extinct  # THE COMPOUND (EXTINCT), 0
 nazi_zombie_thesidemen  # Nazi Zombie TheSidemen, 0
 tmg_alcatraz  # Tmg Alcatraz Dw, 0
@@ -875,10 +852,8 @@ tokyo  # TOKYO, 0
 train_dead_v2  # Train Dead V2, 0
 nazi_zombie_morning  # Nazi Zombie Training Zombie Morning, 0
 nazi_zombie_ufso  # UFSO, 0
-ugxm_customize_room  # Ugxm Customize Room Patch, 0
 nazi_zombie_iplay  # UNDEAD AMUSEMENT PARK (IPLAY), 0
 nazi_zombie_university  # [item] UNIVERSITY Waw Custom Zombies Map, 0
 yaw_fnaf_2  # Yaw Fnaf, 0
-yawfnaf2  # Yaw Fnaf 2 Patch, 0
 yaw_pokemon  # Yaw Pokemon Patch, 0
 zm_owc  # ZM ONE WINDOW CHALLENGE, 0

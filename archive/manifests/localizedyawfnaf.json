@@ -133,6 +133,6 @@
     "tool": "archive/cloud_static.py"
   },
   "site_hidden": true,
-  "site_hidden_reason": "cloud run: a loose fastfile from an archive.org dump (load/localized/patch zone of another map), not a map",
+  "site_hidden_reason": "cloud run: not a map (a mod, a patch or a loose zone of another map); motion_flex ships stock-named code_post_gfx.ff/common.ff (ip-posture.md)",
   "not_a_map": true
 }
