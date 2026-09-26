@@ -1,0 +1,183 @@
+{
+  "schema": "enw.referee.manifest/0",
+  "map": "nazi_zombie_doomtower",
+  "title": "Doom Tower v1.0",
+  "source": "custom",
+  "author": "Kielrgz",
+  "released": "2023-12-07",
+  "fs_game": "mods/nazi_zombie_doomtower",
+  "script_fingerprints": {
+    "maps/_zombiemode.gsc@nazi_zombie_doomtower.iwd": "05739e240837796e857e28fb882053f74052eb772f97d23d9adfd62a5a770b49"
+  },
+  "badge": {
+    "main_finish": "buyable_ending",
+    "round_n": 20
+  },
+  "finishes": [
+    {
+      "id": "buyable_ending",
+      "label": "Buyable Ending",
+      "priority": 2,
+      "when": {
+        "trigger_used": {
+          "targetname": "end_game"
+        }
+      },
+      "candidates": [
+        "crawler_round_ending",
+        "end_game"
+      ],
+      "hardcoded_costs": [
+        1000,
+        1500,
+        3000,
+        5000,
+        35000
+      ]
+    },
+    {
+      "id": "round",
+      "label": "Round 20",
+      "priority": 3,
+      "when": {
+        "round_at_least": 20
+      }
+    }
+  ],
+  "signals": [],
+  "confidence": "guess",
+  "needs_human": true,
+  "health": null,
+  "scanner": {
+    "tool": "referee/scan_map.py",
+    "verdict": "buyable_ending",
+    "why": "crawler_round_ending, end_game name an ending and are this map's own; script hardcodes cost 35000",
+    "verdict_stock_baseline_only": "buyable_ending",
+    "scripts": 100,
+    "script_count": 100,
+    "entities": 386,
+    "ee_candidates": [],
+    "ending_words": [
+      "crawler_round_ending",
+      "end_game"
+    ],
+    "hardcoded_costs": [
+      1000,
+      1500,
+      3000,
+      5000,
+      35000
+    ],
+    "orphan_end_triggers": [],
+    "top_costs": [
+      [
+        6000,
+        "zombie_debris",
+        "puerta11"
+      ],
+      [
+        5500,
+        "zombie_debris",
+        "puerta10"
+      ],
+      [
+        5000,
+        "zombie_debris",
+        "puerta9"
+      ],
+      [
+        4500,
+        "zombie_debris",
+        "puerta8"
+      ],
+      [
+        4000,
+        "zombie_debris",
+        "puerta7"
+      ]
+    ],
+    "buyable_ending_candidate": null,
+    "common_script_overrides": [
+      "maps/_callbackglobal.gsc",
+      "maps/_gameskill.gsc",
+      "maps/_laststand.gsc",
+      "maps/_load.gsc",
+      "maps/_loadout.gsc"
+    ],
+    "zombiemode_sha256": "05739e240837796e857e28fb882053f74052eb772f97d23d9adfd62a5a770b49",
+    "map_specific_triggers": [
+      "end_game",
+      "secret_trigger",
+      "soul_triggers"
+    ],
+    "baseline": {
+      "stock_names": 2408,
+      "corpus_ignored": 0,
+      "note": "A name counts as this map's own only if it is absent from WaW's own zone files AND from the boilerplate shared by most maps in the corpus. Built by archive/stock_baseline.py and fed to scan_map.scan(baseline_path=..., ignore=...)."
+    },
+    "run": {
+      "tool": "archive/cloud_static.py",
+      "corpus_ignore": false,
+      "at": "2026-09-26T14:51:05Z"
+    }
+  },
+  "archive": {
+    "original": "Doom_Tower_V1.2_Fix.exe",
+    "original_sha256": "7905fd8dcb48944cfd917dcc483b340f44980e47dc4917486c9049a18e735f3e",
+    "original_size": 415759566,
+    "source_url": "https://www.mediafire.com/file_premium/f2k4jqd2jouethr/Doom_Tower_V1.2_Fix.exe/file",
+    "source_page": "https://callofdutyrepo.com/2023/12/07/doom-tower-v1-0/",
+    "fetched": "2026-09-26T14:48:41Z",
+    "av": "scan did not run",
+    "av_ran": false,
+    "installer_kind": "nsis",
+    "shipped_executables": [
+      "$PLUGINSDIR/System.dll",
+      "$PLUGINSDIR/nsDialogs.dll"
+    ],
+    "catalogue_tags": [],
+    "catalogue_description": "To avoid errors with g_spawn, I advise putting \u201cNumbers of bodies: Low\u201d in the options Hello!! I haven\u2019t brought a custom in months and well I wanted to bring a quick custom that I made in 5 days. The map, like any of my customs, has some bugs that do not affect the playability but I will clarify them below so you know what they are. Another thing is that if I see support in the sense that I see that there are people who play it, I will probably make more maps, but this time I don\u2019t think I will continue with the towers, but I will focus on normal maps. I learned to add effects and things that I like and well I want to implement it in some good custom map. I also apologize for some bugs, it is a bit difficult for me to put the scripts in sometimes and luckily I have friends in the community who help me when I make a mistake about something. hahaha I\u2019ve been doing this for years but sometimes it\u2019s a little hard. Anyway, I hope you enjoy it and I will be leaving information about what the map includes as well. greetings!! BUGS README!!:",
+    "art": {
+      "loadscreen_materials": [
+        "loadscreen_mak"
+      ],
+      "iwd_images": [
+        "gympie6_perks.iwd:images/~p7_zm_vending_ads_logo_spc-r~301c48c1.iwi",
+        "gympie6_perks.iwd:images/p7_zm_vending_ads_logo_col.iwi",
+        "gympie6_perks.iwd:images/specialty_fastreload_zombies.iwi",
+        "nazi_zombie_doomtower.iwd:images/weapon_red_cross_background.iwi"
+      ],
+      "loadscreen": null
+    }
+  },
+  "notes": "Replaces common scripts (maps/_callbackglobal.gsc, maps/_gameskill.gsc, maps/_laststand.gsc, maps/_load.gsc, maps/_loadout.gsc); re-verify the generic down/revive/score events on it. Ships 2 executable(s): $PLUGINSDIR/System.dll, $PLUGINSDIR/nsDialogs.dll. NEVER RUN THEM (dev-box.md rule 3). PROVISIONAL: archive/corpus-ignore.json was missing, so corpus boilerplate was not subtracted and this finish may be a shared-script name; scan_maps.py --keep-existing rewrites this manifest. ",
+  "precheck": {
+    "map_zone_inflated_mb": 81.6,
+    "addon_iwds": [
+      {
+        "file": "gympie6_perks.iwd",
+        "entries": 286,
+        "scripts": 8,
+        "bytes": 100374360
+      }
+    ],
+    "flags": [
+      "addon_iwd_with_scripts"
+    ],
+    "has_load_ff": false,
+    "has_patch_ff": true,
+    "napalmblob": [
+      "mod.ff",
+      "nazi_zombie_doomtower.ff",
+      "nazi_zombie_doomtower_patch.ff",
+      "gympie6_perks.iwd:maps/_loadout.gsc"
+    ]
+  },
+  "asset_audit": {
+    "verdict": "unproven",
+    "why": "needs OAT Unlinker.exe (Windows), the site DB and a box console log",
+    "tool": "archive/cloud_static.py"
+  },
+  "site_hidden": true,
+  "site_hidden_reason": "cloud archive run: not box-proven yet"
+}
