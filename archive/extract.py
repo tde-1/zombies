@@ -297,21 +297,29 @@ def process(norm, original, report):
         os.path.relpath(p, exdir).replace("\\", "/") for p in walk(exdir)
         if p.lower().endswith((".exe", ".dll", ".bat", ".cmd", ".ps1", ".scr", ".msi")))
 
+    # Installers inside the download: a courtesy wrapper (Clinic of Evil ships as a .rar
+    # holding "Clinic Of Evil.exe") or a MAP PACK (CZ Maps vol-4: a dozen map installers
+    # in one .rar). Every one is opened as data, one level deep, each into its own folder;
+    # nothing is executed. Until 2026-09-26 only the largest was opened, and only when the
+    # outer archive held no map, so a pack yielded one map of many.
+    inner = [p for p in walk(exdir)
+             if p.lower().endswith((".exe", ".zip", ".rar", ".7z"))
+             and os.path.getsize(p) > 1 << 20]
+    nested = []
+    for i, p in enumerate(sorted(inner, key=os.path.getsize, reverse=True)[:60]):
+        sub = os.path.join(exdir, "_inner", "%02d" % i)
+        rc, log2 = run7z(p, sub)
+        if rc != 0:
+            rc2, l2 = run_unar(p, sub)
+            if rc2 == 0:
+                rc, log2 = 0, l2
+        nested.append({"file": os.path.relpath(p, exdir).replace("\\", "/"),
+                       "kind": fingerprint(p), "rc": rc})
+        out["extract_log"] += "\n[nested] " + log2.strip()[-300:]
+    if nested:
+        out["nested"] = nested
+        fix_names(exdir)
     roots = find_mod_roots(exdir)
-    if not roots:
-        # A wrapper archive: Clinic of Evil ships as a .rar containing
-        # "Clinic Of Evil.exe" plus a readme, i.e. the installer inside a courtesy
-        # archive. One level of recursion, still never executing anything.
-        inner = [p for p in walk(exdir)
-                 if p.lower().endswith((".exe", ".zip", ".rar", ".7z"))
-                 and os.path.getsize(p) > 1 << 20]
-        for p in sorted(inner, key=os.path.getsize, reverse=True)[:1]:
-            sub = os.path.join(exdir, "_inner")
-            rc, log2 = run7z(p, sub)
-            out["nested"] = {"file": os.path.relpath(p, exdir).replace("\\", "/"),
-                             "kind": fingerprint(p), "rc": rc}
-            out["extract_log"] += "\n[nested] " + log2.strip()[-800:]
-        roots = find_mod_roots(exdir)
     if not roots:
         out["errors"].append("no .ff/.iwd found in the extraction")
         report.append(out)
@@ -334,6 +342,9 @@ def process(norm, original, report):
         # Two releases, one bsp (tranche 2, 2026-09-23: remakes reuse names -- a second
         # "killhouse" would have been extracted OVER the first one's mods/ folder, which the
         # site serves and the bucket mirrors). Refuse; the map needs a human to pick a key.
+        if any(m["map"] == slug for m in out["mods"]):
+            out["errors"].append("duplicate copy of mods/%s inside the release; first kept" % slug)
+            continue
         owner = OWNERS.get(slug)
         if owner and owner != norm:
             out["errors"].append("bsp collision: mods/%s already belongs to %s; not extracted over it"
