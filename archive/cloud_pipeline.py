@@ -72,6 +72,7 @@ def save_claims(c):
     os.replace(CLAIMS + ".tmp", CLAIMS)
 LOG_LOCK = threading.Lock()
 STATE_LOCK = threading.Lock()
+BIG_LOCK = threading.Lock()      # one >1 GB release unpacking at a time
 
 
 def log(*parts):
@@ -295,12 +296,27 @@ def main():
             if item is None:
                 return
             norm, res = item
+            # extraction needs room too: a 4 GB pack with nested installers unpacks to ~3x its
+            # size, and three of them at once filled the disk on 2026-09-26. Big ones go one
+            # at a time and each waits for 3x its size + 4 GB free.
+            need = 3 * (res.get("size") or 0) / 2**30 + 4
+            big = (res.get("size") or 0) > 1 << 30
+            if big:
+                BIG_LOCK.acquire()
             try:
+                waited = 0
+                while free_gb() < need and waited < 3600:
+                    time.sleep(15)
+                    waited += 15
                 rec = process_map(s3, norm, res, taken, args, claims)
             except Exception as exc:
+                shutil.rmtree(os.path.join(extract.EXTRACT, norm), ignore_errors=True)
                 rec = {"norm": norm, "ok": False, "stage": "process",
                        "errors": ["%s: %s" % (exc.__class__.__name__, exc)],
                        "trace": traceback.format_exc()[-1500:]}
+            finally:
+                if big:
+                    BIG_LOCK.release()
             with STATE_LOCK:
                 status[norm] = rec
                 done_count[0] += 1
