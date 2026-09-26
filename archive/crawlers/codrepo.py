@@ -142,15 +142,26 @@ def pass_c(db, ps, limit=200):
     rows = [r for r in db.execute(
         "SELECT key,name,source_url,tags,extra FROM maps WHERE source=? AND source_url IS NOT NULL",
         (SOURCE,))]
-    todo = [r for r in rows if '"fetched": true' not in (r["extra"] or "")]
+    # a post that timed out twice on earlier runs is skipped, not retried forever: one broken
+    # page (2026-09-26, zombie-revolution-2-0-awake) stopped every resume at the same row
+    todo = [r for r in rows if '"fetched": true' not in (r["extra"] or "")
+            and (json.loads(r["extra"] or "{}").get("fetch_errors") or 0) < 2]
     todo.sort(key=_priority)
     done = 0
     for row in todo[:limit]:
         try:
             t = ps.get(row["source_url"])
         except net.Dropped as exc:
-            ps.log("[codrepo] stopping pass C: %s" % exc)
-            break
+            if ps.host_state(row["source_url"]).dropped:
+                ps.log("[codrepo] stopping pass C: %s" % exc)
+                break
+            # one post's transport error, the host is still fine: note it and move on
+            extra = json.loads(row["extra"] or "{}")
+            extra["fetch_errors"] = (extra.get("fetch_errors") or 0) + 1
+            db.execute("UPDATE maps SET extra=? WHERE key=?", (json.dumps(extra), row["key"]))
+            db.commit()
+            ps.log("[codrepo] skipping %s: %s" % (row["source_url"], exc))
+            continue
         if t is None:
             continue
         extra = json.loads(row["extra"] or "{}")
